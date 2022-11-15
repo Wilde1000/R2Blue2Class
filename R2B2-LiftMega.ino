@@ -34,7 +34,7 @@ Adafruit_PWMServoDriver servoCon = Adafruit_PWMServoDriver();
 #define LF_PMIN 50
  
  
-//define Moter Pins
+//define Motor Pins
 #define Z_IN1 2
 #define Z_IN2 3
 #define LS_IN1 4
@@ -172,17 +172,3 @@ leds=random(0,255);
   delay(100);
  
 }
-Footer
-© 2022 GitHub, Inc.
-Footer navigation
-Terms
-Privacy
-Security
-Status
-Docs
-Contact GitHub
-Pricing
-API
-Training
-Blog
-About
