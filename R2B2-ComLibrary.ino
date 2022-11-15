@@ -38,7 +38,7 @@ int dev_option, dev_address;
 char dev_MPU, dev_command;
 char cmdStr[CMD_MAX_LENGHT];
 
-void checkSerial() {
+byte checkSerial() {
   if (Serial.available()) {
     char ch;  //create a character to hold the current byte from Serial stream
     byte command_complete;
@@ -46,14 +46,14 @@ void checkSerial() {
     Serial.print(ch);
     command_complete = buildCommand(ch, cmdStr);
     if (command_complete) {
-      processCMD(cmdStr);
       Serial.println();
+      return 1;
     }
   }
-  return;
+  return 0;
 }
 
-byte processCMD(char* input_str) {
+byte parseCommand(char* input_str) {
   byte hasArgument = false;
   int argument;
   int address;
@@ -75,13 +75,27 @@ byte processCMD(char* input_str) {
   }
   addrStr[pos - 1] = '\0';
   dev_address = atoi(addrStr);
-  if(!length>pos) goto deadCmd;  //invalid, no command after address
-//check for the special case message command 'M'
-  if(inputStr[pos]=='M'){
+  if (!length > pos) goto deadCmd;  //invalid, no command after address
+                                    //check for the special case message command 'M'
+  dev_command=input_str[pos];
+  if (input_str[pos] == 'M') {
     pos++;
-    if(!length>pos)goto deadCmd;  //invalid, no message argument
-    doMcommand(dev_)    
+    if (!length > pos) goto deadCmd;  //invalid, no message argument
+    //doMcommand(dev_address, inputStr+pos);
+    return;
   }
+  // other commands, get the numerical argument after the command character
+
+  pos++;                                   // need to increment in order to peek ahead of command char
+  if (!length > pos) hasArgument = false;  // end of string reached, no arguments
+  else {
+    for (byte i = pos; i < length; i++) {
+      if (!isdigit(input_str[i])) goto deadCmd;  // invalid, end of string contains non-numerial arguments
+    }
+    dev_option = atoi(input_str + pos);  // that's the numerical argument after the command character
+    hasArgument = true;
+  }
+
 
 
 deadCmd:
@@ -108,8 +122,10 @@ byte buildCommand(char ch, char* output_str) {
 
 void setup() {
   // put your setup code here, to run once:
+  Serial.begin(9600);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
+  if (checkSerial()) parseCommand(cmdStr);
 }
