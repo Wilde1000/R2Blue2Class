@@ -77,15 +77,7 @@ byte parseCommand(char* input_str) {
   dev_address = atoi(addrStr);
   if (!length > pos) goto deadCmd;  //invalid, no command after address
                                     //check for the special case message command 'M'
-  dev_command=input_str[pos];
-  if (input_str[pos] == 'M') {
-    pos++;
-    if (!length > pos) goto deadCmd;  //invalid, no message argument
-    //doMcommand(dev_address, inputStr+pos);
-    return;
-  }
-  // other commands, get the numerical argument after the command character
-
+  dev_command = input_str[pos];
   pos++;                                   // need to increment in order to peek ahead of command char
   if (!length > pos) hasArgument = false;  // end of string reached, no arguments
   else {
@@ -95,12 +87,86 @@ byte parseCommand(char* input_str) {
     dev_option = atoi(input_str + pos);  // that's the numerical argument after the command character
     hasArgument = true;
   }
+  // switch on command character
+  switch (dev_command)  // 2nd or third char, should be the command char
+  {
+    case 'T':
+      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
+      doTcommand(dev_address, dev_option);
+      break;
+    /*case 'D':                           // D command is weird, does not need an argument, ignore if it has one
+      doDcommand(address);
+      break;
+    case 'P':    
+      if(!hasArgument) goto beep;       // invalid, no argument after command
+      doPcommand(address, argument);
+      break;
+    case 'R':    
+      if(!hasArgument) goto beep;       // invalid, no argument after command
+      doRcommand(address, argument);
+      break; */
+    case 'S':
+      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
+      doScommand(dev_address, dev_option);
+      break;
+    default:
+      goto deadCmd;  // unknown command
+      break;
+  }
 
+  return;
 
 
 deadCmd:
 
   return;
+}
+
+void doTcommand(int address, int argument) {
+  switch (address) {
+    case 50:  //Device 50 is all lift devices
+      allLifts(argument);
+      break;
+    case 51:
+      zapLift(argument);
+      break;
+    case 52:
+      lsLift(argument);
+      break;
+    case 53:
+      pLift(argument);
+      break;
+    case 54:
+      bmLift(argument);
+      break;
+    case 55:
+      lfLift(argument);
+      break;
+  }
+}
+
+void allLifts(int option){
+  
+}
+void zapLift(int option){
+  
+}
+void lsLift(int option){
+  
+}
+void pLift(int option){
+  
+}
+void bmLift(int option){
+  
+}
+void lfLift(int option){
+  
+}
+
+void doScommand(int address, int argument) {
+  switch (argument) {
+  }
 }
 
 byte buildCommand(char ch, char* output_str) {
