@@ -29,10 +29,15 @@ The command structure is as follows:
 
   A valid command would look like this:
     E51T102
+  And would consist of the following:
+  MPU code - E
+  Device Address - 51
+  Command - T
+  Option - 102
 */
 
-#define CMD_MAX_LENGHT 64
-#define MPU E
+#define CMD_MAX_LENGHT 64  //Defines max command Length - same as serial buffer
+#define MPU E  //Defines the MPU code for the program
 
 int dev_option, dev_address;
 char dev_MPU, dev_command;
@@ -41,16 +46,37 @@ char cmdStr[CMD_MAX_LENGHT];
 byte checkSerial() {
   if (Serial.available()) {
     char ch;  //create a character to hold the current byte from Serial stream
-    byte command_complete;
-    ch = Serial.read();
-    Serial.print(ch);
-    command_complete = buildCommand(ch, cmdStr);
-    if (command_complete) {
-      Serial.println();
+    byte command_complete;  //Establish a flag value to indicate a complete command
+    ch = Serial.read();  //Read a byte from the Serial Stream   
+    Serial.print(ch);    //Echo the byte to the Serial Monitor
+    command_complete = buildCommand(ch, cmdStr);  //Build the command string
+    if (command_complete) {  //if complete return 1 to start the processing
+      Serial.println();  //Prints a new line on Serial Monitor
       return 1;
     }
   }
   return 0;
+}
+//
+void transmitCMD(char srcMPU, char desMPU){
+  switch(desMPU){
+      case 'A': case 'B': case 'C':
+          if(Serial.available()){
+              for(int x=0; x<=strlen(cmdStr); x++) Serial.write(cmdStr[x]);
+          }
+          break;
+      case 'D': case '@':
+          if(Serial1.available()){
+              for(int x=0; x<=strlen(cmdStr); x++) Serial1.write(cmdStr[x]);
+          }
+          break;
+      case 'F':
+          if(Serial2.available()){
+              for(int x=0; x<=strlen(cmdStr); x++) Serial2.write(cmdStr[x]);
+          }
+          break;
+  }
+  return;
 }
 
 byte parseCommand(char* input_str) {
@@ -61,6 +87,10 @@ byte parseCommand(char* input_str) {
   byte length = strlen(input_str);
   if (length < 2) goto deadCmd;  //not enough characters
   int mpu = input_str[pos];
+  if(!MPU==mpu){  //if command is not for this MPU - send it on its way
+      transmitCMD(MPU,mpu);
+      return;
+  }
   pos++;
   if ((mpu > 64 && mpu < 71) || mpu == '@') dev_MPU = mpu;
   else goto deadCmd;  //Not a valid MPU - end command
@@ -127,19 +157,19 @@ void doTcommand(int address, int argument) {
     case 50:  //Device 50 is all lift devices
       allLifts(argument);
       break;
-    case 51:
+    case 51:  //Device 51 is the Zapper
       zapLift(argument);
       break;
-    case 52:
+    case 52:  //Device 52 is the Light Saber Lift
       lsLift(argument);
       break;
-    case 53:
+    case 53:  //Device 53 is the periscope lift
       pLift(argument);
       break;
-    case 54:
+    case 54:  //Device 54 is the Bad Motivator Lift
       bmLift(argument);
       break;
-    case 55:
+    case 55:  //Device 55 is the Life Form Scanner Lift
       lfLift(argument);
       break;
   }
