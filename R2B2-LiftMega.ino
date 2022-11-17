@@ -140,7 +140,7 @@ void loadServos() {
 
 
 
-
+//The updateStates function sets all states to their default values
 void updateStates() {
   for (int x = 0; x < 6; x++) {
     for (int y = 0; y < 7; y++) states[x][y] = 0;
