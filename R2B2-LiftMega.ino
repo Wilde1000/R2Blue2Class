@@ -310,7 +310,7 @@ void ZapLift(int option) {
       } else if (states[1][2] == 0) {  //Ready to start Motor?
         motorDown(1);                  //Start Motor
         states[1][2] = 1;
-        states[1][1] = 1;
+        
         return;
       } else if (states[1][1]) {  //Motor is moving
         motorDown(1);
