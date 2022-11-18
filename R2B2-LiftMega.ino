@@ -114,8 +114,10 @@ EXT_STATE should be set to 1 as that is the stored position for the hall effect 
 byte states[6][7];
 byte leds = 0;
 long int current_millis = millis();
-long int zPrev_millis;
-int zInterval = 30;
+long int zPrev_millis = millis();
+long int bmPrev_millis = millis();
+int zInterval = 50;
+int bmInterval = 75;
 int zState = 0;
 int zFlashCount = 0;
 
@@ -165,9 +167,18 @@ void updateStates() {
 
 
 
-void bmLights() {
-  leds = random(0, 255);
-  updateShiftRegister();
+void bmLights(int num) {
+ if(num){
+  current_millis()=millis();
+  if(current_millis-bmPrev_millis>bmInterval){
+    bmPrev_millis=current_millis;
+    leds = random(0, 255);
+    updateShiftRegister();
+  }
+ }else{
+    leds = 0;
+    updateShiftRegister();
+ }
   return;
 }
 
@@ -416,3 +427,52 @@ void ZapLift(int option) {
       break;
   }
 }
+
+void lsLift(int option){
+    switch(option){
+        case 0: // Light saber down and pie closed
+            if(states[2][0]==0) return; //Pie is closed - LS is stored
+            else if (digitalRead(LS_BOT)==0){ //Bottom Limit Hit
+                servoControl.setPWM(LS_PIE, 0, LS_PMIN);
+                states[2][0]=0;
+                return;  //Pie is closed
+            }else if(digitalRead(LS_TOP) == 0){
+                motorDown(2);
+                states[2][2]=1;
+                return;
+            }else if(states[2][1]){
+                motorDown(2);
+                return;
+            }
+            break;
+         case 1:  //Light Saber up
+            if(digitalRead(LS_TOP)==0) return;
+            else if (states[2][0] == 0){  //Pie is closed
+                servoControl.setPWM(LS_PIE, 0 LS_PMAX);
+                states[2][0]=1;
+                return;
+            }else if(digitalRead(LS_BOT)==0 || (digitalRead(LS_BOT) && digitalRead(LS_TOP))){
+                motorUp(2);
+                states[2][3]=1;
+                return;
+            }else if(states[2][1]){
+                motorUp(2);
+                return;
+            }
+            
+            
+            
+    }
+    
+}
+
+
+
+
+
+
+
+
+
+
+
