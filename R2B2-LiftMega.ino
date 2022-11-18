@@ -12,7 +12,8 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 *************************************************/
 #define SERVO_FREQ 50
 #define OSCIL_FREQ 27000000
-
+#define MPU 'E'
+#define CMD_MAX_LENGTH 63
 //define Adafruit PWM servo Pins and Limits
 
 #define Z_ROT 0
@@ -121,8 +122,14 @@ int zInterval = 50;
 int bmInterval = 75;
 int zState = 0;
 int zFlashCount = 0;
-char dev_MPU, dev_CMD;
-int dev_Addr, dev_OPT;
+char dev_MPU, dev_cmd;
+int dev_addr, dev_opt;
+int allLifts_State = 0;
+int zapper_State = 0;
+int lSaber_State = 0;
+int periscope_State = 0;
+int badMotive_State = 0;
+int lifeForm_State = 0;
 
 // The loadServos function loads min and max values into the servoLmt array
 void loadServos() {
@@ -170,17 +177,17 @@ void updateStates() {
 
 
 void bmLights(int num) {
- if(num){
-  current_millis()=millis();
-  if(current_millis-bmPrev_millis>bmInterval){
-    bmPrev_millis=current_millis;
-    leds = random(0, 255);
-    updateShiftRegister();
-  }
- }else{
+  if (num) {
+    current_millis = millis();
+    if (current_millis - bmPrev_millis > bmInterval) {
+      bmPrev_millis = current_millis;
+      leds = random(0, 255);
+      updateShiftRegister();
+    }
+  } else {
     leds = 0;
     updateShiftRegister();
- }
+  }
   return;
 }
 
@@ -224,65 +231,51 @@ void motorDown(int mtr) {
   return;
 }
 
-void checkSerial(){
-    char ch;
-    byte cmd_Complete;
-    if(Serial.available()){
-       ch=Serial.read();
-       Serial.print(ch);
-       cmd_Complete=buildCommand(ch, cmdStr);
-       if(cmd_Complete){
-         parseCommand(cmdStr);
-         Serial.println();
-       }
+void checkSerial() {
+  char ch;
+  byte cmd_Complete;
+  if (Serial.available()) {
+    ch = Serial.read();
+    Serial.print(ch);
+    cmd_Complete = buildCommand(ch, cmdStr);
+    if (cmd_Complete) {
+      parseCommand(cmdStr);
+      Serial.println();
     }
-    
+  }
 }
 
-int parseCommand(char* inputStr){
+int parseCommand(char* input_str) {
   byte hasArgument = false;
-  int argument;
-  int address;
   byte pos = 0;
   byte length = strlen(input_str);
   if (length < 2) goto deadCmd;  //not enough characters
-  int mpu = input_str[pos];
-  if(!MPU==mpu){  //if command is not for this MPU - send it on its way
-      transmitCMD(MPU,mpu);
-      return;
+  int mpu = input_str[pos];      //MPU is the first character
+  if (!MPU == mpu) {             //if command is not for this MPU - send it on its way
+    //transmitCMD(MPU,mpu);
+    return;
   }
-  pos++;
   if ((mpu > 64 && mpu < 71) || mpu == '@') dev_MPU = mpu;
   else goto deadCmd;  //Not a valid MPU - end command
-  char addrStr[3];
-  //next we need to get the device address which could be 1 or two characters
-  if (!isdigit(input_str[pos])) goto deadCmd;  //Invalid as first char not a digit
-  addrStr[pos - 1] = input_str[pos];
-  pos++;
-  if (isdigit(input_str[pos])) {
-    addrStr[pos - 1] = input_str[pos];
-    pos++;
-  }
-  addrStr[pos - 1] = '\0';
-  dev_address = atoi(addrStr);
-  if (!length > pos) goto deadCmd;  //invalid, no command after address
-                                    //check for the special case message command 'M'
-  dev_command = input_str[pos];
-  pos++;                                   // need to increment in order to peek ahead of command char
-  if (!length > pos) hasArgument = false;  // end of string reached, no arguments
-  else {
-    for (byte i = pos; i < length; i++) {
-      if (!isdigit(input_str[i])) goto deadCmd;  // invalid, end of string contains non-numerial arguments
-    }
-    dev_option = atoi(input_str + pos);  // that's the numerical argument after the command character
-    hasArgument = true;
-  }
+  // Now the address which should be the next two characters
+  char addrStr[3];  //set up a char array to hold them (plus the EOS (end of String) character)
+  addrStr[0] = input_str[1];
+  addrStr[1] = input_str[2];
+  addrStr[2] = '\0';
+  dev_addr = atoi(addrStr);
+  if (!length > 3) goto deadCmd;  //invalid, no command after address
+  dev_cmd = input_str[3];
+  char optStr[4];
+  for (int x = 0; x <= 2; x++) optStr[x] = input_str[x + 4];
+  optStr[3] = '\0';
+  dev_opt = atoi(optStr);  // that's the numerical argument after the command character
+  hasArgument = true;
   // switch on command character
-  switch (dev_command)  // 2nd or third char, should be the command char
+  switch (dev_cmd)  // 2nd or third char, should be the command char
   {
     case 'T':
       if (!hasArgument) goto deadCmd;  // invalid, no argument after command
-      doTcommand(dev_address, dev_option);
+      doTcommand(dev_addr, dev_opt);
       break;
     /*case 'D':                           // D command is weird, does not need an argument, ignore if it has one
       doDcommand(address);
@@ -297,41 +290,69 @@ int parseCommand(char* inputStr){
       break; */
     case 'S':
       if (!hasArgument) goto deadCmd;  // invalid, no argument after command
-      doScommand(dev_address, dev_option);
+      //doScommand(dev_addr, dev_opt);
       break;
     default:
       goto deadCmd;  // unknown command
       break;
   }
-
   return;
-
-
 deadCmd:
-
   return;
 }
 
-
-
-int buildCommand(char ch, char* output_str){
-    static int pos=0;
-    switch(ch){
-        case '\r':
-            output_str[pos]='\0';
-            pos=0;
-            return true;
-            break;
-        default:
-            output_str[pos]=ch;
-            if(pos<=CMD_MAX_LENGTH-1) pos++;
-            break;
-    }
-    return false;
-            
-    }
-
+int doTcommand(int addr, int opt) {
+  Serial.println("T command");
+  switch (addr) {
+    case 50:
+      allLifts_State = opt;
+      break;
+    case 51:
+      zapper_State = opt;
+      break;
+    case 52:
+      lSaber_State = opt;
+      break;
+  }
 }
+
+void allLifts(int opt) {
+
+  switch (opt) {
+    case 0:  //allLifts disabled
+      return;
+      break;
+    case 1:  //All Lifts up
+      for (int x = 1; x <= 5; x++) motorUp(x);
+      return;
+      break;
+    case 2:  //All lifts down
+      for (int x = 1; x <= 5; x++) motorDown(x);
+      return;
+      break;
+    case 3:  //Reset All lifts
+      allLifts_State = 0;
+      break;
+  }
+}
+
+int buildCommand(char ch, char* output_str) {
+  static int pos = 0;
+  switch (ch) {
+    case '\n':
+      output_str[pos] = '\0';
+      pos = 0;
+      return true;
+      break;
+    default:
+      output_str[pos] = ch;
+      if (pos <= CMD_MAX_LENGTH - 1) pos++;
+      break;
+  }
+  return false;
+}
+
+
 
 
 void setup() {
@@ -346,7 +367,7 @@ void setup() {
   for (x = 0; x <= 7; x++) lifts[3][x] = periscope[x];
   for (x = 0; x <= 7; x++) lifts[4][x] = badMotive[x];
   for (x = 0; x <= 7; x++) lifts[5][x] = lifeForm[x];
-  
+
   // set Motor pins as output
   for (x = 1; x <= 5; x++) {
     pinMode(lifts[x][0], OUTPUT);
@@ -363,18 +384,20 @@ void setup() {
   pinMode(BM_CLOCK, OUTPUT);
   //set Zapper LED to output;
   pinMode(Z_LED, OUTPUT);
-  
-  
+
+
   updateStates();
-  //motorUp(1);
-  //motorUp(2);
-  //motorUp(3);
-  //motorUp(4);
-  //motorUp(5);
+  leds = 0;
+  updateShiftRegister();
+  states[2][0] = 1;
 }
 
 
 void loop() {
+  checkSerial();
+  allLifts(allLifts_State);
+  ZapLift(zapper_State);
+  LSLift(lSaber_State);
 }
 
 void ZapLights(int num) {
@@ -407,7 +430,7 @@ void ZapLights(int num) {
         }
         break;
     }
-  }else digitalWrite(Z_LED, LOW);
+  } else digitalWrite(Z_LED, LOW);
   return;
 }
 
@@ -436,7 +459,7 @@ void ZapLift(int option) {
       } else if (states[1][2] == 0) {  //Ready to start Motor?
         motorDown(1);                  //Start Motor
         states[1][2] = 1;
-        
+
         return;
       } else if (states[1][1]) {  //Motor is moving
         motorDown(1);
@@ -541,51 +564,37 @@ void ZapLift(int option) {
   }
 }
 
-void lsLift(int option){
-    switch(option){
-        case 0: // Light saber down and pie closed
-            if(states[2][0]==0) return; //Pie is closed - LS is stored
-            else if (digitalRead(LS_BOT)==0){ //Bottom Limit Hit
-                servoControl.setPWM(LS_PIE, 0, LS_PMIN);
-                states[2][0]=0;
-                return;  //Pie is closed
-            }else if(digitalRead(LS_TOP) == 0){
-                motorDown(2);
-                states[2][2]=1;
-                return;
-            }else if(states[2][1]){
-                motorDown(2);
-                return;
-            }
-            break;
-         case 1:  //Light Saber up
-            if(digitalRead(LS_TOP)==0) return;
-            else if (states[2][0] == 0){  //Pie is closed
-                servoControl.setPWM(LS_PIE, 0 LS_PMAX);
-                states[2][0]=1;
-                return;
-            }else if(digitalRead(LS_BOT)==0 || (digitalRead(LS_BOT) && digitalRead(LS_TOP))){
-                motorUp(2);
-                states[2][3]=1;
-                return;
-            }else if(states[2][1]){
-                motorUp(2);
-                return;
-            }
-            
-            
-            
-    }
-    
+void LSLift(int option) {
+  Serial.println("Light saber");
+  switch (option) {
+    case 0:                                 // Light saber down and pie closed
+      if (states[2][0] == 0) return;        //Pie is closed - LS is stored
+      else if (digitalRead(LS_BOT) == 0) {  //Bottom Limit Hit
+        servoControl.setPWM(LS_PIE, 0, LS_PMIN);
+        states[2][0] = 0;
+        return;  //Pie is closed
+      } else if (digitalRead(LS_TOP) == 0) {
+        motorDown(2);
+        states[2][2] = 1;
+        return;
+      } else if (states[2][1]) {
+        motorDown(2);
+        return;
+      }
+      break;
+    case 1:  //Light Saber up
+      if (digitalRead(LS_TOP) == 0) return;
+      else if (states[2][0] == 0) {  //Pie is closed
+        servoControl.setPWM(LS_PIE, 0, LS_PMAX);
+        states[2][0] = 1;
+        return;
+      } else if (digitalRead(LS_BOT) == 0 || (digitalRead(LS_BOT) && digitalRead(LS_TOP))) {
+        motorUp(2);
+        states[2][3] = 1;
+        return;
+      } else if (states[2][1]) {
+        motorUp(2);
+        return;
+      }
+  }
 }
-
-
-
-
-
-
-
-
-
-
-
