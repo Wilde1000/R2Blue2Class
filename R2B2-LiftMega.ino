@@ -216,14 +216,20 @@ void setup() {
   servoControl.begin();
   servoControl.setOscillatorFrequency(OSCIL_FREQ);
   servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
-
+  int x;
+  for (x = 0; x <= 7; x++) lifts[1][x] = zapper[x];
+  for (x = 0; x <= 7; x++) lifts[2][x] = lSaber[x];
+  for (x = 0; x <= 7; x++) lifts[3][x] = periscope[x];
+  for (x = 0; x <= 7; x++) lifts[4][x] = badMotive[x];
+  for (x = 0; x <= 7; x++) lifts[5][x] = lifeForm[x];
+  
   // set Motor pins as output
-  for (int x = 1; x <= 5; x++) {
+  for (x = 1; x <= 5; x++) {
     pinMode(lifts[x][0], OUTPUT);
     pinMode(lifts[x][1], OUTPUT);
   }
   //set Limit Switch pins to use internal resister to pull them HIGH
-  for (int x = 1; x <= 5; x++) {
+  for (x = 1; x <= 5; x++) {
     pinMode(lifts[x][2], INPUT_PULLUP);
     pinMode(lifts[x][3], INPUT_PULLUP);
   }
@@ -233,12 +239,8 @@ void setup() {
   pinMode(BM_CLOCK, OUTPUT);
   //set Zapper LED to output;
   pinMode(Z_LED, OUTPUT);
-  int x;
-  for (x = 0; x <= 7; x++) lifts[1][x] = zapper[x];
-  for (x = 0; x <= 7; x++) lifts[2][x] = lSaber[x];
-  for (x = 0; x <= 7; x++) lifts[3][x] = periscope[x];
-  for (x = 0; x <= 7; x++) lifts[4][x] = badMotive[x];
-  for (x = 0; x <= 7; x++) lifts[5][x] = lifeForm[x];
+  
+  
   updateStates();
   //motorUp(1);
   //motorUp(2);
