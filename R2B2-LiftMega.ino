@@ -240,10 +240,79 @@ void checkSerial(){
 }
 
 int parseCommand(char* inputStr){
-    
-    deadCmd:
-    return;
+  byte hasArgument = false;
+  int argument;
+  int address;
+  byte pos = 0;
+  byte length = strlen(input_str);
+  if (length < 2) goto deadCmd;  //not enough characters
+  int mpu = input_str[pos];
+  if(!MPU==mpu){  //if command is not for this MPU - send it on its way
+      transmitCMD(MPU,mpu);
+      return;
+  }
+  pos++;
+  if ((mpu > 64 && mpu < 71) || mpu == '@') dev_MPU = mpu;
+  else goto deadCmd;  //Not a valid MPU - end command
+  char addrStr[3];
+  //next we need to get the device address which could be 1 or two characters
+  if (!isdigit(input_str[pos])) goto deadCmd;  //Invalid as first char not a digit
+  addrStr[pos - 1] = input_str[pos];
+  pos++;
+  if (isdigit(input_str[pos])) {
+    addrStr[pos - 1] = input_str[pos];
+    pos++;
+  }
+  addrStr[pos - 1] = '\0';
+  dev_address = atoi(addrStr);
+  if (!length > pos) goto deadCmd;  //invalid, no command after address
+                                    //check for the special case message command 'M'
+  dev_command = input_str[pos];
+  pos++;                                   // need to increment in order to peek ahead of command char
+  if (!length > pos) hasArgument = false;  // end of string reached, no arguments
+  else {
+    for (byte i = pos; i < length; i++) {
+      if (!isdigit(input_str[i])) goto deadCmd;  // invalid, end of string contains non-numerial arguments
+    }
+    dev_option = atoi(input_str + pos);  // that's the numerical argument after the command character
+    hasArgument = true;
+  }
+  // switch on command character
+  switch (dev_command)  // 2nd or third char, should be the command char
+  {
+    case 'T':
+      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
+      doTcommand(dev_address, dev_option);
+      break;
+    /*case 'D':                           // D command is weird, does not need an argument, ignore if it has one
+      doDcommand(address);
+      break;
+    case 'P':    
+      if(!hasArgument) goto beep;       // invalid, no argument after command
+      doPcommand(address, argument);
+      break;
+    case 'R':    
+      if(!hasArgument) goto beep;       // invalid, no argument after command
+      doRcommand(address, argument);
+      break; */
+    case 'S':
+      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
+      doScommand(dev_address, dev_option);
+      break;
+    default:
+      goto deadCmd;  // unknown command
+      break;
+  }
+
+  return;
+
+
+deadCmd:
+
+  return;
 }
+
+
 
 int buildCommand(char ch, char* output_str){
     static int pos=0;
