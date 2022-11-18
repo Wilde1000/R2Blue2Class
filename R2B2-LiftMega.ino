@@ -93,6 +93,7 @@ int badMotive[8] = { BM_IN1, BM_IN2, BM_TOP, BM_BOT, -1, -1, -1, BM_PIE };
 int lifeForm[8] = { LF_IN1, LF_IN2, LF_TOP, LF_BOT, -1, -1, LF_HALL, LF_PIE };
 int lifts[6][8];
 int servoLmt[16][3];
+char cmdStr[64];
 /*
 In addition we will be tracking the following states for each device:
   0 - P_STATE - Pie state (0 - closed; 1 - open; 2 - Pie not used)
@@ -120,7 +121,8 @@ int zInterval = 50;
 int bmInterval = 75;
 int zState = 0;
 int zFlashCount = 0;
-
+char dev_MPU, dev_CMD;
+int dev_Addr, dev_OPT;
 
 // The loadServos function loads min and max values into the servoLmt array
 void loadServos() {
@@ -222,8 +224,50 @@ void motorDown(int mtr) {
   return;
 }
 
+void checkSerial(){
+    char ch;
+    byte cmd_Complete;
+    if(Serial.available()){
+       ch=Serial.read();
+       Serial.print(ch);
+       cmd_Complete=buildCommand(ch, cmdStr);
+       if(cmd_Complete){
+         parseCommand(cmdStr);
+         Serial.println();
+       }
+    }
+    
+}
+
+int parseCommand(char* inputStr){
+    
+    deadCmd:
+    return;
+}
+
+int buildCommand(char ch, char* output_str){
+    static int pos=0;
+    switch(ch){
+        case '\r':
+            output_str[pos]='\0';
+            pos=0;
+            return true;
+            break;
+        default:
+            output_str[pos]=ch;
+            if(pos<=CMD_MAX_LENGTH-1) pos++;
+            break;
+    }
+    return false;
+            
+    }
+
+}
+
+
 void setup() {
   Serial.begin(9600);
+  Serial1.begin(9600);
   servoControl.begin();
   servoControl.setOscillatorFrequency(OSCIL_FREQ);
   servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
