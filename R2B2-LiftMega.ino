@@ -17,23 +17,23 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 //define Adafruit PWM servo Pins and Limits
 
 #define Z_ROT 0
-#define Z_RMAX 4096
-#define Z_RMIN 50
+#define Z_RMAX 600
+#define Z_RMIN 150
 #define Z_EXT 1
-#define Z_EMAX 4096
-#define Z_EMIN 50
+#define Z_EMAX 600
+#define Z_EMIN 150
 #define Z_PIE 2
-#define Z_PMAX 4096
-#define Z_PMIN 50
+#define Z_PMAX 600
+#define Z_PMIN 150
 #define LS_PIE 3
-#define LS_PMAX 4096
-#define LS_PMIN 50
+#define LS_PMAX 600
+#define LS_PMIN 150
 #define BM_PIE 4
-#define BM_PMAX 4096
-#define BM_PMIN 50
+#define BM_PMAX 600
+#define BM_PMIN 150
 #define LF_PIE 5
-#define LF_PMAX 4096
-#define LF_PMIN 50
+#define LF_PMAX 600
+#define LF_PMIN 150
 
 
 //define Motor Pins
@@ -131,6 +131,188 @@ int periscope_State = 0;
 int badMotive_State = 0;
 int lifeForm_State = 0;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void setup() {
+  Serial.begin(9600);
+  Serial1.begin(9600);
+  servoControl.begin();
+  servoControl.setOscillatorFrequency(OSCIL_FREQ);
+  servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
+  int x;
+  for (x = 0; x <= 7; x++) lifts[1][x] = zapper[x];
+  for (x = 0; x <= 7; x++) lifts[2][x] = lSaber[x];
+  for (x = 0; x <= 7; x++) lifts[3][x] = periscope[x];
+  for (x = 0; x <= 7; x++) lifts[4][x] = badMotive[x];
+  for (x = 0; x <= 7; x++) lifts[5][x] = lifeForm[x];
+
+  // set Motor pins as output
+  for (x = 1; x <= 5; x++) {
+    pinMode(lifts[x][0], OUTPUT);
+    pinMode(lifts[x][1], OUTPUT);
+  }
+  //set Limit Switch pins to use internal resister to pull them HIGH
+  for (x = 1; x <= 5; x++) {
+    pinMode(lifts[x][2], INPUT_PULLUP);
+    pinMode(lifts[x][3], INPUT_PULLUP);
+  }
+  //set 74HC595 pins to output
+  pinMode(BM_LATCH, OUTPUT);
+  pinMode(BM_DATA, OUTPUT);
+  pinMode(BM_CLOCK, OUTPUT);
+  //set Zapper LED to output;
+  pinMode(Z_LED, OUTPUT);
+
+
+  updateStates();
+  leds = 0;
+  updateShiftRegister();
+  states[2][0] = 1;
+}
+
+
+void loop() {
+  checkSerial();
+  allLifts(allLifts_State);
+  ZapLift(zapper_State);
+  LSLift(lSaber_State);
+}
+
+void allLifts(int opt) {
+
+  switch (opt) {
+    case 0:  //allLifts disabled
+      return;
+      break;
+    case 1:  //All Lifts up
+      for (int x = 1; x <= 5; x++) motorUp(x);
+      return;
+      break;
+    case 2:  //All lifts down
+      for (int x = 1; x <= 5; x++) motorDown(x);
+      return;
+      break;
+    case 3:  //Reset All lifts
+      allLifts_State = 0;
+      break;
+  }
+}
+
+void bmLights(int num) {
+  if (num) {
+    current_millis = millis();
+    if (current_millis - bmPrev_millis > bmInterval) {
+      bmPrev_millis = current_millis;
+      leds = random(0, 255);
+      updateShiftRegister();
+    }
+  } else {
+    leds = 0;
+    updateShiftRegister();
+  }
+  return;
+}
+
+int buildCommand(char ch, char* output_str) {
+  static int pos = 0;
+  switch (ch) {
+    case '\n':
+      output_str[pos] = '\0';
+      pos = 0;
+      return true;
+      break;
+    default:
+      output_str[pos] = ch;
+      if (pos <= CMD_MAX_LENGTH - 1) pos++;
+      break;
+  }
+  return false;
+}
+
+void checkSerial() {
+  char ch;
+  byte cmd_Complete;
+  if (Serial.available()) {
+    ch = Serial.read();
+    Serial.print(ch);
+    cmd_Complete = buildCommand(ch, cmdStr);
+    if (cmd_Complete) {
+      parseCommand(cmdStr);
+      Serial.println();
+    }
+  }
+}
+
+
+
+int doTcommand(int addr, int opt) {
+  Serial.println("T command");
+  switch (addr) {
+    case 50:
+      allLifts_State = opt;
+      break;
+    case 51:
+      zapper_State = opt;
+      break;
+    case 52:
+      lSaber_State = opt;
+      break;
+  }
+}
+
+void LSLift(int option) {
+  Serial.println("Light saber");
+  switch (option) {
+    case 0:                                 // Light saber down and pie closed
+      if (states[2][0] == 0) return;        //Pie is closed - LS is stored
+      else if (digitalRead(LS_BOT) == 0) {  //Bottom Limit Hit
+        servoControl.setPWM(LS_PIE, 0, LS_PMIN);
+        states[2][0] = 0;
+        return;  //Pie is closed
+      } else if (digitalRead(LS_TOP) == 0) {
+        motorDown(2);
+        states[2][2] = 1;
+        return;
+      } else if (states[2][1]) {
+        motorDown(2);
+        return;
+      }
+      break;
+    case 1:  //Light Saber up
+      if (digitalRead(LS_TOP) == 0) return;
+      else if (states[2][0] == 0) {  //Pie is closed
+        servoControl.setPWM(LS_PIE, 0, LS_PMAX);
+        states[2][0] = 1;
+        return;
+      } else if (digitalRead(LS_BOT) == 0 || (digitalRead(LS_BOT) && digitalRead(LS_TOP))) {
+        motorUp(2);
+        states[2][3] = 1;
+        return;
+      } else if (states[2][1]) {
+        motorUp(2);
+        return;
+      }
+  }
+}
+
+
 // The loadServos function loads min and max values into the servoLmt array
 void loadServos() {
   //list each servos min and max
@@ -149,57 +331,20 @@ void loadServos() {
   return;
 }
 
+//Moves the specified mtr until it reaches the top limit switch.
+void motorDown(int mtr) {
+  if (digitalRead(lifts[mtr][3])) {
+    analogWrite(lifts[mtr][1], 255);
+    states[mtr][1] = 1;
+    states[mtr][3] = 1;
 
-
-//The updateStates function sets all states to their default values
-void updateStates() {
-  for (int x = 0; x < 6; x++) {
-    for (int y = 0; y < 7; y++) states[x][y] = 0;
-  }  // sets entire states array to zero;
-  for (int x = 0; x < 6; x++) {
-    states[x][3] = digitalRead(lifts[x][3]);  //sets the BLS_STATE to current state
-    states[x][2] = digitalRead(lifts[x][2]);  //sets the TLS_STATE to current state
-  }
-  //Turn off States that will not be used
-  states[2][4] = 2;  //ROT_STATE for light saber
-  states[2][5] = 2;  //EXT_STATE for light saber
-  states[2][6] = 2;  //L_STATE for light saber
-  states[4][4] = 2;  //ROT_STATE for bad motivator
-  states[4][5] = 2;  //EXT_STATE for bad moitvator
-  states[5][6] = 2;  //L_STATE for Lift Form Scanner
-  //Read current state of Hall Effect sensor
-  states[3][5] = digitalRead(P_HALL);
-  states[5][5] = digitalRead(LF_HALL);
-  loadServos();
-}
-
-
-
-
-void bmLights(int num) {
-  if (num) {
-    current_millis = millis();
-    if (current_millis - bmPrev_millis > bmInterval) {
-      bmPrev_millis = current_millis;
-      leds = random(0, 255);
-      updateShiftRegister();
-    }
   } else {
-    leds = 0;
-    updateShiftRegister();
+    digitalWrite(lifts[mtr][1], LOW);
+    states[mtr][1] = 0;
+    states[mtr][3] = 0;
   }
   return;
 }
-
-
-// The bad motivator uses a 74HC595 chip to control its 8 lights.  The updateShiftRegister
-// function uses the binary value of leds to update the lights
-void updateShiftRegister() {
-  digitalWrite(BM_LATCH, LOW);
-  shiftOut(BM_DATA, BM_CLOCK, LSBFIRST, leds);
-  digitalWrite(BM_LATCH, HIGH);
-}
-
 
 //Moves the specified mtr until it reaches the top limit switch.
 void motorUp(int mtr) {
@@ -216,33 +361,10 @@ void motorUp(int mtr) {
   return;
 }
 
-//Moves the specified mtr until it reaches the top limit switch.
-void motorDown(int mtr) {
-  if (digitalRead(lifts[mtr][3])) {
-    analogWrite(lifts[mtr][1], 255);
-    states[mtr][1] = 1;
-    states[mtr][3] = 1;
 
-  } else {
-    digitalWrite(lifts[mtr][1], LOW);
-    states[mtr][1] = 0;
-    states[mtr][3] = 0;
-  }
+void moveServo(int srvNo, int pos) {
+  servoControl.setPWM(srvNo, 0, pos);
   return;
-}
-
-void checkSerial() {
-  char ch;
-  byte cmd_Complete;
-  if (Serial.available()) {
-    ch = Serial.read();
-    Serial.print(ch);
-    cmd_Complete = buildCommand(ch, cmdStr);
-    if (cmd_Complete) {
-      parseCommand(cmdStr);
-      Serial.println();
-    }
-  }
 }
 
 int parseCommand(char* input_str) {
@@ -301,104 +423,182 @@ deadCmd:
   return;
 }
 
-int doTcommand(int addr, int opt) {
-  Serial.println("T command");
-  switch (addr) {
-    case 50:
-      allLifts_State = opt;
-      break;
-    case 51:
-      zapper_State = opt;
-      break;
-    case 52:
-      lSaber_State = opt;
-      break;
-  }
+// The bad motivator uses a 74HC595 chip to control its 8 lights.  The updateShiftRegister
+// function uses the binary value of leds to update the lights
+void updateShiftRegister() {
+  digitalWrite(BM_LATCH, LOW);
+  shiftOut(BM_DATA, BM_CLOCK, LSBFIRST, leds);
+  digitalWrite(BM_LATCH, HIGH);
 }
 
-void allLifts(int opt) {
+//The updateStates function sets all states to their default values
+void updateStates() {
+  for (int x = 0; x < 6; x++) {
+    for (int y = 0; y < 7; y++) states[x][y] = 0;
+  }  // sets entire states array to zero;
+  for (int x = 0; x < 6; x++) {
+    states[x][3] = digitalRead(lifts[x][3]);  //sets the BLS_STATE to current state
+    states[x][2] = digitalRead(lifts[x][2]);  //sets the TLS_STATE to current state
+  }
+  //Turn off States that will not be used
+  states[2][4] = 2;  //ROT_STATE for light saber
+  states[2][5] = 2;  //EXT_STATE for light saber
+  states[2][6] = 2;  //L_STATE for light saber
+  states[4][4] = 2;  //ROT_STATE for bad motivator
+  states[4][5] = 2;  //EXT_STATE for bad moitvator
+  states[5][6] = 2;  //L_STATE for Lift Form Scanner
+  //Read current state of Hall Effect sensor
+  states[3][5] = digitalRead(P_HALL);
+  states[5][5] = digitalRead(LF_HALL);
+  loadServos();
+}
 
-  switch (opt) {
-    case 0:  //allLifts disabled
+
+void ZapLift(int option) {
+  static int step = 0;
+  long int z_servo_pmillis;
+  int z_servo_int = 100;
+  current_millis = millis();
+  switch (option) {
+    case 0:  //ZapLift state unchanged;
+      step = 0;
       return;
       break;
-    case 1:  //All Lifts up
-      for (int x = 1; x <= 5; x++) motorUp(x);
-      return;
+    case 1:  //Raise lift
+      switch (step) {
+        case 0:  //Open pie
+          moveServo(Z_PIE, Z_PMIN);
+          step++;
+          z_servo_pmillis = current_millis;
+          break;
+        case 1:  //Wait for Pie to open
+          if (current_millis - z_servo_pmillis > z_servo_int) {
+            z_servo_pmillis = current_millis;
+            step++;
+          }
+          break;
+        case 2:  //Move lift up
+          motorUp(1);
+          if (digitalRead(Z_TOP) == 0) step++;
+          break;
+        case 3:  //Rotate the zapper
+          moveServo(Z_ROT, Z_RMAX);
+          step++;
+          z_servo_pmillis = millis();
+          break;
+        case 4:  //Wait for Zapper to Rotate
+          if (current_millis - z_servo_pmillis > z_servo_int) {
+            z_servo_pmillis = current_millis;
+            step++;
+          }
+          break;
+        case 5:  //Extend the zapper
+          moveServo(Z_EXT, Z_EMAX);
+          step++;
+          z_servo_pmillis = millis();
+          break;
+        case 6:  //Wait for Zapper to Rotate
+          if (current_millis - z_servo_pmillis > z_servo_int) {
+            z_servo_pmillis = current_millis;
+            step++;
+          }
+          break;
+        case 7:  //Light the Zapper
+          ZapLights(1);
+          if (millis() - z_servo_pmillis > 1000) {
+            z_servo_pmillis = millis();
+            step++;
+          }
+          break;
+        case 8:  //End routine
+          ZapLights(0);
+          step = 0;
+          zapper_State = 0;
+          break;
+      }
       break;
-    case 2:  //All lifts down
-      for (int x = 1; x <= 5; x++) motorDown(x);
-      return;
+    case 2:  //Move Zapper to stored position
+      switch (step) {
+        case 0:  //Shut off Lights
+          ZapLights(0);
+          step++;
+          break;
+        case 1:  //Fold the zapper
+          moveServo(Z_EXT, Z_EMIN);
+          step++;
+          z_servo_pmillis = current_millis;
+          break;
+        case 2:  //Wait for Servo to get into position
+          if (current_millis - z_servo_pmillis > z_servo_int) {
+            z_servo_pmillis = current_millis;
+            step++;
+          }
+          break;
+        case 3:  //Rotate zapper to store position
+          moveServo(Z_ROT, Z_RMIN);
+          step++;
+          z_servo_pmillis = current_millis;
+          break;
+        case 4:  //Wait for Servo to get into position
+          if (current_millis - z_servo_pmillis > z_servo_int) {
+            z_servo_pmillis = current_millis;
+            step++;
+          }
+          break;
+        case 5:  //Move Motor Down
+          motorDown(1);
+          if (digitalRead(Z_BOT) == 0) {
+            step++;
+          }
+          break;
+        case 6:  //Close the pie
+          moveServo(Z_PIE, Z_PMIN);
+          step++;
+          break;
+        case 7:  //Stop the routine
+          step = 0;
+          zapper_State = 0;
+          break;
+      }
+    case 3:  //Rotate Zapper Open
+      if (digitalRead(Z_TOP) == 0) {
+        moveServo(Z_ROT, Z_RMAX);
+      }
+      zapper_State = 0;
       break;
-    case 3:  //Reset All lifts
-      allLifts_State = 0;
+    case 4:  //Rotate Zapper closed
+      if (digitalRead(Z_TOP) == 0) {
+        moveServo(Z_ROT, Z_RMIN);
+      }
+      zapper_State = 0;
       break;
+    case 5: //Extend Zapper
+      if (digitalRead(Z_TOP) == 0) {
+        moveServo(Z_EXT, Z_EMAX);
+      }
+      zapper_State = 0;
+      break;
+    case 6: //Fold Zapper
+      if (digitalRead(Z_TOP) == 0) {
+        moveServo(Z_EXT, Z_EMIN);
+      }
+      zapper_State = 0;
+      break;
+    case 7: //Zap!
+      if (digitalRead(Z_TOP) == 0) {
+        ZapLights(1);
+        if(current_millis-z_servo_pmillis > 500){
+          z_servo_millis=current_millis;
+          ZapLights(0);
+          zapper_State =0;
+        }
+      }
+      break;
+    
   }
 }
 
-int buildCommand(char ch, char* output_str) {
-  static int pos = 0;
-  switch (ch) {
-    case '\n':
-      output_str[pos] = '\0';
-      pos = 0;
-      return true;
-      break;
-    default:
-      output_str[pos] = ch;
-      if (pos <= CMD_MAX_LENGTH - 1) pos++;
-      break;
-  }
-  return false;
-}
 
-
-
-
-void setup() {
-  Serial.begin(9600);
-  Serial1.begin(9600);
-  servoControl.begin();
-  servoControl.setOscillatorFrequency(OSCIL_FREQ);
-  servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
-  int x;
-  for (x = 0; x <= 7; x++) lifts[1][x] = zapper[x];
-  for (x = 0; x <= 7; x++) lifts[2][x] = lSaber[x];
-  for (x = 0; x <= 7; x++) lifts[3][x] = periscope[x];
-  for (x = 0; x <= 7; x++) lifts[4][x] = badMotive[x];
-  for (x = 0; x <= 7; x++) lifts[5][x] = lifeForm[x];
-
-  // set Motor pins as output
-  for (x = 1; x <= 5; x++) {
-    pinMode(lifts[x][0], OUTPUT);
-    pinMode(lifts[x][1], OUTPUT);
-  }
-  //set Limit Switch pins to use internal resister to pull them HIGH
-  for (x = 1; x <= 5; x++) {
-    pinMode(lifts[x][2], INPUT_PULLUP);
-    pinMode(lifts[x][3], INPUT_PULLUP);
-  }
-  //set 74HC595 pins to output
-  pinMode(BM_LATCH, OUTPUT);
-  pinMode(BM_DATA, OUTPUT);
-  pinMode(BM_CLOCK, OUTPUT);
-  //set Zapper LED to output;
-  pinMode(Z_LED, OUTPUT);
-
-
-  updateStates();
-  leds = 0;
-  updateShiftRegister();
-  states[2][0] = 1;
-}
-
-
-void loop() {
-  checkSerial();
-  allLifts(allLifts_State);
-  ZapLift(zapper_State);
-  LSLift(lSaber_State);
-}
 
 void ZapLights(int num) {
   if (num) {
@@ -434,167 +634,3 @@ void ZapLights(int num) {
   return;
 }
 
-void ZapLift(int option) {
-
-  switch (option) {
-    case 0:
-      //Returns Zapper to stored closed position
-      if (states[1][0] == 0) return;  //Pie is closed - Zapper should be stored
-      else if (states[1][3] == 0) {   //Bottom limit switch is closed - Close the pie
-        servoControl.setPWM(lifts[1][7], 0, servoLmt[lifts[1][7]][0]);
-        states[1][0] = 0;
-        return;                   //Zapper is stored
-      } else if (states[1][6]) {  //Are the lights on?
-        ZapLights(0);
-        states[1][6] = 0;
-        return;                   //Lights are off
-      } else if (states[1][5]) {  //Is Zapper extended?
-        servoControl.setPWM(lifts[1][5], 0, servoLmt[lifts[1][5]][0]);
-        states[1][5] = 0;  //Zapper is folded
-        return;
-      } else if (states[1][4]) {  //Is zapper turned for lowering?
-        servoControl.setPWM(lifts[1][4], 0, servoLmt[lifts[1][4]][0]);
-        states[1][4] = 0;
-        return;
-      } else if (states[1][2] == 0) {  //Ready to start Motor?
-        motorDown(1);                  //Start Motor
-        states[1][2] = 1;
-
-        return;
-      } else if (states[1][1]) {  //Motor is moving
-        motorDown(1);
-        return;
-      }
-      break;
-    case 1:                     //Raise the Zapper, rotate, extend and start zapping
-      if (states[1][0] == 0) {  //Pie is closed - Zapper is stored
-        //open the pie
-        servoControl.setPWM(lifts[1][7], 0, servoLmt[lifts[1][7]][1]);
-        states[1][0] = 1;  //Pie is open
-        return;
-      } else if (states[1][3] == 0) {  //Zapper is stored
-        motorUp(1);
-        states[1][3] = 1;
-        // Motor is Moving
-        return;
-      } else if (states[1][1]) {
-        //motor is still moving
-        motorUp(1);
-        return;
-      } else if (states[1][4] == 0) {  //Rotate Zapper
-        //turn the Rotate servo
-        servoControl.setPWM(lifts[1][4], 0, servoLmt[lifts[1][4]][1]);
-        states[1][4] = 1;  //Zapper is rotated
-        return;
-      } else if (states[1][5]) {  // Extend Zapper
-        //turn the Extention servo
-        servoControl.setPWM(lifts[1][5], 0, servoLmt[lifts[1][5]][1]);
-        states[1][5] = 1;  //Zapper is extended
-        return;
-      } else if (states[1][6] == 0) {  //turn on Light routine
-        ZapLights(1);
-        states[1][6] = 1;
-        return;
-      } else {
-        ZapLights(1);
-        return;
-      }
-      break;
-    case 2:  //Extend the Zapper
-      //In order to safely extend the zapper, the zapper must be up and unextended.
-      if (states[1][2] == 0 && states[1][5] == 0) {
-        //Extend the zapper
-        servoControl.setPWM(lifts[1][5], 0, servoLmt[lifts[1][5]][1]);
-        states[1][5] = 1;
-      }
-      ZapLights(1);
-      return;
-      break;
-    case 3:  //Retract the Zapper
-      if (states[1][2] == 0 && states[1][5]) {
-        //Retract the zapper
-        servoControl.setPWM(lifts[1][5], 0, servoLmt[lifts[1][5]][0]);
-        states[1][5] = 0;
-      }
-      ZapLights(0);
-      return;
-      break;
-    case 4:  //Rotate the Zapper open
-      if (states[1][2] == 0 && states[1][4] == 0) {
-        //Rotate the zapper
-        servoControl.setPWM(lifts[1][4], 0, servoLmt[lifts[1][4]][1]);
-        states[1][4] = 1;
-      }
-      ZapLights(1);
-      return;
-      break;
-    case 5:  //Rotate the Zapper closed
-      if (states[1][2] == 0 && states[1][4]) {
-        //Rotate the zapper
-        servoControl.setPWM(lifts[1][4], 0, servoLmt[lifts[1][4]][0]);
-        states[1][4] = 0;
-      }
-      ZapLights(0);
-      return;
-      break;
-    case 6:  //Raise the Zapper - Zapper must be down and Pie open
-      if (states[1][0] && states[1][3] == 0) {
-        motorUp(1);
-        states[1][3] = 1;
-        return;
-      } else if (states[1][1]) {
-        motorUp(1);
-        return;
-      }
-      return;
-      break;
-    case 7:  //Lower the Zapper - Zapper must be up, folded, and rotated
-      if (states[1][2] == 0 && states[1][4] == 0 && states[1][5] == 0) {
-        motorDown(1);
-        states[1][2] = 1;
-        ZapLights(0);
-        states[1][6] = 0;
-        return;
-      } else if (states[1][1]) {
-        motorDown(1);
-        return;
-      }
-      return;
-      break;
-  }
-}
-
-void LSLift(int option) {
-  Serial.println("Light saber");
-  switch (option) {
-    case 0:                                 // Light saber down and pie closed
-      if (states[2][0] == 0) return;        //Pie is closed - LS is stored
-      else if (digitalRead(LS_BOT) == 0) {  //Bottom Limit Hit
-        servoControl.setPWM(LS_PIE, 0, LS_PMIN);
-        states[2][0] = 0;
-        return;  //Pie is closed
-      } else if (digitalRead(LS_TOP) == 0) {
-        motorDown(2);
-        states[2][2] = 1;
-        return;
-      } else if (states[2][1]) {
-        motorDown(2);
-        return;
-      }
-      break;
-    case 1:  //Light Saber up
-      if (digitalRead(LS_TOP) == 0) return;
-      else if (states[2][0] == 0) {  //Pie is closed
-        servoControl.setPWM(LS_PIE, 0, LS_PMAX);
-        states[2][0] = 1;
-        return;
-      } else if (digitalRead(LS_BOT) == 0 || (digitalRead(LS_BOT) && digitalRead(LS_TOP))) {
-        motorUp(2);
-        states[2][3] = 1;
-        return;
-      } else if (states[2][1]) {
-        motorUp(2);
-        return;
-      }
-  }
-}
