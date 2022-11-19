@@ -588,7 +588,7 @@ void ZapLift(int option) {
       if (digitalRead(Z_TOP) == 0) {
         ZapLights(1);
         if(current_millis-z_servo_pmillis > 500){
-          z_servo_millis=current_millis;
+          z_servo_pmillis=current_millis;
           ZapLights(0);
           zapper_State =0;
         }
