@@ -179,7 +179,6 @@ void setup() {
   updateStates();
   leds = 0;
   updateShiftRegister();
-  states[2][0] = 1;
 }
 
 
