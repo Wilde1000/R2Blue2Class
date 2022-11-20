@@ -5,6 +5,7 @@ Written by Gold FTC comp. Tech*/
 *************************************************/
 
 #include <Adafruit_PWMServoDriver.h>
+#include <Servo.h>
 Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 
 /************************************************
@@ -16,12 +17,12 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 #define CMD_MAX_LENGTH 63
 //define Adafruit PWM servo Pins and Limits
 
-#define Z_ROT 0
-#define Z_RMAX 600
-#define Z_RMIN 150
-#define Z_EXT 1
-#define Z_EMAX 600
-#define Z_EMIN 150
+#define Z_ROT 1
+#define Z_RMAX 150
+#define Z_RMIN 700
+#define Z_EXT 0
+#define Z_EMAX 125
+#define Z_EMIN 300
 #define Z_PIE 2
 #define Z_PMAX 600
 #define Z_PMIN 150
@@ -50,6 +51,8 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 //define Cont. Rotation servo pins
 #define P_ROT 12
 #define LF_ROT 13
+//define the Output Enable Pin for the Adafruit servo driver
+#define OE_PIN 34
 //define Bad Motivator 74hc595 pins
 #define BM_DATA 36
 #define BM_LATCH 37
@@ -74,7 +77,8 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 /************************************************
 *                Global Variables               *
 *************************************************/
-
+Servo perServo;
+Servo lfServo;
 //We will Be using a multidimensional to control the lift system
 //The following elements are contained in each device array:
 /*  Element 0 - Motor 1 pin
@@ -116,9 +120,13 @@ EXT_STATE should be set to 1 as that is the stored position for the hall effect 
 byte states[6][7];
 byte leds = 0;
 long int current_millis = millis();
-long int zPrev_millis = millis();
-long int bmPrev_millis = millis();
+long int zPrev_millis = current_millis;
+long int z_raise_millis = current_millis;
+long int z_servo_pmillis = current_millis;
+long int bmPrev_millis = current_millis;
 int zInterval = 50;
+int z_raise_int = 100;
+int z_servo_int = 100;
 int bmInterval = 75;
 int zState = 0;
 int zFlashCount = 0;
@@ -173,6 +181,11 @@ void setup() {
     pinMode(lifts[x][2], INPUT_PULLUP);
     pinMode(lifts[x][3], INPUT_PULLUP);
   }
+  //Attach the servo objects to pins
+  perServo.attach(P_ROT);
+  lfServo.attach(LF_ROT);
+  //set the Adafruit Servo Driver OE pin to output
+  pinMode(OE_PIN, OUTPUT);
   //set 74HC595 pins to output
   pinMode(BM_LATCH, OUTPUT);
   pinMode(BM_DATA, OUTPUT);
@@ -180,7 +193,7 @@ void setup() {
   //set Zapper LED to output;
   pinMode(Z_LED, OUTPUT);
 
-
+  digitalWrite(OE_PIN, LOW);
   updateStates();
   leds = 0;
   updateShiftRegister();
@@ -193,8 +206,12 @@ void loop() {
   allLifts(allLifts_State);
   ZapLift(zapper_State);
   LSLift(lSaber_State);
+  PLift(periscope_State);
+  BMLift(badMotive_State);
 }
-
+//The allLifts function does three things depending on the opt option
+//  0 - AllLifts is disabled (default); 1 - All lifts are moved up; 2 - All lifts are moved down;
+//  Note   use allLifts(3) to return to disabled mode.
 void allLifts(int opt) {
 
   switch (opt) {
@@ -214,6 +231,63 @@ void allLifts(int opt) {
       break;
   }
 }
+
+byte BM_Raise() {
+  static int step = 0;
+  switch (step) {
+    case 0:  //Open pie
+      moveServo(BM_PIE, BM_PMIN, BM_PMAX);
+      states[4][0] = 1;
+      step = 1;
+      break;
+    case 1:  //Move lift up
+      if (motorUp(4)) step = 2;
+      break;
+    case 2:
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+
+
+byte BM_Lower() {
+  bmLights(0);
+  static int step = 0;
+  switch (step) {
+    case 0:  //Move Motor
+      if (motorDown(4)) step = 1;
+      break;
+    case 1:  //Close the pie
+      moveServo(BM_PIE, BM_PMAX, BM_PMIN);
+      states[4][0] = 0;
+      step = 2;
+    case 2:              //Final cleanup and return 1 for a job well done
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+
+void BMLift(int option) {
+  //Serial.println("Light saber");
+  switch (option) {
+    case 0:
+      //default - No Action
+      if(digitalRead(BM_BOT)) bmLights(1);
+      return 0;
+    case 1:  //Raise LSaber
+      if(BM_Raise()==1) badMotive_State=0;
+      break;
+    case 2:  //Light Saber down
+      if(BM_Lower()==1) badMotive_State=0;
+      break;
+  }
+}
+
+
 
 void bmLights(int num) {
   if (num) {
@@ -274,41 +348,68 @@ int doTcommand(int addr, int opt) {
     case 52:
       lSaber_State = opt;
       break;
+    case 53:
+      periscope_State = opt;
+      break;
+    case 54:
+      badMotive_State = opt;
+      break;
+    case 55:
+      lifeForm_State = opt;
+      break;
   }
 }
 
-void LSLift(int option) {
-  Serial.println("Light saber");
-  switch (option) {
-    case 0:                                 // Light saber down and pie closed
-      if (states[2][0] == 0) return;        //Pie is closed - LS is stored
-      else if (digitalRead(LS_BOT) == 0) {  //Bottom Limit Hit
-        servoControl.setPWM(LS_PIE, 0, LS_PMIN);
-        states[2][0] = 0;
-        return;  //Pie is closed
-      } else if (digitalRead(LS_TOP) == 0) {
-        motorDown(2);
-        states[2][2] = 1;
-        return;
-      } else if (states[2][1]) {
-        motorDown(2);
-        return;
-      }
+byte LS_Raise() {
+  static int step = 0;
+  switch (step) {
+    case 0:  //Open pie
+      moveServo(LS_PIE, LS_PMIN, LS_PMAX);
+      states[2][0] = 1;
+      step = 1;
       break;
-    case 1:  //Light Saber up
-      if (digitalRead(LS_TOP) == 0) return;
-      else if (states[2][0] == 0) {  //Pie is closed
-        servoControl.setPWM(LS_PIE, 0, LS_PMAX);
-        states[2][0] = 1;
-        return;
-      } else if (digitalRead(LS_BOT) == 0 || (digitalRead(LS_BOT) && digitalRead(LS_TOP))) {
-        motorUp(2);
-        states[2][3] = 1;
-        return;
-      } else if (states[2][1]) {
-        motorUp(2);
-        return;
-      }
+    case 1:  //Move lift up
+      if (motorUp(2)) step = 2;
+      break;
+    case 2:
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+
+byte LS_Lower() {
+
+  static int step = 0;
+  switch (step) {
+    case 0:  //Move Motor
+      if (motorDown(2)) step = 1;
+      break;
+    case 1:  //Close the pie
+      moveServo(LS_PIE, LS_PMAX, LS_PMIN);
+      states[2][0] = 0;
+      step = 2;
+    case 2:              //Final cleanup and return 1 for a job well done
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+
+void LSLift(int option) {
+  //Serial.println("Light saber");
+  switch (option) {
+    case 0:
+      //default - No Action
+      return 0;
+    case 1:  //Raise LSaber
+      if(LS_Raise()==1) lSaber_State=0;
+      break;
+    case 2:  //Light Saber down
+      if(LS_Lower()==1) lSaber_State=0;
+      break;
   }
 }
 
@@ -332,39 +433,50 @@ void loadServos() {
 }
 
 //Moves the specified mtr until it reaches the top limit switch.
-void motorDown(int mtr) {
+byte motorDown(int mtr) {
   if (digitalRead(lifts[mtr][3])) {
     analogWrite(lifts[mtr][1], 255);
     states[mtr][1] = 1;
     states[mtr][3] = 1;
-
+    return 0;  //Motor is moving
   } else {
     digitalWrite(lifts[mtr][1], LOW);
     states[mtr][1] = 0;
     states[mtr][3] = 0;
+    return 1;  //Motor is stopped
   }
-  return;
 }
 
 //Moves the specified mtr until it reaches the top limit switch.
-void motorUp(int mtr) {
+byte motorUp(int mtr) {
   if (digitalRead(lifts[mtr][2])) {
     analogWrite(lifts[mtr][0], 255);
     states[mtr][1] = 1;
     states[mtr][2] = 1;
+    return 0;  //Motor is moving
 
   } else {
     digitalWrite(lifts[mtr][0], LOW);
     states[mtr][1] = 0;
     states[mtr][2] = 0;
+    return 1;  //Motor is stopped
   }
   return;
 }
 
 
-void moveServo(int srvNo, int pos) {
-  servoControl.setPWM(srvNo, 0, pos);
-  return;
+void moveServo(int srvNo, int from, int to) {
+  if (to > from) {
+    for (int pulselen = from; pulselen < to; pulselen++) {
+      servoControl.setPWM(srvNo, 0, pulselen);
+    }
+  } else {
+    for (int pulselen = from; pulselen > to; pulselen--) {
+      servoControl.setPWM(srvNo, 0, pulselen);
+    }
+
+    return;
+  }
 }
 
 int parseCommand(char* input_str) {
@@ -423,6 +535,56 @@ deadCmd:
   return;
 }
 
+byte P_Raise() {
+  static int step = 0;
+  switch (step) {
+    case 0:  //Move lift up
+      if (motorUp(3)) step = 1;
+      break;
+    case 1:
+      perServo.write(179);
+      step=2;
+      break;
+    case 2:
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+
+
+byte P_Lower() {
+  static int step = 0;
+  switch (step) {
+    case 0:  //Move Motor
+      if (motorDown(3)) step = 1;
+      break;
+    case 1:              //Final cleanup and return 1 for a job well done
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+
+void PLift(int option) {
+  //Serial.println("Light saber");
+  switch (option) {
+    case 0:
+      //default - No Action
+      if(digitalRead(P_BOT)) bmLights(1);
+      return 0;
+    case 1:  //Raise Periscope
+      if(P_Raise()==1) periscope_State=0;
+      break;
+    case 2:  //Light Saber down
+      if(P_Lower()==1) periscope_State=0;
+      break;
+  }
+}
+
+
 // The bad motivator uses a 74HC595 chip to control its 8 lights.  The updateShiftRegister
 // function uses the binary value of leds to update the lights
 void updateShiftRegister() {
@@ -458,6 +620,7 @@ void ZapLift(int option) {
   static int step = 0;
   long int z_servo_pmillis;
   int z_servo_int = 100;
+  if (option == 7) setTimer(1, 250);
   current_millis = millis();
   switch (option) {
     case 0:  //ZapLift state unchanged;
@@ -465,142 +628,50 @@ void ZapLift(int option) {
       return;
       break;
     case 1:  //Raise lift
-      switch (step) {
-        case 0:  //Open pie
-          moveServo(Z_PIE, Z_PMIN);
-          step++;
-          z_servo_pmillis = current_millis;
-          break;
-        case 1:  //Wait for Pie to open
-          if (current_millis - z_servo_pmillis > z_servo_int) {
-            z_servo_pmillis = current_millis;
-            step++;
-          }
-          break;
-        case 2:  //Move lift up
-          motorUp(1);
-          if (digitalRead(Z_TOP) == 0) step++;
-          break;
-        case 3:  //Rotate the zapper
-          moveServo(Z_ROT, Z_RMAX);
-          step++;
-          z_servo_pmillis = millis();
-          break;
-        case 4:  //Wait for Zapper to Rotate
-          if (current_millis - z_servo_pmillis > z_servo_int) {
-            z_servo_pmillis = current_millis;
-            step++;
-          }
-          break;
-        case 5:  //Extend the zapper
-          moveServo(Z_EXT, Z_EMAX);
-          step++;
-          z_servo_pmillis = millis();
-          break;
-        case 6:  //Wait for Zapper to Rotate
-          if (current_millis - z_servo_pmillis > z_servo_int) {
-            z_servo_pmillis = current_millis;
-            step++;
-          }
-          break;
-        case 7:  //Light the Zapper
-          ZapLights(1);
-          if (millis() - z_servo_pmillis > 1000) {
-            z_servo_pmillis = millis();
-            step++;
-          }
-          break;
-        case 8:  //End routine
-          ZapLights(0);
-          step = 0;
-          zapper_State = 0;
-          break;
+      if (Z_Raise()) {
+        zapper_State = 0;
+        return;
       }
       break;
     case 2:  //Move Zapper to stored position
-      switch (step) {
-        case 0:  //Shut off Lights
-          ZapLights(0);
-          step++;
-          break;
-        case 1:  //Fold the zapper
-          moveServo(Z_EXT, Z_EMIN);
-          step++;
-          z_servo_pmillis = current_millis;
-          break;
-        case 2:  //Wait for Servo to get into position
-          if (current_millis - z_servo_pmillis > z_servo_int) {
-            z_servo_pmillis = current_millis;
-            step++;
-          }
-          break;
-        case 3:  //Rotate zapper to store position
-          moveServo(Z_ROT, Z_RMIN);
-          step++;
-          z_servo_pmillis = current_millis;
-          break;
-        case 4:  //Wait for Servo to get into position
-          if (current_millis - z_servo_pmillis > z_servo_int) {
-            z_servo_pmillis = current_millis;
-            step++;
-          }
-          break;
-        case 5:  //Move Motor Down
-          motorDown(1);
-          if (digitalRead(Z_BOT) == 0) {
-            step++;
-          }
-          break;
-        case 6:  //Close the pie
-          moveServo(Z_PIE, Z_PMIN);
-          step++;
-          break;
-        case 7:  //Stop the routine
-          step = 0;
-          zapper_State = 0;
-          break;
+      if (Z_Lower()) {
+        zapper_State = 0;
+        return;
       }
+      break;
     case 3:  //Rotate Zapper Open
-      if (digitalRead(Z_TOP) == 0) {
-        moveServo(Z_ROT, Z_RMAX);
-      }
+             //if (digitalRead(Z_TOP) == LOW) {
+      moveServo(Z_ROT, Z_RMIN, Z_RMAX);
+      //}
       zapper_State = 0;
       break;
     case 4:  //Rotate Zapper closed
-      if (digitalRead(Z_TOP) == 0) {
-        moveServo(Z_ROT, Z_RMIN);
-      }
+             //if (digitalRead(Z_TOP) == LOW) {
+      moveServo(Z_ROT, Z_RMAX, Z_RMIN);
+      //}
       zapper_State = 0;
       break;
-    case 5: //Extend Zapper
-      if (digitalRead(Z_TOP) == 0) {
-        moveServo(Z_EXT, Z_EMAX);
-      }
+    case 5:  //Extend Zapper
+      moveServo(Z_EXT, Z_EMIN, Z_EMAX);
       zapper_State = 0;
       break;
-    case 6: //Fold Zapper
-      if (digitalRead(Z_TOP) == 0) {
-        moveServo(Z_EXT, Z_EMIN);
-      }
+    case 6:  //Fold Zapper
+
+      moveServo(Z_EXT, Z_EMAX, Z_EMIN);
       zapper_State = 0;
       break;
-    case 7: //Zap!
-      if (digitalRead(Z_TOP) == 0) {
-        ZapLights(1);
-        if(current_millis-z_servo_pmillis > 500){
-          z_servo_pmillis=current_millis;
-          ZapLights(0);
-          zapper_State =0;
-        }
+    case 7:  //Zap!
+      if (ZapLights(1) == 1) {
+        ZapLights(0);
+        zapper_State = 0;
       }
       break;
-    
   }
 }
 
 
 
-void ZapLights(int num) {
+byte ZapLights(int num) {
   if (num) {
     switch (zState) {
       case 0:
@@ -622,15 +693,115 @@ void ZapLights(int num) {
       case 2:
         current_millis = millis();
         zFlashCount++;
-        if (zFlashCount == 80) {
-          zState = 3;
+        if (zFlashCount == 8) {
+          zState = 0;
           zFlashCount = 0;
+          return 1;
         } else {
           zState = 0;
         }
         break;
     }
   } else digitalWrite(Z_LED, LOW);
-  return;
+  return 0;
 }
 
+int setTimer(int num, int interval) {
+  if (num) {
+    current_millis = millis();
+    z_raise_millis = current_millis;
+    z_raise_int = interval;
+    return 0;
+  } else {
+    current_millis = millis();
+    if (current_millis - z_raise_millis > z_raise_int) return 1;
+    else return 0;
+  }
+}
+byte Z_Lower() {
+
+  static int step = 0;
+  switch (step) {
+    case 0:  //Lights are off;
+      ZapLights(0);
+      step = 1;
+      break;
+    case 1:  //Zapper folded
+      if (states[1][5]) {
+        moveServo(Z_EXT, Z_EMAX, Z_EMIN);
+        states[1][5] = 0;
+        step = 2;
+        setTimer(1, 150);  //Set timer for 150 milliseconds
+      } else step = 3;
+      break;
+    case 2:  //Wait for Zapper to fold
+      if (setTimer(0, 150)) step = 3;
+      break;
+    case 3:  //Rotate the Zapper
+      if (states[1][4]) {
+        moveServo(Z_ROT, Z_RMAX, Z_RMIN);
+        states[1][4] = 0;
+        step = 4;
+        setTimer(1, 150);  //Set timer for 150 milliseconds
+      } else step = 5;
+      break;
+    case 4:  //Wait for Zapper to rotate
+      if (setTimer(0, 150)) step = 5;
+      break;
+    case 5:  //Move Motor
+      if (motorDown(1)) step = 6;
+      break;
+    case 6:  //Close the pie
+      moveServo(Z_PIE, Z_PMAX, Z_PMIN);
+      states[1][0] = 0;
+      step = 7;
+      setTimer(1, 150);  //Set timer for 150 milliseconds
+    case 7:              //Final cleanup and return 1 for a job well done
+      step = 0;
+      Serial.println("Here");
+      return 1;
+      break;
+  }
+  return 0;
+}
+
+byte Z_Raise() {
+  static int step = 0;
+  switch (step) {
+    case 0:  //Open pie
+      moveServo(Z_PIE, Z_PMIN, Z_PMAX);
+      states[1][0] = 1;
+      step = 1;
+      break;
+    case 1:  //Move lift up
+      if (motorUp(1)) step = 2;
+      break;
+    case 2:  //Rotate the zapper
+      moveServo(Z_ROT, Z_RMIN, Z_RMAX);
+      states[1][4] = 1;
+      step = 3;
+      break;
+    case 3:  //Extend the zapper
+      moveServo(Z_EXT, Z_EMIN, Z_EMAX);
+      states[1][5] = 1;
+      step = 4;
+      setTimer(1, 500);
+      break;
+    case 4:  //Wait for everything to settle
+      if (setTimer(0, 500)) step = 5;
+      break;
+    case 5:  //Light the zapper
+      if (ZapLights(1) == 1) {
+        ZapLights(0);
+        states[1][6] = 0;
+
+        step = 0;
+        return 1;
+      }
+      break;
+  }
+
+
+
+  return 0;
+}
