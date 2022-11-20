@@ -140,24 +140,6 @@ int badMotive_State = 0;
 int lifeForm_State = 0;
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 void setup() {
   Serial.begin(9600);
   Serial1.begin(9600);
@@ -192,7 +174,7 @@ void setup() {
   pinMode(BM_CLOCK, OUTPUT);
   //set Zapper LED to output;
   pinMode(Z_LED, OUTPUT);
-
+  //Set the OE_PIN to LOW to enable output on the Adafruit servo driver
   digitalWrite(OE_PIN, LOW);
   updateStates();
   leds = 0;
@@ -211,7 +193,6 @@ void loop() {
 }
 //The allLifts function does three things depending on the opt option
 //  0 - AllLifts is disabled (default); 1 - All lifts are moved up; 2 - All lifts are moved down;
-//  Note   use allLifts(3) to return to disabled mode.
 void allLifts(int opt) {
 
   switch (opt) {
@@ -219,19 +200,22 @@ void allLifts(int opt) {
       return;
       break;
     case 1:  //All Lifts up
-      for (int x = 1; x <= 5; x++) motorUp(x);
+      if(motorUp(1) && motorUp(2) && motorUp(3) && motorUp(4) && motorUp(5)){
+          allLifts_State=0;
+      }
       return;
       break;
     case 2:  //All lifts down
-      for (int x = 1; x <= 5; x++) motorDown(x);
+      if(motorDown(1) && motorDown(2) && motorDown(3) && motorDown(4) && motorDown(5)){
+          allLifts_State=0;
+      }
       return;
       break;
-    case 3:  //Reset All lifts
-      allLifts_State = 0;
-      break;
+   
   }
 }
 
+//BM_Raise raises the Bad motivator and returns a 0 while rising and a 1 when raised
 byte BM_Raise() {
   static int step = 0;
   switch (step) {
@@ -251,7 +235,7 @@ byte BM_Raise() {
   return 0;
 }
 
-
+//BM_Lower lowers the Bad Motivator and returns a 0 when lowering and a 1 when down.
 byte BM_Lower() {
   bmLights(0);
   static int step = 0;
@@ -271,6 +255,9 @@ byte BM_Lower() {
   return 0;
 }
 
+
+//BMLift is the sixth thread of seven threads in this program.  It handles all interactions with the 
+//Bad Motivator.  It is controlled by the badMotive_State.
 void BMLift(int option) {
   //Serial.println("Light saber");
   switch (option) {
@@ -288,7 +275,8 @@ void BMLift(int option) {
 }
 
 
-
+//The bmLights function controls the 8 leds in the Bad Motivator.  The BM uses a 74HC595 shift register chip to control
+//the eight lights with three pins. Passing a 0 to the function turns the ligts off, a 1 turns them on.
 void bmLights(int num) {
   if (num) {
     current_millis = millis();
@@ -304,6 +292,9 @@ void bmLights(int num) {
   return;
 }
 
+
+//The buildCommand takes the current byte from the Serial buffer and builds a command for processing.  It returns a 0 
+//while in the building process and a 1 when the command is ready.
 int buildCommand(char ch, char* output_str) {
   static int pos = 0;
   switch (ch) {
@@ -320,6 +311,10 @@ int buildCommand(char ch, char* output_str) {
   return false;
 }
 
+
+
+//The checkSerial function is the first thread of seven threads in this program.  It checks the Serial0 buffer for incoming serial
+//data and then sends it to be processed.
 void checkSerial() {
   char ch;
   byte cmd_Complete;
