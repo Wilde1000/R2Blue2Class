@@ -120,13 +120,18 @@ EXT_STATE should be set to 1 as that is the stored position for the hall effect 
 byte states[6][7];
 byte leds = 0;
 long int current_millis = millis();
+long int al_pmillis = current_millis;
 long int zPrev_millis = current_millis;
 long int z_raise_millis = current_millis;
 long int z_servo_pmillis = current_millis;
+long int z_lights_pmillis = current_millis;
+
 long int bmPrev_millis = current_millis;
+int al_int = 2000;
 int zInterval = 50;
 int z_raise_int = 100;
 int z_servo_int = 100;
+int z_lights_int = 50;
 int bmInterval = 75;
 int zState = 0;
 int zFlashCount = 0;
@@ -189,29 +194,35 @@ void loop() {
   LSLift(lSaber_State);
   PLift(periscope_State);
   BMLift(badMotive_State);
+  LFLift(lifeForm_State);
 }
+
 //The allLifts function does three things depending on the opt option
 //  0 - AllLifts is disabled (default); 1 - All lifts are moved up; 2 - All lifts are moved down;
 void allLifts(int opt) {
-
   switch (opt) {
     case 0:  //allLifts disabled
       return;
       break;
     case 1:  //All Lifts up
-      if(motorUp(1) && motorUp(2) && motorUp(3) && motorUp(4) && motorUp(5)){
-          allLifts_State=0;
+      for (int x = 1; x < 6; x++) {
+        motorUp(x);
       }
-      return;
       break;
     case 2:  //All lifts down
-      if(motorDown(1) && motorDown(2) && motorDown(3) && motorDown(4) && motorDown(5)){
-          allLifts_State=0;
+      for (int x = 1; x < 6; x++) {
+        motorDown(x);
       }
-      return;
       break;
-   
+    case 3:  //All lifts up sequentially
+      if (motorUp(1) && motorUp(2) && motorUp(3) && motorUp(4) && motorUp(5)) allLifts_State = 0;
+      break;
+    case 4:  //All lifts down sequentially
+      if (motorDown(1) && motorDown(2) && motorDown(3) && motorDown(4) && motorDown(5)) allLifts_State = 0;
+      break;
   }
+
+  return;
 }
 
 //BM_Raise raises the Bad motivator and returns a 0 while rising and a 1 when raised
@@ -246,7 +257,7 @@ byte BM_Lower() {
       moveServo(BM_PIE, BM_PMAX, BM_PMIN);
       states[4][0] = 0;
       step = 2;
-    case 2:              //Final cleanup and return 1 for a job well done
+    case 2:  //Final cleanup and return 1 for a job well done
       step = 0;
       return 1;
       break;
@@ -255,20 +266,20 @@ byte BM_Lower() {
 }
 
 
-//BMLift is the sixth thread of seven threads in this program.  It handles all interactions with the 
+//BMLift is the sixth thread of seven threads in this program.  It handles all interactions with the
 //Bad Motivator.  It is controlled by the badMotive_State.
 void BMLift(int option) {
   //Serial.println("Light saber");
   switch (option) {
     case 0:
       //default - No Action
-      if(digitalRead(BM_BOT)) bmLights(1);
+      if (digitalRead(BM_BOT)) bmLights(1);
       return 0;
     case 1:  //Raise LSaber
-      if(BM_Raise()==1) badMotive_State=0;
+      if (BM_Raise() == 1) badMotive_State = 0;
       break;
     case 2:  //Light Saber down
-      if(BM_Lower()==1) badMotive_State=0;
+      if (BM_Lower() == 1) badMotive_State = 0;
       break;
   }
 }
@@ -292,7 +303,7 @@ void bmLights(int num) {
 }
 
 
-//The buildCommand takes the current byte from the Serial buffer and builds a command for processing.  It returns a 0 
+//The buildCommand takes the current byte from the Serial buffer and builds a command for processing.  It returns a 0
 //while in the building process and a 1 when the command is ready.
 int buildCommand(char ch, char* output_str) {
   static int pos = 0;
@@ -354,6 +365,55 @@ int doTcommand(int addr, int opt) {
   }
 }
 
+//Raises the Life Form Scanner - Return 0 while raising and 1 when raised
+byte LF_Raise() {
+  static int step = 0;
+  switch (step) {
+    case 0:  //Move lift up
+      if (motorUp(5)) step = 1;
+      break;
+    case 1:
+      lfServo.write(180);
+      step = 2;
+      break;
+    case 2:
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+
+//Lowers the Life Form Scanner - Returns 0 while raising and 1 when raised
+byte LF_Lower() {
+  static int step = 0;
+  switch (step) {
+    case 0:  //Move Motor
+      if (motorDown(5)) step = 1;
+      break;
+    case 1:  //Final cleanup and return 1 for a job well done
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+//LFLift is the last thread of seven threads in this program.  It handles all interactions with the
+//Life Form Scanner.  It is controlled by the lifeForm_State.
+void LFLift(int option) {
+  switch (option) {
+    case 0:
+      //default - No Action
+      return 0;
+    case 1:  //Raise Life Form Scanner
+      if (LF_Raise() == 1) lifeForm_State = 0;
+      break;
+    case 2:  //lower Life Form Scanner
+      if (LF_Lower() == 1) lifeForm_State = 0;
+      break;
+  }
+}
+
 
 //The LS_Raise function raises the Light Saber and returns a 0 while raising and a 1 when raised
 byte LS_Raise() {
@@ -387,14 +447,14 @@ byte LS_Lower() {
       moveServo(LS_PIE, LS_PMAX, LS_PMIN);
       states[2][0] = 0;
       step = 2;
-    case 2:              //Final cleanup and return 1 for a job well done
+    case 2:  //Final cleanup and return 1 for a job well done
       step = 0;
       return 1;
       break;
   }
   return 0;
 }
-//LSLift is the fourth thread of seven threads in this program.  It handles all interactions with the 
+//LSLift is the fourth thread of seven threads in this program.  It handles all interactions with the
 //Light Saber Lift.  It is controlled by the lSaber_State.
 void LSLift(int option) {
   //Serial.println("Light saber");
@@ -403,10 +463,10 @@ void LSLift(int option) {
       //default - No Action
       return 0;
     case 1:  //Raise LSaber
-      if(LS_Raise()==1) lSaber_State=0;
+      if (LS_Raise() == 1) lSaber_State = 0;
       break;
     case 2:  //Light Saber down
-      if(LS_Lower()==1) lSaber_State=0;
+      if (LS_Lower() == 1) lSaber_State = 0;
       break;
   }
 }
@@ -542,7 +602,7 @@ byte P_Raise() {
       break;
     case 1:
       perServo.write(179);
-      step=2;
+      step = 2;
       break;
     case 2:
       step = 0;
@@ -559,27 +619,27 @@ byte P_Lower() {
     case 0:  //Move Motor
       if (motorDown(3)) step = 1;
       break;
-    case 1:              //Final cleanup and return 1 for a job well done
+    case 1:  //Final cleanup and return 1 for a job well done
       step = 0;
       return 1;
       break;
   }
   return 0;
 }
-//PLift is the fifth thread of seven threads in this program.  It handles all interactions with the 
+//PLift is the fifth thread of seven threads in this program.  It handles all interactions with the
 //Periscope.  It is controlled by the periscope_State.
 void PLift(int option) {
   //Serial.println("Light saber");
   switch (option) {
     case 0:
       //default - No Action
-      if(digitalRead(P_BOT)) bmLights(1);
+      if (digitalRead(P_BOT)) bmLights(1);
       return 0;
     case 1:  //Raise Periscope
-      if(P_Raise()==1) periscope_State=0;
+      if (P_Raise() == 1) periscope_State = 0;
       break;
     case 2:  //lower Periscope
-      if(P_Lower()==1) periscope_State=0;
+      if (P_Lower() == 1) periscope_State = 0;
       break;
   }
 }
@@ -615,7 +675,7 @@ void updateStates() {
   loadServos();
 }
 
-//ZapLift is the third thread of seven threads in this program.  It handles all interactions with the 
+//ZapLift is the third thread of seven threads in this program.  It handles all interactions with the
 //Zapper.  It is controlled by the zapper_State.
 void ZapLift(int option) {
   static int step = 0;
@@ -707,6 +767,21 @@ byte ZapLights(int num) {
   return 0;
 }
 
+
+int setZLTimer(int num, int interval) {
+  if (num) {
+    current_millis = millis();
+    z_lights_pmillis = current_millis;
+    z_lights_int = interval;
+    return 0;
+  } else {
+    current_millis = millis();
+    if (current_millis - z_lights_pmillis > z_lights_int) return 1;
+    else return 0;
+  }
+}
+
+
 int setTimer(int num, int interval) {
   if (num) {
     current_millis = millis();
@@ -720,7 +795,6 @@ int setTimer(int num, int interval) {
   }
 }
 byte Z_Lower() {
-
   static int step = 0;
   switch (step) {
     case 0:  //Lights are off;
@@ -728,38 +802,25 @@ byte Z_Lower() {
       step = 1;
       break;
     case 1:  //Zapper folded
-      if (states[1][5]) {
-        moveServo(Z_EXT, Z_EMAX, Z_EMIN);
-        states[1][5] = 0;
-        step = 2;
-        setTimer(1, 150);  //Set timer for 150 milliseconds
-      } else step = 3;
+      moveServo(Z_EXT, Z_EMAX, Z_EMIN);
+      states[1][5] = 0;
+      step = 2;
       break;
-    case 2:  //Wait for Zapper to fold
-      if (setTimer(0, 150)) step = 3;
+    case 2:  //Rotate the Zapper
+      moveServo(Z_ROT, Z_RMAX, Z_RMIN);
+      states[1][4] = 0;
+      step = 3;
       break;
-    case 3:  //Rotate the Zapper
-      if (states[1][4]) {
-        moveServo(Z_ROT, Z_RMAX, Z_RMIN);
-        states[1][4] = 0;
-        step = 4;
-        setTimer(1, 150);  //Set timer for 150 milliseconds
-      } else step = 5;
+    case 3:  //Move Motor
+      if (motorDown(1)) step = 4;
       break;
-    case 4:  //Wait for Zapper to rotate
-      if (setTimer(0, 150)) step = 5;
-      break;
-    case 5:  //Move Motor
-      if (motorDown(1)) step = 6;
-      break;
-    case 6:  //Close the pie
+    case 4:  //Close the pie
       moveServo(Z_PIE, Z_PMAX, Z_PMIN);
       states[1][0] = 0;
-      step = 7;
-      setTimer(1, 150);  //Set timer for 150 milliseconds
-    case 7:              //Final cleanup and return 1 for a job well done
+      step = 5;
+      break;
+    case 5:  //Final cleanup and return 1 for a job well done
       step = 0;
-      Serial.println("Here");
       return 1;
       break;
   }
@@ -795,14 +856,10 @@ byte Z_Raise() {
       if (ZapLights(1) == 1) {
         ZapLights(0);
         states[1][6] = 0;
-
         step = 0;
         return 1;
       }
       break;
   }
-
-
-
   return 0;
 }
