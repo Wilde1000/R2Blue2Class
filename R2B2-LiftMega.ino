@@ -330,7 +330,7 @@ void checkSerial() {
 }
 
 
-
+//The doTcommand handles all T commands sent from the parseCommand function
 int doTcommand(int addr, int opt) {
   Serial.println("T command");
   switch (addr) {
@@ -355,6 +355,8 @@ int doTcommand(int addr, int opt) {
   }
 }
 
+
+//The LS_Raise function raises the Light Saber and returns a 0 while raising and a 1 when raised
 byte LS_Raise() {
   static int step = 0;
   switch (step) {
@@ -374,6 +376,7 @@ byte LS_Raise() {
   return 0;
 }
 
+//The LS_Lower function lowers the Light Saber and returns a 0 while lowering and a 1 when down
 byte LS_Lower() {
 
   static int step = 0;
@@ -392,7 +395,8 @@ byte LS_Lower() {
   }
   return 0;
 }
-
+//LSLift is the fourth thread of seven threads in this program.  It handles all interactions with the 
+//Light Saber Lift.  It is controlled by the lSaber_State.
 void LSLift(int option) {
   //Serial.println("Light saber");
   switch (option) {
@@ -427,7 +431,7 @@ void loadServos() {
   return;
 }
 
-//Moves the specified mtr until it reaches the top limit switch.
+//Moves the specified mtr until it reaches the bottom limit switch. Returns a 0 when the motor is moving and a 1 when the limit switch is hit.
 byte motorDown(int mtr) {
   if (digitalRead(lifts[mtr][3])) {
     analogWrite(lifts[mtr][1], 255);
@@ -442,7 +446,7 @@ byte motorDown(int mtr) {
   }
 }
 
-//Moves the specified mtr until it reaches the top limit switch.
+//Moves the specified mtr until it reaches the top limit switch. Returns a 0 when the motor is moving and a 1 when the limit switch is hit.
 byte motorUp(int mtr) {
   if (digitalRead(lifts[mtr][2])) {
     analogWrite(lifts[mtr][0], 255);
@@ -459,7 +463,7 @@ byte motorUp(int mtr) {
   return;
 }
 
-
+// Move servo from the passed from to the passed to
 void moveServo(int srvNo, int from, int to) {
   if (to > from) {
     for (int pulselen = from; pulselen < to; pulselen++) {
@@ -474,6 +478,7 @@ void moveServo(int srvNo, int from, int to) {
   }
 }
 
+//The parseCommand takes the command from the buildCommand function and parses into its component parts - MPU, Address, Command and Option
 int parseCommand(char* input_str) {
   byte hasArgument = false;
   byte pos = 0;
@@ -529,7 +534,7 @@ int parseCommand(char* input_str) {
 deadCmd:
   return;
 }
-
+//Raises the periscope - Return 0 while raising and 1 when raised
 byte P_Raise() {
   static int step = 0;
   switch (step) {
@@ -548,7 +553,7 @@ byte P_Raise() {
   return 0;
 }
 
-
+//Lowers the periscope - Returns 0 while raising and 1 when raised
 byte P_Lower() {
   static int step = 0;
   switch (step) {
@@ -562,7 +567,8 @@ byte P_Lower() {
   }
   return 0;
 }
-
+//PLift is the fifth thread of seven threads in this program.  It handles all interactions with the 
+//Periscope.  It is controlled by the periscope_State.
 void PLift(int option) {
   //Serial.println("Light saber");
   switch (option) {
@@ -573,7 +579,7 @@ void PLift(int option) {
     case 1:  //Raise Periscope
       if(P_Raise()==1) periscope_State=0;
       break;
-    case 2:  //Light Saber down
+    case 2:  //lower Periscope
       if(P_Lower()==1) periscope_State=0;
       break;
   }
@@ -610,7 +616,8 @@ void updateStates() {
   loadServos();
 }
 
-
+//ZapLift is the third thread of seven threads in this program.  It handles all interactions with the 
+//Zapper.  It is controlled by the zapper_State.
 void ZapLift(int option) {
   static int step = 0;
   long int z_servo_pmillis;
@@ -665,7 +672,7 @@ void ZapLift(int option) {
 }
 
 
-
+//ZapLights operates the Zap light on the zapper. Pass a 0 to shut off and a positive number to run
 byte ZapLights(int num) {
   if (num) {
     switch (zState) {
