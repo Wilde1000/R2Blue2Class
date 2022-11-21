@@ -99,6 +99,8 @@ int lifeForm[8] = { LF_IN1, LF_IN2, LF_TOP, LF_BOT, -1, -1, LF_HALL, LF_PIE };
 int lifts[6][8];
 int servoLmt[16][3];
 char cmdStr[64];
+char cmdStr1[64];
+
 /*
 In addition we will be tracking the following states for each device:
   0 - P_STATE - Pie state (0 - closed; 1 - open; 2 - Pie not used)
@@ -189,6 +191,7 @@ void setup() {
 
 void loop() {
   checkSerial();
+  checkSerial1();
   allLifts(allLifts_State);
   ZapLift(zapper_State);
   LSLift(lSaber_State);
@@ -303,9 +306,27 @@ void bmLights(int num) {
 }
 
 
-//The buildCommand takes the current byte from the Serial buffer and builds a command for processing.  It returns a 0
+//The buildCommand takes the current byte from the Serial0 buffer and builds a command for processing.  It returns a 0
 //while in the building process and a 1 when the command is ready.
 int buildCommand(char ch, char* output_str) {
+  static int pos = 0;
+  switch (ch) {
+    case '\n':
+      output_str[pos] = '\0';
+      pos = 0;
+      return true;
+      break;
+    default:
+      output_str[pos] = ch;
+      if (pos <= CMD_MAX_LENGTH - 1) pos++;
+      break;
+  }
+  return false;
+}
+
+//The buildCommand1 takes the current byte from the Serial1 buffer and builds a command for processing.  It returns a 0
+//while in the building process and a 1 when the command is ready.
+int buildCommand1(char ch, char* output_str) {
   static int pos = 0;
   switch (ch) {
     case '\n':
@@ -335,6 +356,20 @@ void checkSerial() {
     if (cmd_Complete) {
       parseCommand(cmdStr);
       Serial.println();
+    }
+  }
+}
+
+//The checkSerial1 function is the second thread of seven threads in this program.  It checks the Serial1 buffer for incoming serial
+//data and then sends it to be processed.
+void checkSerial() {
+  char ch;
+  byte cmd_Complete;
+  if (Serial1.available()) {
+    ch = Serial1.read();
+    cmd_Complete = buildCommand1(ch, cmdStr1);
+    if (cmd_Complete) {
+      parseCommand(cmdStr1);
     }
   }
 }
