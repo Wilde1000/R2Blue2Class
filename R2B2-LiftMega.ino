@@ -24,7 +24,7 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 #define Z_EXT 0
 #define Z_EMAX 125
 #define Z_EMIN 300
-#define Z_EMID 213
+#define Z_EMID 150
 #define Z_PIE 2
 #define Z_PMAX 600
 #define Z_PMIN 150
@@ -690,6 +690,11 @@ void ZapLift(int option) {
         zapper_State = 0;
       }
       break;
+    case 8:  //Long Zap Seq
+      if (zapSeq1() == 1) {
+        zapper_State = 0;
+      }
+      break;
   }
 }
 
@@ -845,106 +850,106 @@ byte zapSeq1(){
         setTimer(1,500);
       }
       break;
-    case 4: //Move Servo to zap Position 2
+    case 5: //Move Servo to zap Position 2
       moveServo(Z_ROT, Z_RMIN, Z_RMID);
       moveServo(Z_EXT, Z_EMAX, Z_EMID);
       setTimer(1, 500);
-      step = 5;
+      step = 6;
       break;
-    case 5: //Wait for dust to settle
-      if(setTimer(0,500)) step=6;
+    case 6: //Wait for dust to settle
+      if(setTimer(0,500)) step=7;
       break;
-    case 6: //Zap
+    case 7: //Zap
       if (ZapLights(1) == 1) {
         ZapLights(0);
-        step = 7;
+        step = 8;
         setTimer(1,500);
       }
       break;
-    case 7: //Move to position three
+    case 8: //Move to position three
       moveServo(Z_ROT, Z_RMID, Z_RMAX);
       moveServo(Z_EXT, Z_EMID, Z_EMAX);
       setTimer(1, 500);
-      step = 8;
+      step = 9;
       break;
-    case 8: //Wait for dust to settle
-      if(setTimer(0,500)) step=9;
+    case 9: //Wait for dust to settle
+      if(setTimer(0,500)) step=10;
       break;
-    case 9: //Zap
+    case 10: //Zap
       if (ZapLights(1) == 1) {
         ZapLights(0);
-        step = 10;
+        step = 11;
         setTimer(1,500);
       }
       break;
-    case 10: //Move to position four
+    case 11: //Move to position four
       moveServo(Z_EXT, Z_EMAX, Z_EMID);
       setTimer(1, 500);
-      step = 11;
+      step = 12;
       break;
-    case 11: //Wait for dust to settle
-      if(setTimer(0,500)) step=12;
+    case 12: //Wait for dust to settle
+      if(setTimer(0,500)) step=13;
       break;
-    case 12: //Zap
+    case 13: //Zap
       if (ZapLights(1) == 1) {
         ZapLights(0);
-        step = 13;
+        step = 14;
         setTimer(1,500);
       }
       break;
-    case 13: //Move to position five
+    case 14: //Move to position five
       moveServo(Z_ROT, Z_RMAX, Z_RMID);
       moveServo(Z_EXT, Z_EMID, Z_EMAX);
       setTimer(1, 500);
-      step = 14;
+      step = 15;
       break;
-    case 14: //Wait for dust to settle
-      if(setTimer(0,500)) step=15;
+    case 15: //Wait for dust to settle
+      if(setTimer(0,500)) step=16;
       break;
-    case 15: //Zap
+    case 16: //Zap
       if (ZapLights(1) == 1) {
         ZapLights(0);
-        step = 16;
+        step = 17;
         setTimer(1,500);
       }
       break;
-    case 16: //Move to position six
+    case 17: //Move to position six
       moveServo(Z_ROT, Z_RMID, Z_RMIN);
       moveServo(Z_EXT, Z_EMAX, Z_EMID);
       setTimer(1, 500);
-      step = 17;
+      step = 18;
       break;
-    case 17: //Wait for dust to settle
-      if(setTimer(0,500)) step=18;
+    case 18: //Wait for dust to settle
+      if(setTimer(0,500)) step=19;
       break;
-    case 18: //Zap
+    case 19: //Zap
       if (ZapLights(1) == 1) {
         ZapLights(0);
-        step = 19;
+        step = 20;
         setTimer(1,500);
       }
       break;
-    case 19: //Move to open position 
+    case 20: //Move to open position 
       moveServo(Z_ROT, Z_RMID, Z_RMAX);
       moveServo(Z_EXT, Z_EMID, Z_EMAX);
       setTimer(1, 1000);
-      step = 20;
-      break;
-    case 20: //Fold the Zapper and return to store position
-      moveServo(Z_ROT, Z_RMAX, Z_RMIN);
-      moveServo(Z_EXT, Z_EMAX, Z_EMIN);
       step = 21;
       break;
-    case 21: //Move the Lift down
-      if(motorDown(1)) step=22;
+    case 21: //Fold the Zapper and return to store position
+      moveServo(Z_ROT, Z_RMAX, Z_RMIN);
+      moveServo(Z_EXT, Z_EMAX, Z_EMIN);
+      step = 22;
       break;
-    case 22: //Close Pie 
+    case 22: //Move the Lift down
+      if(motorDown(1)) step=23;
+      break;
+    case 23: //Close Pie 
       moveServo(Z_PIE, Z_PMAX, Z_PMIN);
-      step=23;
+      step=24;
       break;
-    case 23:
+    case 24:
       step=0;
-      zapper_state=0;
+      zapper_State=0;
       return 1;
       break;
   }
