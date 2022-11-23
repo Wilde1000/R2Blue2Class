@@ -287,7 +287,7 @@ void bmLights(int num) {
 int buildCommand(char ch, char* output_str) {
   static int pos = 0;
   switch (ch) {
-    case '\n':
+    case '\n': case '\r': case '\0':
       output_str[pos] = '\0';
       pos = 0;
       return true;
@@ -305,7 +305,7 @@ int buildCommand(char ch, char* output_str) {
 int buildCommand1(char ch, char* output_str) {
   static int pos = 0;
   switch (ch) {
-    case '\n':
+      case '\n': case '\r': case '\0':
       output_str[pos] = '\0';
       pos = 0;
       return true;
