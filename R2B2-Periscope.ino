@@ -58,14 +58,6 @@ Adafruit_NeoPixel pixels(NOOFLED, LEDPIN, NEO_GRB + NEO_KHZ800);
 #define LEFT_EYE 0
 #define RIGHT_EYE 2
 
-#define STATUS_LIGHT 1
-
-#define MAIN1 3
-#define MAIN2 4
-#define MAIN3 5
-#define MAIN4 6
-#define MAIN5 7
-
 char cmdStr[64];
 
 long int currentTime = millis();
@@ -211,6 +203,7 @@ int doTcommand(int addr, int opt) {
   Serial.println(opt);
   switch (addr) {
     case 56:
+      displayInterval = 1;
       displayState = opt;
       break;
     case 57:
@@ -310,7 +303,7 @@ void displaySequencePingPong() {
 
     if (totalSteps % 7 == 0) // Increase/decrease the interval every 7 steps.
       displayInterval += pingPongIntervalDirection;
-    if (totalSteps % 150 == 0) // Every 150 steps, reverse the direction.
+    if (totalSteps % 400 == 0) // Every 150 steps, reverse the direction.
       pingPongIntervalDirection *= -1; 
   }
 }
