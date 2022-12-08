@@ -62,8 +62,8 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 //define Zapper LED pin
 #define Z_LED 39
 //define HALL effect pins
-#define P_HALL 40
-#define LF_HALL 41
+#define P_HALL 41
+#define LF_HALL 40
 //#define the Limit Switch pins
 #define Z_TOP 44
 #define Z_BOT 45
@@ -128,6 +128,7 @@ int lifeForm_State = 0;
 void setup() {
   Serial.begin(9600);
   Serial1.begin(9600);
+  Serial2.begin(9600);
   servoControl.begin();
   servoControl.setOscillatorFrequency(OSCIL_FREQ);
   servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
@@ -167,14 +168,14 @@ void setup() {
 
 
 void loop() {
-  checkSerial();  //Check Serial 0 for commands
-  checkSerial1(); //Check Serial 1 for commands
+  checkSerial();             //Check Serial 0 for commands
+  checkSerial1();            //Check Serial 1 for commands
   allLifts(allLifts_State);  //Run actions on all lifts if any
-  ZapLift(zapper_State);  // Run actions on the Zapper if any
-  LSLift(lSaber_State);  //Run actions on the Light Saber if any
-  PLift(periscope_State);  //Run actions on the Periscope if any
-  BMLift(badMotive_State); //Run actions on the Bad Motivator if any
-  LFLift(lifeForm_State);  //Run actions on the Life Form Scanner if any
+  ZapLift(zapper_State);     // Run actions on the Zapper if any
+  LSLift(lSaber_State);      //Run actions on the Light Saber if any
+  PLift(periscope_State);    //Run actions on the Periscope if any
+  BMLift(badMotive_State);   //Run actions on the Bad Motivator if any
+  LFLift(lifeForm_State);    //Run actions on the Life Form Scanner if any
 }
 
 //The allLifts function does three things depending on the opt option
@@ -287,7 +288,9 @@ void bmLights(int num) {
 int buildCommand(char ch, char* output_str) {
   static int pos = 0;
   switch (ch) {
-    case '\n': case '\r': case '\0':
+    case '\n':
+    case '\r':
+    case '\0':
       output_str[pos] = '\0';
       pos = 0;
       return true;
@@ -305,7 +308,9 @@ int buildCommand(char ch, char* output_str) {
 int buildCommand1(char ch, char* output_str) {
   static int pos = 0;
   switch (ch) {
-      case '\n': case '\r': case '\0':
+    case '\n':
+    case '\r':
+    case '\0':
       output_str[pos] = '\0';
       pos = 0;
       return true;
@@ -400,9 +405,17 @@ byte LF_Lower() {
   static int step = 0;
   switch (step) {
     case 0:  //Move Motor
-      if (motorDown(5)) step = 1;
+      if (digitalRead(LF_HALL) == LOW) {
+
+
+        lfServo.write(90);
+        step = 1;
+      }
       break;
-    case 1:  //Final cleanup and return 1 for a job well done
+    case 1:
+      if (motorDown(5)) step = 2;
+      break;
+    case 2:  //Final cleanup and return 1 for a job well done
       step = 0;
       return 1;
       break;
@@ -606,9 +619,15 @@ byte P_Lower() {
   static int step = 0;
   switch (step) {
     case 0:  //Move Motor
-      if (motorDown(3)) step = 1;
+      if (digitalRead(P_HALL) == LOW) {
+        perServo.write(90);
+        step = 1;
+      }
       break;
-    case 1:  //Final cleanup and return 1 for a job well done
+    case 1:
+      if (motorDown(3)) step = 2;
+      break;
+    case 2:  //Final cleanup and return 1 for a job well done
       step = 0;
       return 1;
       break;
@@ -620,11 +639,18 @@ byte P_Lower() {
 //PLift is the fifth thread of seven threads in this program.  It handles all interactions with the
 //Periscope.  It is controlled by the periscope_State.
 void PLift(int option) {
+  static int plstate=0;
   //Serial.println("Light saber");
   switch (option) {
     case 0:
       //default - No Action
-      if (digitalRead(P_BOT)) bmLights(1);
+      if (!digitalRead(P_BOT)){
+         pLights(0);
+         plstate=0;
+      }else{
+        pLights(1);
+        plstate=1;
+      }                  
       return 0;
     case 1:  //Raise Periscope
       if (P_Raise() == 1) periscope_State = 0;
@@ -634,6 +660,19 @@ void PLift(int option) {
       break;
   }
 }
+
+void pLights(int num) {
+  switch (num) {
+    case 0:  //Periscope Lights off
+      Serial2.write("F60T001\n");
+      break;
+    case 1:  //Periscope Light on defalult value
+      Serial2.write("F60T002\n");
+      break;
+  }
+  return;
+}
+
 
 
 // The bad motivator uses a 74HC595 chip to control its 8 lights.  The updateShiftRegister
@@ -825,131 +864,131 @@ byte Z_Raise() {
   return 0;
 }
 
-byte zapSeq1(){
-  static int step=0;
-  switch(step){
+byte zapSeq1() {
+  static int step = 0;
+  switch (step) {
     case 0:  //Open pie
       moveServo(Z_PIE, Z_PMIN, Z_PMAX);
-      step=1;
+      step = 1;
       break;
-    case 1: //Raise Zapper
-      if(motorUp(1)) step=2;
+    case 1:  //Raise Zapper
+      if (motorUp(1)) step = 2;
       break;
-    case 2: //Extend Zapper
+    case 2:  //Extend Zapper
       moveServo(Z_EXT, Z_EMIN, Z_EMAX);
       setTimer(1, 500);
-      step=3;
+      step = 3;
       break;
     case 3:
-      if(setTimer(0,500)) step=4;
+      if (setTimer(0, 500)) step = 4;
       break;
     case 4:
       if (ZapLights(1) == 1) {
         ZapLights(0);
         step = 5;
-        setTimer(1,500);
+        setTimer(1, 500);
       }
       break;
-    case 5: //Move Servo to zap Position 2
+    case 5:  //Move Servo to zap Position 2
       moveServo(Z_ROT, Z_RMIN, Z_RMID);
       moveServo(Z_EXT, Z_EMAX, Z_EMID);
       setTimer(1, 500);
       step = 6;
       break;
-    case 6: //Wait for dust to settle
-      if(setTimer(0,500)) step=7;
+    case 6:  //Wait for dust to settle
+      if (setTimer(0, 500)) step = 7;
       break;
-    case 7: //Zap
+    case 7:  //Zap
       if (ZapLights(1) == 1) {
         ZapLights(0);
         step = 8;
-        setTimer(1,500);
+        setTimer(1, 500);
       }
       break;
-    case 8: //Move to position three
+    case 8:  //Move to position three
       moveServo(Z_ROT, Z_RMID, Z_RMAX);
       moveServo(Z_EXT, Z_EMID, Z_EMAX);
       setTimer(1, 500);
       step = 9;
       break;
-    case 9: //Wait for dust to settle
-      if(setTimer(0,500)) step=10;
+    case 9:  //Wait for dust to settle
+      if (setTimer(0, 500)) step = 10;
       break;
-    case 10: //Zap
+    case 10:  //Zap
       if (ZapLights(1) == 1) {
         ZapLights(0);
         step = 11;
-        setTimer(1,500);
+        setTimer(1, 500);
       }
       break;
-    case 11: //Move to position four
+    case 11:  //Move to position four
       moveServo(Z_EXT, Z_EMAX, Z_EMID);
       setTimer(1, 500);
       step = 12;
       break;
-    case 12: //Wait for dust to settle
-      if(setTimer(0,500)) step=13;
+    case 12:  //Wait for dust to settle
+      if (setTimer(0, 500)) step = 13;
       break;
-    case 13: //Zap
+    case 13:  //Zap
       if (ZapLights(1) == 1) {
         ZapLights(0);
         step = 14;
-        setTimer(1,500);
+        setTimer(1, 500);
       }
       break;
-    case 14: //Move to position five
+    case 14:  //Move to position five
       moveServo(Z_ROT, Z_RMAX, Z_RMID);
       moveServo(Z_EXT, Z_EMID, Z_EMAX);
       setTimer(1, 500);
       step = 15;
       break;
-    case 15: //Wait for dust to settle
-      if(setTimer(0,500)) step=16;
+    case 15:  //Wait for dust to settle
+      if (setTimer(0, 500)) step = 16;
       break;
-    case 16: //Zap
+    case 16:  //Zap
       if (ZapLights(1) == 1) {
         ZapLights(0);
         step = 17;
-        setTimer(1,500);
+        setTimer(1, 500);
       }
       break;
-    case 17: //Move to position six
+    case 17:  //Move to position six
       moveServo(Z_ROT, Z_RMID, Z_RMIN);
       moveServo(Z_EXT, Z_EMAX, Z_EMID);
       setTimer(1, 500);
       step = 18;
       break;
-    case 18: //Wait for dust to settle
-      if(setTimer(0,500)) step=19;
+    case 18:  //Wait for dust to settle
+      if (setTimer(0, 500)) step = 19;
       break;
-    case 19: //Zap
+    case 19:  //Zap
       if (ZapLights(1) == 1) {
         ZapLights(0);
         step = 20;
-        setTimer(1,500);
+        setTimer(1, 500);
       }
       break;
-    case 20: //Move to open position 
+    case 20:  //Move to open position
       moveServo(Z_ROT, Z_RMID, Z_RMAX);
       moveServo(Z_EXT, Z_EMID, Z_EMAX);
       setTimer(1, 1000);
       step = 21;
       break;
-    case 21: //Fold the Zapper and return to store position
+    case 21:  //Fold the Zapper and return to store position
       moveServo(Z_ROT, Z_RMAX, Z_RMIN);
       moveServo(Z_EXT, Z_EMAX, Z_EMIN);
       step = 22;
       break;
-    case 22: //Move the Lift down
-      if(motorDown(1)) step=23;
+    case 22:  //Move the Lift down
+      if (motorDown(1)) step = 23;
       break;
-    case 23: //Close Pie 
+    case 23:  //Close Pie
       moveServo(Z_PIE, Z_PMAX, Z_PMIN);
-      step=24;
+      step = 24;
       break;
     case 24:
-      step=0;
-      zapper_State=0;
+      step = 0;
+      zapper_State = 0;
       return 1;
       break;
   }
