@@ -77,6 +77,8 @@ int eyesInterval = 250;
 long int statusPause = currentTime;
 int statusInterval = 500;
 
+bool allOn = false;
+int allState     = 0;
 int eyesState    = 1;
 int statusState  = 1;
 int mainState    = 1;
@@ -112,12 +114,36 @@ void loop() {
 
   pixels.clear();
 
-  runMain(mainState);
-  runDisplay(displayState);
-  runEyes(eyesState);
-  runStatus(statusState);
+  runAll();
+
+  if (allOn)
+  {
+    runMain(mainState);
+    runDisplay(displayState);
+    runEyes(eyesState);
+    runStatus(statusState);
+  } else {
+    runMain(0);
+    runDisplay(0);
+    runEyes(0);
+    runStatus(0);
+  }
 
   pixels.show();
+}
+
+void runAll() {
+  switch(allState) {
+    case 0:
+      allOn = false;
+      break;
+    case 1:
+      allOn = true;
+      break;
+    case 2:
+      allOn = false;
+      break;
+  }
 }
 
 int parseCommand(char* inputStr) {
@@ -215,13 +241,16 @@ int doTcommand(int addr, int opt) {
     case 59:
       statusState = opt;
       break;
+    case 60:
+      allState = opt;
+      break;
   }
 }
 
 void runDisplay(int option) {
   switch (option) {
     case 0: // Disabled
-      for (int i=0; i<=6; i++) {
+      for (int i=3; i<=9; i++) {
         digitalWrite(i, LOW);
       }
       break;
@@ -303,9 +332,146 @@ void displaySequencePingPong() {
 
     if (totalSteps % 7 == 0) // Increase/decrease the interval every 7 steps.
       displayInterval += pingPongIntervalDirection;
-    if (totalSteps % 400 == 0) // Every 150 steps, reverse the direction.
+    if (totalSteps % 150 == 0) // Every 150 steps, reverse the direction.
       pingPongIntervalDirection *= -1; 
   }
+}
+
+float mainSequenceStepColors[3][3] = {
+  { 1, 0, 0 },
+  { 0, 1, 0 },
+  { 0, 0, 1 }
+};
+
+void mainSequencePattern(int steps[][9], int stepCount, float colors[][3], int colorCount, bool pingPong) {
+  static int step = 0;
+  static int stepDir = 1;
+  if (!pingPong) stepDir = 1;
+  
+  currentTime = millis();
+
+  if (currentTime - mainPause > mainInterval) {
+    mainPause = currentTime;
+    step += stepDir;
+    if (step > stepCount - 1 || step < 0) {
+      if (pingPong) {
+        stepDir *= -1;
+        step += stepDir * 2; // Keeping it in bounds      
+        if (step > stepCount - 1) step = stepCount - 1;
+      } else {
+        stepDir = 1;
+        step = 0;
+      }
+    }
+  }
+
+  for (int i=0; i<9; i++) {
+    bool isOn = steps[step][i];
+    float* color = colors[step % colorCount];
+    setColor(i + 3, color[0] * isOn, color[1] * isOn, color[2] * isOn);
+  }
+}
+
+void mainSequenceRowsHorizontal() {
+  int steps[3][9] = {
+    { 1, 1, 1,
+      0, 0, 0,
+      0, 0, 0 },
+    { 0, 0, 0,
+      1, 1, 1,
+      0, 0, 0 },
+    { 0, 0, 0,
+      0, 0, 0,
+      1, 1, 1 }
+  };
+  
+  mainSequencePattern(steps, 3, mainSequenceStepColors, 3, true);
+}
+void mainSequenceRowsVertical() {
+  int steps[3][9] = {
+    { 1, 0, 0,
+      0, 0, 1,
+      1, 0, 0 },
+    { 0, 1, 0,
+      0, 1, 0,
+      0, 1, 0 },
+    { 0, 0, 1,
+      1, 0, 0,
+      0, 0, 1 },
+  };
+  
+  mainSequencePattern(steps, 3, mainSequenceStepColors, 3, true);
+}
+void mainSequenceRowsDiagonal() {
+  int steps[][9] = {
+    { 1, 0, 0,
+      0, 0, 0,
+      0, 0, 0 },
+    { 0, 1, 0,
+      0, 0, 1,
+      0, 0, 0 },
+    { 0, 0, 1,
+      0, 1, 0,
+      1, 0, 0 },
+    { 0, 0, 0,
+      1, 0, 0,
+      0, 1, 0 },
+    { 0, 0, 0,
+      0, 0, 0,
+      0, 0, 1 },
+  };
+  
+  mainSequencePattern(steps, 5, mainSequenceStepColors, 3, true);
+}
+
+void mainSequenceAlernate() {
+  int steps[][9] = {
+    { 1, 0, 1,
+      0, 1, 0,
+      1, 0, 1 },
+    { 0, 1, 0,
+      1, 0, 1,
+      0, 1, 0 }
+  };
+
+  float colors[][3] = {
+    { 1, 1, 0 }, 
+    { 1, 0, 0 }
+  };
+  
+  mainSequencePattern(steps, 2, colors, 2, true);
+}
+
+void mainSequenceCircle() {
+  int steps[8][9] = {
+    { 1, 0, 0,
+      0, 1, 0,
+      0, 0, 0 },
+    { 0, 1, 0,
+      0, 1, 0,
+      0, 0, 0 },
+    { 0, 0, 1,
+      0, 1, 0,
+      0, 0, 0 },
+    { 0, 0, 0,
+      1, 1, 0,
+      0, 0, 0 },
+    { 0, 0, 0,
+      0, 1, 0,
+      0, 0, 1 },
+    { 0, 0, 0,
+      0, 1, 0,
+      0, 1, 0 },
+    { 0, 0, 0,
+      0, 1, 0,
+      1, 0, 0 },
+    { 0, 0, 0,
+      0, 1, 1,
+      0, 0, 0 },
+  };
+
+  mainSequencePattern(steps, 8, mainSequenceStepColors, 2, false);
+  setColor(7, 1, 1, 1);
 }
 
 void mainSequenceRandom() {
@@ -342,21 +508,34 @@ void runEyes(int option) {
         eyesPixelColors[RIGHT_EYE][1] = 0;
         eyesPixelColors[RIGHT_EYE][2] = 0;
         break;
-      case 1:  // Blue state
+      case 1:
+        static int blink = 0;
+        blink = !blink;
+        if (blink) {
+          eyesPixelColors[LEFT_EYE][0] = 1;
+          eyesPixelColors[LEFT_EYE][1] = 1;
+          eyesPixelColors[LEFT_EYE][2] = 1;
+
+          eyesPixelColors[RIGHT_EYE][0] = 0;
+          eyesPixelColors[RIGHT_EYE][1] = 0;
+          eyesPixelColors[RIGHT_EYE][2] = 0; 
+        } else {
+          eyesPixelColors[LEFT_EYE][0] = 0;
+          eyesPixelColors[LEFT_EYE][1] = 0;
+          eyesPixelColors[LEFT_EYE][2] = 0;
+
+          eyesPixelColors[RIGHT_EYE][0] = 1;
+          eyesPixelColors[RIGHT_EYE][1] = 1;
+          eyesPixelColors[RIGHT_EYE][2] = 1;          
+        }
+        break; 
+      case 2:  // Blue state
         eyesPixelColors[LEFT_EYE][0] = 0;
         eyesPixelColors[LEFT_EYE][1] = 0;
         eyesPixelColors[LEFT_EYE][2] = 1;
         eyesPixelColors[RIGHT_EYE][0] = 0;
         eyesPixelColors[RIGHT_EYE][1] = 0;
         eyesPixelColors[RIGHT_EYE][2] = 1;
-        break;
-      case 2:  // Yellow state
-        eyesPixelColors[LEFT_EYE][0] = 1;
-        eyesPixelColors[LEFT_EYE][1] = 1;
-        eyesPixelColors[LEFT_EYE][2] = 0;
-        eyesPixelColors[RIGHT_EYE][0] = 1;
-        eyesPixelColors[RIGHT_EYE][1] = 1;
-        eyesPixelColors[RIGHT_EYE][2] = 0;
         break;
       case 3: // Random state
         eyesPixelColors[LEFT_EYE][0]  = ((float) (rand() % 255)) / 128; // Red
@@ -367,6 +546,7 @@ void runEyes(int option) {
         eyesPixelColors[RIGHT_EYE][1] = ((float) (rand() % 255)) / 128; // Green
         eyesPixelColors[RIGHT_EYE][2] = ((float) (rand() % 255)) / 128; // Blue
         break;
+         
     }
   }
 
@@ -418,17 +598,30 @@ void statusSequenceBlink() {
 }
 
 void runMain(int option) {
+  mainInterval = 250;
   switch (option) {
     case 0:  // Disabled
       return;
-    case 1:
-      mainSequenceRandom();
+    case 1: 
+      mainInterval = 100;
+      mainSequenceRowsHorizontal();
       break;
+    case 2: 
+      mainInterval = 100;
+      mainSequenceRowsVertical(); 
+      break;
+    case 3: 
+      mainInterval = 50;
+      mainSequenceRowsDiagonal();
+      break;
+    case 4: mainSequenceAlernate(); break;
+    case 5: mainSequenceCircle(); break;
+    case 6: mainSequenceRandom(); break;
   }
 }
 
 void setColor(int pixel, float r, float g, float b) {
-#define COLOR_MAX 32  // Lowered from 255 to 32 because too bright
+#define COLOR_MAX 128  // Lowered from 255 to 32 because too bright
   pixels.setPixelColor(
     pixel,
     pixels.Color((int)r * COLOR_MAX, (int)g * COLOR_MAX, (int)b * COLOR_MAX));
