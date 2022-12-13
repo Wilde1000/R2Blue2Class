@@ -25,11 +25,16 @@ Status  - device 59
 
 Main states:
   000 - Disabled
-  001 - Random
+  001 - Horizontal ping pong
+  002 - Vertical ping pong
+  003 - Diagonal ping pong
+  004 - Alternate
+  005 - Circle
+  006 - Random
 Eye states:
   000 - Disabled
-  001 - Blue
-  002 - Yellow
+  001 - Toggle on/off, white
+  002 - Blue
   003 - Random
 Status states:
   000 - Disabled
