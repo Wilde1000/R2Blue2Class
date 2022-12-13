@@ -164,6 +164,7 @@ void setup() {
   digitalWrite(OE_PIN, LOW);
   leds = 0;
   updateShiftRegister();
+  
 }
 
 
@@ -600,6 +601,7 @@ byte P_Raise() {
   static int step = 0;
   switch (step) {
     case 0:  //Move lift up
+      Serial2.write("F60T001\n");
       if (motorUp(3)) step = 1;
       break;
     case 1:
@@ -627,7 +629,11 @@ byte P_Lower() {
     case 1:
       if (motorDown(3)) step = 2;
       break;
-    case 2:  //Final cleanup and return 1 for a job well done
+    case 2:
+      Serial2.write("F60T000\n");
+      step = 3;
+      break;
+    case 3:  //Final cleanup and return 1 for a job well done
       step = 0;
       return 1;
       break;
@@ -639,24 +645,22 @@ byte P_Lower() {
 //PLift is the fifth thread of seven threads in this program.  It handles all interactions with the
 //Periscope.  It is controlled by the periscope_State.
 void PLift(int option) {
-  static int plstate=0;
+  static int plstate = 0;
   //Serial.println("Light saber");
   switch (option) {
     case 0:
       //default - No Action
-      if (!digitalRead(P_BOT)){
-         pLights(0);
-         plstate=0;
-      }else{
-        pLights(1);
-        plstate=1;
-      }                  
-      return 0;
+      return;
+      break;
     case 1:  //Raise Periscope
+      pLights(1);
       if (P_Raise() == 1) periscope_State = 0;
       break;
     case 2:  //lower Periscope
-      if (P_Lower() == 1) periscope_State = 0;
+      if (P_Lower() == 1) {
+        periscope_State = 0;
+        pLights(0);
+      }
       break;
   }
 }
@@ -664,10 +668,10 @@ void PLift(int option) {
 void pLights(int num) {
   switch (num) {
     case 0:  //Periscope Lights off
-      Serial2.write("F60T001\n");
+      Serial2.write("F60T002\n");
       break;
     case 1:  //Periscope Light on defalult value
-      Serial2.write("F60T002\n");
+      Serial2.write("F60T001\n");
       break;
   }
   return;
