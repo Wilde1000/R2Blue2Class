@@ -1,5 +1,5 @@
 /*R2 Lift System program
-Written by Gold FTC comp. Tech*/
+Written by Gold and Blue FTC comp. Tech*/
 /************************************************
 *               Included Libraries              *
 *************************************************/
@@ -109,6 +109,7 @@ long int zPrev_millis = current_millis;
 long int z_raise_millis = current_millis;
 long int z_lights_pmillis = current_millis;
 long int bmPrev_millis = current_millis;
+long int p_millis = current_millis;
 int zInterval = 50;
 int z_raise_int = 100;
 int z_lights_int = 50;
@@ -164,7 +165,6 @@ void setup() {
   digitalWrite(OE_PIN, LOW);
   leds = 0;
   updateShiftRegister();
-  
 }
 
 
@@ -436,7 +436,55 @@ void LFLift(int option) {
     case 2:  //lower Life Form Scanner
       if (LF_Lower() == 1) lifeForm_State = 0;
       break;
+    case 3:  //lower Life Form Scanner
+      LF_Alt_Raise();
+      break;
   }
+  return;
+}
+int LF_Alt_Raise() {
+  static int step = 0;
+  static byte dir = 0;
+  static byte hall_hit = 0;
+  switch (step) {
+    case 0:  //Move lift up
+      if (motorUp(5)) step = 1;
+      break;
+    case 1:
+      if (dir) {
+        lfServo.write(135);
+      } else {
+        lfServo.write(45);
+      }
+      step = 2;
+      break;
+
+    case 2:
+      current_millis = millis();
+      if (current_millis - p_millis > 1000) {
+        p_millis = current_millis;
+        step = 3;
+        hall_hit = 0;
+      }
+      break;
+    case 3:
+      if (digitalRead(LF_HALL) == LOW && hall_hit == 0) {
+        hall_hit = 1;
+        lfServo.write(90);
+        dir = !dir;
+        step = 4;
+      }
+      break;  
+    case 4:
+      current_millis = millis();
+      if (current_millis - p_millis > 200) {
+        p_millis = current_millis;
+        step = 1;
+        
+      }
+      break;          
+  }
+  return 0;
 }
 
 
@@ -662,17 +710,66 @@ void PLift(int option) {
         pLights(0);
       }
       break;
+    case 3:  // Alternate rotation
+      P_Alt_Raise();
+      break;
   }
+}
+
+int P_Alt_Raise() {
+  static int step = 0;
+  static byte dir = 0;
+  static byte hall_hit = 0;
+  switch (step) {
+    case 0:  //Move lift up
+      Serial2.write("F60T001\n");
+      if (motorUp(3)) step = 1;
+      break;
+    case 1:
+      if (dir) {
+        perServo.write(135);
+      } else {
+        perServo.write(45);
+      }
+      step = 2;
+      break;
+
+    case 2:
+      current_millis = millis();
+      if (current_millis - p_millis > 1000) {
+        p_millis = current_millis;
+        step = 3;
+        hall_hit = 0;
+      }
+      break;
+    case 3:
+      if (digitalRead(P_HALL) == LOW && hall_hit == 0) {
+        hall_hit = 1;
+        perServo.write(90);
+        dir = !dir;
+        step = 4;
+      }
+      break;  
+    case 4:
+      current_millis = millis();
+      if (current_millis - p_millis > 200) {
+        p_millis = current_millis;
+        step = 1;
+        
+      }
+      break;          
+  }
+  return 0;
 }
 
 void pLights(int num) {
   switch (num) {
     case 0:  //Periscope Lights off
       Serial2.write("F60T002\n");
-      break;
+      return;
     case 1:  //Periscope Light on defalult value
       Serial2.write("F60T001\n");
-      break;
+      return;
   }
   return;
 }
