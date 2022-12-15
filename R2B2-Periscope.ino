@@ -33,7 +33,7 @@ Main states:
   006 - Random
 Eye states:
   000 - Disabled
-  001 - Toggle on/off, white
+  001 - Toggle on/off
   002 - Blue
   003 - Random
 Status states:
@@ -517,8 +517,8 @@ void runEyes(int option) {
         static int blink = 0;
         blink = !blink;
         if (blink) {
-          eyesPixelColors[LEFT_EYE][0] = 1;
-          eyesPixelColors[LEFT_EYE][1] = 1;
+          eyesPixelColors[LEFT_EYE][0] = 0;
+          eyesPixelColors[LEFT_EYE][1] = 0;
           eyesPixelColors[LEFT_EYE][2] = 1;
 
           eyesPixelColors[RIGHT_EYE][0] = 0;
@@ -529,8 +529,8 @@ void runEyes(int option) {
           eyesPixelColors[LEFT_EYE][1] = 0;
           eyesPixelColors[LEFT_EYE][2] = 0;
 
-          eyesPixelColors[RIGHT_EYE][0] = 1;
-          eyesPixelColors[RIGHT_EYE][1] = 1;
+          eyesPixelColors[RIGHT_EYE][0] = 0;
+          eyesPixelColors[RIGHT_EYE][1] = 0;
           eyesPixelColors[RIGHT_EYE][2] = 1;          
         }
         break; 
@@ -608,25 +608,25 @@ void runMain(int option) {
     case 0:  // Disabled
       return;
     case 1: 
-      mainInterval = 100;
-      mainSequenceRowsHorizontal();
+      mainInterval = 75;
+      mainSequenceRowsDiagonal();
       break;
     case 2: 
       mainInterval = 100;
-      mainSequenceRowsVertical(); 
+      mainSequenceRowsHorizontal();
       break;
     case 3: 
-      mainInterval = 50;
-      mainSequenceRowsDiagonal();
+      mainInterval = 100;
+      mainSequenceRowsVertical(); 
       break;
     case 4: mainSequenceAlernate(); break;
-    case 5: mainSequenceCircle(); break;
-    case 6: mainSequenceRandom(); break;
+    case 5: mainSequenceCircle();   break;
+    case 6: mainSequenceRandom();   break;
   }
 }
 
 void setColor(int pixel, float r, float g, float b) {
-#define COLOR_MAX 128  // Lowered from 255 to 32 because too bright
+#define COLOR_MAX 255  // Lowered from 255 to 32 because too bright
   pixels.setPixelColor(
     pixel,
     pixels.Color((int)r * COLOR_MAX, (int)g * COLOR_MAX, (int)b * COLOR_MAX));
