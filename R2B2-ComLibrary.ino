@@ -4,9 +4,9 @@ R2-Blue2.
 
 The command structure is as follows:
 
-    Element 0 - MPU Code
-    Element 1, 2 - two digit Integer representing the device
-    Element 3 - one char command code
+    Element 0 - MPU Code - Single Character indicating the Microprocessor Unit
+    Element 1, 2 - two digit Integer representing the device attached to the MPU
+    Element 3 - one character command code
     Element 4 - ?  option
 
     MPU Codes:
@@ -37,7 +37,7 @@ The command structure is as follows:
 */
 
 #define CMD_MAX_LENGHT 64  //Defines max command Length - same as serial buffer
-#define MPU E  //Defines the MPU code for the program
+#define MPU D  //Defines the MPU code for the program
 
 int dev_option, dev_address;
 char dev_MPU, dev_command;
