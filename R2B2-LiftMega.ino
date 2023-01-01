@@ -7,6 +7,11 @@ Written by Gold and Blue FTC comp. Tech*/
 #include <Adafruit_PWMServoDriver.h>
 #include <Servo.h>
 Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
+#include <Adafruit_NeoPixel.h>
+#include <time.h>
+#include <stdlib.h>
+
+
 
 /************************************************
 *               Macro Definitions               *
@@ -15,6 +20,8 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 #define OSCIL_FREQ 27000000
 #define MPU 'E'
 #define CMD_MAX_LENGTH 63
+#define HOLO_LED 1
+
 //define Adafruit PWM servo Pins and Limits
 
 #define Z_ROT 1
@@ -71,6 +78,22 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 //define Cont. Rotation servo pins
 #define P_ROT 12
 #define LF_ROT 13
+//define Holoprojector servo pins
+#define TOP_HOLO1 22
+#define TOP_HOLO2 23
+#define FRT_HOLO1 24
+#define FRT_HOLO2 25
+#define BCK_HOLO1 26
+#define BCK_HOLO2 27
+
+//define Holo Light pins
+#define TOP_HOLO_LGT 28
+#define FRT_HOLO_LGT 29
+#define BCK_HOLO_LGT 30
+
+
+
+
 //define the Output Enable Pin for the Adafruit servo driver
 #define OE_PIN 34
 //define Bad Motivator 74hc595 pins
@@ -97,56 +120,66 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 /************************************************
 *                Global Variables               *
 *************************************************/
-Servo perServo;
-Servo lfServo;
-//We will Be using a multidimensional to control the lift system
-//The following elements are contained in each device array:
-/*  Element 0 - Motor 1 pin
-    Element 1 - Motor 2 pin
-    Element 2 - Top Limit Switch pin
-    Element 3 - Bottem Limit Switch pin
-    Element 4 - Servo 1 Adafruit pin (-1 if none)
-    Element 5 - Servo 2 Adafruit pin (-1 if none)
-    Element 6 - Hall Effect  pin (-1 if none)
-    Element 7 - Pie Servo  pin (-1 if none)   */
+//Neo-Pixel Objects
+Adafruit_NeoPixel bHolo(HOLO_LED, TOP_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Back Holo Light
+Adafruit_NeoPixel fHolo(HOLO_LED, FRT_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Front Holo Light
+Adafruit_NeoPixel tHolo(HOLO_LED, BCK_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Top Holo Light
+
+byte leds = 0;  //Contains LED pattern as a 8-bit number
+
+char cmdStr[64];  //Contains the incoming message from Serial0
+char cmdStr1[64]; //Contains the incoming message from Serial1
+char dev_MPU;     //Contains the MPU code from incoming serial message
+char dev_cmd;     //Contains the command code from the incoming serial message
+
+int bad_motive_state = 0;  //Contains current state for Bad Motivator
+int bm_int = 75;           //Delay interval for the Bad Motivator lights (keep under 100)
+int curr_holo_color=13;    //Contains current color code for the holoprojectors
+int dev_addr;              //Device address received from Serial interface
+int dev_opt;               //Device option received from the Serial interface
+int holo_speed;            //Holds the current holo timeout speed.
+int holo_state=0;          //Contains current state for the holoprojectors
+int life_form_state = 0;   //Contains current state for the life form scanner
+int light_saber_state = 0; //Contains current state for the Light Saber lift
+int periscope_state = 0;   //Contains current state for the Periscope
+int seq_state = 1;         //Contains current state for the Panel Sequencer
+int z_flash_count = 0;     //Contains current number of Zapper pulses
+int z_int = 50;            //Contains current zapper pulse timeout
+int z_raise_int = 100;     //Contains the raise timeout for the Zapper
+int z_state = 0;           //Contains the current step for the Zapper
+int zapper_state = 0;      //Contains the current state for the Zapper
 
 
-int zapper[8] = { Z_IN1, Z_IN2, Z_TOP, Z_BOT, Z_ROT, Z_EXT, -1, Z_PIE };
-int lSaber[8] = { LS_IN1, LS_IN2, LS_TOP, LS_BOT, -1, -1, -1, LS_PIE };
-int periscope[8] = { P_IN1, P_IN2, P_TOP, P_BOT, -1, -1, P_HALL, -1 };
+
+//integer Arrays
 int badMotive[8] = { BM_IN1, BM_IN2, BM_TOP, BM_BOT, -1, -1, -1, BM_PIE };
 int lifeForm[8] = { LF_IN1, LF_IN2, LF_TOP, LF_BOT, -1, -1, LF_HALL, LF_PIE };
 int lifts[6][8];
+int lSaber[8] = { LS_IN1, LS_IN2, LS_TOP, LS_BOT, -1, -1, -1, LS_PIE };
+int periscope[8] = { P_IN1, P_IN2, P_TOP, P_BOT, -1, -1, P_HALL, -1 };
 int servoLmt[16][3];
-char cmdStr[64];
-char cmdStr1[64];
-
-byte leds = 0;
-long int current_millis = millis();
-long int zPrev_millis = current_millis;
-long int z_raise_millis = current_millis;
-long int z_lights_pmillis = current_millis;
-long int bmPrev_millis = current_millis;
-long int p_millis = current_millis;
-int zInterval = 50;
-int z_raise_int = 100;
-int z_lights_int = 50;
-int bmInterval = 75;
-int zState = 0;
-int zFlashCount = 0;
-char dev_MPU, dev_cmd;
-int dev_addr, dev_opt;
-int allLifts_State = 0;
-int zapper_State = 0;
-int lSaber_State = 0;
-int periscope_State = 0;
-int badMotive_State = 0;
-int lifeForm_State = 0;
-int seq_State = 1;
-long int seq_Timer=current_millis;
-uint16_t seq_Timeout;
+int zapper[8] = { Z_IN1, Z_IN2, Z_TOP, Z_BOT, Z_ROT, Z_EXT, -1, Z_PIE };
 
 
+long int current_time = millis();  //Contains current time
+long int z_timer = current_time;   //Holds the zapper flash timer
+long int z_raise_timer = current_time; //Holds the zapper raise timer
+long int bm_timer = current_time;  //Holds the timer for bad motivator lights
+long int p_timer = current_time;   //Holds the rotational timer for the Periscope
+long int seq_timer=current_time;   //Holds the sequence step timer for the Panel Sequencer
+long int holo_timer=current_time;  //Holds the holo random movement timer
+
+//Servo Objects
+Servo bh1;  //Back Holoprojector Servo 1
+Servo bh2;  //Back Holoprojector Servo 2
+Servo fh1;  //Front Holoprojector Servo 1
+Servo fh2;  //Front Holoprojector Servo 2
+Servo lfServo;  //Life Form Continous Rotation Servo
+Servo perServo;  //Periscope Continous Rotation Servo
+Servo th1;  //Top Holoprojector Servo 1
+Servo th2;  //Top Holoprojector Servo 2
+
+uint16_t seq_Timeout;   //Holds the sequence step timeout for the Panel Sequencer (must be a 16 bit integer)
 
 
 /***********************************************
@@ -371,14 +404,38 @@ const uint16_t panel_marching_ants [][11] PROGMEM = {
 {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 };
 
+//  Color Sequences stored in Program Memory
+const uint16_t np_color[][3] PROGMEM ={
+  {  0,   0,   0}, //Off - 0
+  {255,   0,   0}, //Red - 1
+  {255,   0, 128}, //Rose - 2
+  {255,   0, 255}, //Magenta - 3
+  {128,   0, 255}, //Violet - 4
+  {  0,   0, 255}, //Blue - 5
+  {  0, 128, 255}, //Azure - 6
+  {  0, 255, 255}, //Cyan - 7
+  {  0, 255, 128}, //Spring Green - 8
+  {  0, 255,   0}, //Green - 9
+  {128, 255,   0}, //Chartreuse - 10
+  {255, 255,   0}, //Yellow - 11
+  {255, 128,   0}, //Orange - 12
+  {255, 255, 255} //White - 13
+};
 
 void setup() {
-  Serial.begin(9600);
-  Serial1.begin(9600);
-  Serial2.begin(9600);
+  Serial.begin(9600);  //Connection with controller Arduino
+  Serial1.begin(9600); //Connection with Body Arduino
+  Serial2.begin(9600); //Connection with Periscope
+  Serial3.begin(2400);  //Teeces Connection
   servoControl.begin();
   servoControl.setOscillatorFrequency(OSCIL_FREQ);
   servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
+  bHolo.begin();
+  tHolo.begin();
+  fHolo.begin();
+  bHolo.clear();
+  fHolo.clear();
+  tHolo.clear();
   int x;
   for (x = 0; x <= 7; x++) lifts[1][x] = zapper[x];
   for (x = 0; x <= 7; x++) lifts[2][x] = lSaber[x];
@@ -399,6 +456,13 @@ void setup() {
   //Attach the servo objects to pins
   perServo.attach(P_ROT);
   lfServo.attach(LF_ROT);
+  th1.attach(TOP_HOLO1);
+  th2.attach(TOP_HOLO2);
+  fh1.attach(FRT_HOLO1);
+  fh2.attach(FRT_HOLO2);
+  bh1.attach(BCK_HOLO1);
+  bh2.attach(BCK_HOLO2);
+  
   //set the Adafruit Servo Driver OE pin to output
   pinMode(OE_PIN, OUTPUT);
   //set 74HC595 pins to output
@@ -417,42 +481,15 @@ void setup() {
 void loop() {
   checkSerial();             //Check Serial 0 for commands
   checkSerial1();            //Check Serial 1 for commands
-  allLifts(allLifts_State);  //Run actions on all lifts if any
-  ZapLift(zapper_State);     // Run actions on the Zapper if any
-  LSLift(lSaber_State);      //Run actions on the Light Saber if any
-  PLift(periscope_State);    //Run actions on the Periscope if any
-  BMLift(badMotive_State);   //Run actions on the Bad Motivator if any
-  LFLift(lifeForm_State);    //Run actions on the Life Form Scanner if any
-  Sequencer(seq_State);     //Run panel and holo sequences
+  ZapLift(zapper_state);     // Run actions on the Zapper if any
+  LSLift(light_saber_state);      //Run actions on the Light Saber if any
+  PLift(periscope_state);    //Run actions on the Periscope if any
+  BMLift(bad_motive_state);   //Run actions on the Bad Motivator if any
+  LFLift(life_form_state);    //Run actions on the Life Form Scanner if any
+  Sequencer(seq_state);     //Run panel sequences
+  Holos(holo_state);        //Run Holo actions
 }
 
-//The allLifts function does three things depending on the opt option
-//  0 - AllLifts is disabled (default); 1 - All lifts are moved up; 2 - All lifts are moved down;
-void allLifts(int opt) {
-  switch (opt) {
-    case 0:  //allLifts disabled
-      return;
-      break;
-    case 1:  //All Lifts up
-      for (int x = 1; x < 6; x++) {
-        motorUp(x);
-      }
-      break;
-    case 2:  //All lifts down
-      for (int x = 1; x < 6; x++) {
-        motorDown(x);
-      }
-      break;
-    case 3:  //All lifts up sequentially
-      if (motorUp(1) && motorUp(2) && motorUp(3) && motorUp(4) && motorUp(5)) allLifts_State = 0;
-      break;
-    case 4:  //All lifts down sequentially
-      if (motorDown(1) && motorDown(2) && motorDown(3) && motorDown(4) && motorDown(5)) allLifts_State = 0;
-      break;
-  }
-
-  return;
-}
 
 //BM_Raise raises the Bad motivator and returns a 0 while rising and a 1 when raised
 byte BM_Raise() {
@@ -495,7 +532,7 @@ byte BM_Lower() {
 
 
 //BMLift is the sixth thread of seven threads in this program.  It handles all interactions with the
-//Bad Motivator.  It is controlled by the badMotive_State.
+//Bad Motivator.  It is controlled by the bad_motive_state.
 void BMLift(int option) {
   switch (option) {
     case 0:
@@ -504,10 +541,10 @@ void BMLift(int option) {
       return 0;
       break;
     case 1:  //Raise LSaber
-      if (BM_Raise() == 1) badMotive_State = 0;
+      if (BM_Raise() == 1) bad_motive_state = 0;
       break;
     case 2:  //Light Saber down
-      if (BM_Lower() == 1) badMotive_State = 0;
+      if (BM_Lower() == 1) bad_motive_state = 0;
       break;
   }
 }
@@ -517,9 +554,9 @@ void BMLift(int option) {
 //the eight lights with three pins. Passing a 0 to the function turns the ligts off, a 1 turns them on.
 void bmLights(int num) {
   if (num) {
-    current_millis = millis();
-    if (current_millis - bmPrev_millis > bmInterval) {
-      bmPrev_millis = current_millis;
+    current_time = millis();
+    if (current_time - bm_timer > bm_int) {
+      bm_timer = current_time;
       leds = random(0, 255);
       updateShiftRegister();
     }
@@ -608,26 +645,96 @@ void checkSerial1() {
 int doTcommand(int addr, int opt) {
   Serial.println("T command");
   switch (addr) {
-    case 50:
-      allLifts_State = opt;
-      break;
     case 51:
-      zapper_State = opt;
+      zapper_state = opt;
       break;
     case 52:
-      lSaber_State = opt;
+      light_saber_state = opt;
       break;
     case 53:
-      periscope_State = opt;
+      periscope_state = opt;
       break;
     case 54:
-      badMotive_State = opt;
+      bad_motive_state = opt;
       break;
     case 55:
-      lifeForm_State = opt;
+      life_form_state = opt;
+      break;
+    case 80:
+      seq_state=opt;
+      break;
+    case 90: //Holoprojectors
+      holo_state = opt;
       break;
   }
 }
+
+//The doScommand handles all T commands sent from the parseCommand function
+int doScommand(int addr, int opt) {
+  Serial.println("T command");
+  switch (addr) {
+    case 80:
+      seq_state=opt;
+      break;
+    case 90: //Holoprojectors
+      if(opt<14)curr_holo_color=opt;
+      break;
+  }
+}
+
+
+
+void Holos(int opt){
+  switch(opt){
+    case 0:
+      setHoloColor(0);
+      break;
+    case 1://Slow random motion
+      holo_speed=2000;
+      holoRandom();
+      break;
+    case 2://Standard random motion
+      holo_speed=1000;
+      holoRandom();
+      break;
+    case 3://fast random motion
+      holo_speed=500;
+      holoRandom();
+      break;
+
+  }
+  return;
+  
+}
+void setHoloColor(int num){
+  int red=pgm_read_word(&(np_color[num][0]));
+  int green=pgm_read_word(&(np_color[num][1]));
+  int blue=pgm_read_word(&(np_color[num][2]));
+  bHolo.setPixelColor(0,bHolo.Color(red, green, blue));
+  fHolo.setPixelColor(0,fHolo.Color(red, green, blue));
+  tHolo.setPixelColor(0,tHolo.Color(red, green, blue));
+  bHolo.show();
+  fHolo.show();
+  tHolo.show();
+  return;
+}
+
+
+
+void holoRandom(){
+  setHoloColor(curr_holo_color);
+  current_time=millis();
+  if(current_time-holo_timer>holo_speed){
+    holo_timer=current_time;
+    bh1.write(random(45,135));
+    bh2.write(random(45,135));
+    fh1.write(random(45,135));
+    fh2.write(random(45,135));
+    th1.write(random(45,135));
+    th2.write(random(45,135));
+  }
+}
+
 
 //Raises the Life Form Scanner - Return 0 while raising and 1 when raised
 byte LF_Raise() {
@@ -671,17 +778,17 @@ byte LF_Lower() {
   return 0;
 }
 //LFLift is the last thread of seven threads in this program.  It handles all interactions with the
-//Life Form Scanner.  It is controlled by the lifeForm_State.
+//Life Form Scanner.  It is controlled by the life_form_state.
 void LFLift(int option) {
   switch (option) {
     case 0:
       //default - No Action
       return 0;
     case 1:  //Raise Life Form Scanner
-      if (LF_Raise() == 1) lifeForm_State = 0;
+      if (LF_Raise() == 1) life_form_state = 0;
       break;
     case 2:  //lower Life Form Scanner
-      if (LF_Lower() == 1) lifeForm_State = 0;
+      if (LF_Lower() == 1) life_form_state = 0;
       break;
     case 3:  //lower Life Form Scanner
       LF_Alt_Raise();
@@ -707,9 +814,9 @@ int LF_Alt_Raise() {
       break;
 
     case 2:
-      current_millis = millis();
-      if (current_millis - p_millis > 1000) {
-        p_millis = current_millis;
+      current_time = millis();
+      if (current_time - p_timer > 1000) {
+        p_timer = current_time;
         step = 3;
         hall_hit = 0;
       }
@@ -723,9 +830,9 @@ int LF_Alt_Raise() {
       }
       break;  
     case 4:
-      current_millis = millis();
-      if (current_millis - p_millis > 200) {
-        p_millis = current_millis;
+      current_time = millis();
+      if (current_time - p_timer > 200) {
+        p_timer = current_time;
         step = 1;
         
       }
@@ -773,7 +880,7 @@ byte LS_Lower() {
   return 0;
 }
 //LSLift is the fourth thread of seven threads in this program.  It handles all interactions with the
-//Light Saber Lift.  It is controlled by the lSaber_State.
+//Light Saber Lift.  It is controlled by the light_saber_state.
 void LSLift(int option) {
   //Serial.println("Light saber");
   switch (option) {
@@ -781,10 +888,10 @@ void LSLift(int option) {
       //default - No Action
       return 0;
     case 1:  //Raise LSaber
-      if (LS_Raise() == 1) lSaber_State = 0;
+      if (LS_Raise() == 1) light_saber_state = 0;
       break;
     case 2:  //Light Saber down
-      if (LS_Lower() == 1) lSaber_State = 0;
+      if (LS_Lower() == 1) light_saber_state = 0;
       break;
   }
 }
@@ -854,7 +961,18 @@ int parseCommand(char* input_str) {
   if (length < 2) goto deadCmd;  //not enough characters
   int mpu = input_str[pos];      //MPU is the first character
   if (!MPU == mpu) {             //if command is not for this MPU - send it on its way
-    //transmitCMD(MPU,mpu);
+    if(mpu=='@'){
+      for(int x=0; x<length; x++){
+        Serial3.write(input_str[x]);
+      }
+      Serial3.write('\r');
+    }
+    if(mpu=='F'){
+      for(int x=0; x<length; x++){
+        Serial2.write(input_str[x]);
+      }
+      Serial2.write('\r');
+    }
     return;
   }
   if ((mpu > 64 && mpu < 71) || mpu == '@') dev_MPU = mpu;
@@ -881,7 +999,7 @@ int parseCommand(char* input_str) {
       break;
     case 'S':
       if (!hasArgument) goto deadCmd;  // invalid, no argument after command
-      //doScommand(dev_addr, dev_opt);
+      doScommand(dev_addr, dev_opt);
       break;
     default:
       goto deadCmd;  // unknown command
@@ -938,7 +1056,7 @@ byte P_Lower() {
 
 
 //PLift is the fifth thread of seven threads in this program.  It handles all interactions with the
-//Periscope.  It is controlled by the periscope_State.
+//Periscope.  It is controlled by the periscope_state.
 void PLift(int option) {
   static int plstate = 0;
   //Serial.println("Light saber");
@@ -949,11 +1067,11 @@ void PLift(int option) {
       break;
     case 1:  //Raise Periscope
       pLights(1);
-      if (P_Raise() == 1) periscope_State = 0;
+      if (P_Raise() == 1) periscope_state = 0;
       break;
     case 2:  //lower Periscope
       if (P_Lower() == 1) {
-        periscope_State = 0;
+        periscope_state = 0;
         pLights(0);
       }
       break;
@@ -982,9 +1100,9 @@ int P_Alt_Raise() {
       break;
 
     case 2:
-      current_millis = millis();
-      if (current_millis - p_millis > 1000) {
-        p_millis = current_millis;
+      current_time = millis();
+      if (current_time - p_timer > 1000) {
+        p_timer = current_time;
         step = 3;
         hall_hit = 0;
       }
@@ -998,9 +1116,9 @@ int P_Alt_Raise() {
       }
       break;  
     case 4:
-      current_millis = millis();
-      if (current_millis - p_millis > 200) {
-        p_millis = current_millis;
+      current_time = millis();
+      if (current_time - p_timer > 200) {
+        p_timer = current_time;
         step = 1;
         
       }
@@ -1033,11 +1151,11 @@ void updateShiftRegister() {
 
 
 //ZapLift is the third thread of seven threads in this program.  It handles all interactions with the
-//Zapper.  It is controlled by the zapper_State.
+//Zapper.  It is controlled by the zapper_state.
 void ZapLift(int option) {
   static int step = 0;
   if (option == 7) setTimer(1, 250);
-  current_millis = millis();
+  current_time = millis();
   switch (option) {
     case 0:  //ZapLift state unchanged;
       step = 0;
@@ -1045,41 +1163,41 @@ void ZapLift(int option) {
       break;
     case 1:  //Raise lift
       if (Z_Raise()) {
-        zapper_State = 0;
+        zapper_state = 0;
         return;
       }
       break;
     case 2:  //Move Zapper to stored position
       if (Z_Lower()) {
-        zapper_State = 0;
+        zapper_state = 0;
         return;
       }
       break;
     case 3:  //Rotate Zapper Open
       moveServo(Z_ROT, Z_RMIN, Z_RMAX);
-      zapper_State = 0;
+      zapper_state = 0;
       break;
     case 4:  //Rotate Zapper closed
       moveServo(Z_ROT, Z_RMAX, Z_RMIN);
-      zapper_State = 0;
+      zapper_state = 0;
       break;
     case 5:  //Extend Zapper
       moveServo(Z_EXT, Z_EMIN, Z_EMAX);
-      zapper_State = 0;
+      zapper_state = 0;
       break;
     case 6:  //Fold Zapper
       moveServo(Z_EXT, Z_EMAX, Z_EMIN);
-      zapper_State = 0;
+      zapper_state = 0;
       break;
     case 7:  //Zap!
       if (ZapLights(1) == 1) {
         ZapLights(0);
-        zapper_State = 0;
+        zapper_state = 0;
       }
       break;
     case 8:  //Long Zap Seq
       if (zapSeq1() == 1) {
-        zapper_State = 0;
+        zapper_state = 0;
       }
       break;
   }
@@ -1089,32 +1207,32 @@ void ZapLift(int option) {
 //ZapLights operates the Zap light on the zapper. Pass a 0 to shut off and a positive number to run
 byte ZapLights(int num) {
   if (num) {
-    switch (zState) {
+    switch (z_state) {
       case 0:
-        current_millis = millis();
+        current_time = millis();
         digitalWrite(Z_LED, HIGH);  // sets the led HIGH
-        if (current_millis - zPrev_millis >= zInterval) {
-          zPrev_millis = current_millis;
-          zState = 1;
+        if (current_time - z_timer >= z_int) {
+          z_timer = current_time;
+          z_state = 1;
         }
         break;
       case 1:
-        current_millis = millis();
+        current_time = millis();
         digitalWrite(Z_LED, LOW);  // sets the led LOW
-        if (current_millis - zPrev_millis >= zInterval) {
-          zPrev_millis = current_millis;
-          zState = 2;
+        if (current_time - z_timer >= z_int) {
+          z_timer = current_time;
+          z_state = 2;
         }
         break;
       case 2:
-        current_millis = millis();
-        zFlashCount++;
-        if (zFlashCount == 8) {
-          zState = 0;
-          zFlashCount = 0;
+        current_time = millis();
+        z_flash_count++;
+        if (z_flash_count == 8) {
+          z_state = 0;
+          z_flash_count = 0;
           return 1;
         } else {
-          zState = 0;
+          z_state = 0;
         }
         break;
     }
@@ -1123,29 +1241,16 @@ byte ZapLights(int num) {
 }
 
 
-int setZLTimer(int num, int interval) {
-  if (num) {
-    current_millis = millis();
-    z_lights_pmillis = current_millis;
-    z_lights_int = interval;
-    return 0;
-  } else {
-    current_millis = millis();
-    if (current_millis - z_lights_pmillis > z_lights_int) return 1;
-    else return 0;
-  }
-}
-
 
 int setTimer(int num, int interval) {
   if (num) {
-    current_millis = millis();
-    z_raise_millis = current_millis;
+    current_time = millis();
+    z_raise_timer = current_time;
     z_raise_int = interval;
     return 0;
   } else {
-    current_millis = millis();
-    if (current_millis - z_raise_millis > z_raise_int) return 1;
+    current_time = millis();
+    if (current_time - z_raise_timer > z_raise_int) return 1;
     else return 0;
   }
 }
@@ -1336,7 +1441,7 @@ byte zapSeq1() {
       break;
     case 24:
       step = 0;
-      zapper_State = 0;
+      zapper_state = 0;
       return 1;
       break;
   }
@@ -1349,28 +1454,28 @@ void Sequencer(int opt) {
       return;
       break;
     case 1:
-      if (runSeq(panel_init)) seq_State = 0;
+      if (runSeq(panel_init)) seq_state = 0;
       break;
     case 2:
-      if (runSeq(panel_all_open)) seq_State = 0;
+      if (runSeq(panel_all_open)) seq_state = 0;
       break;
     case 3:
-      if (runSeq(panel_all_open_long)) seq_State = 0;
+      if (runSeq(panel_all_open_long)) seq_state = 0;
       break;
     case 4:
-      if (runSeq(panel_wave)) seq_State = 0;
+      if (runSeq(panel_wave)) seq_state = 0;
       break;
     case 5:
-      if (runSeq(panel_fast_wave)) seq_State = 0;
+      if (runSeq(panel_fast_wave)) seq_state = 0;
       break;
     case 6:
-      if (runSeq(panel_open_close_wave)) seq_State = 0;
+      if (runSeq(panel_open_close_wave)) seq_state = 0;
       break;
     case 7:
-      if (runSeq(panel_marching_ants)) seq_State = 0;
+      if (runSeq(panel_marching_ants)) seq_state = 0;
       break;
     case 8:
-      if (runSeq(panel_dance)) seq_State = 0;
+      if (runSeq(panel_dance)) seq_state = 0;
       break;
   }
   return;
@@ -1397,9 +1502,9 @@ int runSeq(uint16_t const sequence_array[][11]) {
     Serial.println();
     servo_moved=1;
   }
-  current_millis=millis();
-  if(current_millis-seq_Timer>seq_Timeout){
-    seq_Timer=current_millis;
+  current_time=millis();
+  if(current_time-seq_timer>seq_Timeout){
+    seq_timer=current_time;
     seq_step++;
     servo_moved=0;
   }
