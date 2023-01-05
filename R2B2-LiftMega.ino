@@ -33,35 +33,35 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 #define Z_EMIN 300
 #define Z_EMID 150
 #define Z_PIE 2
-#define Z_PMAX 600
-#define Z_PMIN 150
+#define Z_PMAX 125
+#define Z_PMIN 350
 #define LS_PIE 3
-#define LS_PMAX 600
-#define LS_PMIN 150
+#define LS_PMAX 400
+#define LS_PMIN 350
 #define BM_PIE 4
-#define BM_PMAX 600
-#define BM_PMIN 150
+#define BM_PMAX 400
+#define BM_PMIN 350
 #define LF_PIE 5
-#define LF_PMAX 600
-#define LF_PMIN 150
+#define LF_PMAX 400
+#define LF_PMIN 350
 #define DP1 6
-#define DP1_MIN 150
-#define DP1_MAX 600
+#define DP1_MIN 350
+#define DP1_MAX 400
 #define DP2 7
-#define DP2_MIN 150
-#define DP2_MAX 600
+#define DP2_MIN 350
+#define DP2_MAX 400
 #define DP3 8
-#define DP3_MIN 150
-#define DP3_MAX 600
+#define DP3_MIN 350
+#define DP3_MAX 400
 #define DP4 9
-#define DP4_MIN 150
-#define DP4_MAX 600
+#define DP4_MIN 350
+#define DP4_MAX 400
 #define DP5 10
-#define DP5_MIN 150
-#define DP5_MAX 600
+#define DP5_MIN 350
+#define DP5_MAX 400
 #define DP6 11
-#define DP6_MIN 150
-#define DP6_MAX 600
+#define DP6_MIN 350
+#define DP6_MAX 400
 
 
 //define Motor Pins
@@ -135,6 +135,7 @@ char dev_cmd;      //Contains the command code from the incoming serial message
 int bad_motive_state = 0;   //Contains current state for Bad Motivator
 int bm_int = 75;            //Delay interval for the Bad Motivator lights (keep under 100)
 int curr_holo_color = 13;   //Contains current color code for the holoprojectors
+int curr_tholo_color = 5;   //Contains current color code for the top holoprojector
 int dev_addr;               //Device address received from Serial interface
 int dev_opt;                //Device option received from the Serial interface
 int holo_speed;             //Holds the current holo timeout speed.
@@ -494,7 +495,7 @@ void loop() {
   BMLift(bad_motive_state);   //Run actions on the Bad Motivator if any
   LFLift(life_form_state);    //Run actions on the Life Form Scanner if any
   Sequencer(seq_state);       //Run panel sequences
-  Holos(holo_state);        //Run Holo actions
+  Holos(holo_state);          //Run Holo actions
 }
 
 
@@ -678,7 +679,7 @@ int doTcommand(int addr, int opt) {
 
 //The doScommand handles all T commands sent from the parseCommand function
 int doScommand(int addr, int opt) {
-  Serial.println("T command");
+  Serial.println("S command");
   switch (addr) {
     case 80:
       seq_state = opt;
@@ -694,11 +695,10 @@ int doScommand(int addr, int opt) {
 void Holos(int opt) {
   switch (opt) {
     case 0:
-      setHoloColor(0);
+      setHoloColor(0,0);
       break;
-    case 1:  //Turn on Top Holo
-      holo_speed = 2000;
-      
+    case 1:  //Turn on holos with current color
+      setHoloColor(curr_holo_color,0);      
       break;
     case 2:  //Standard random motion
       holo_speed = 1000;
@@ -711,23 +711,37 @@ void Holos(int opt) {
   }
   return;
 }
-void setHoloColor(int num) {
+void setHoloColor(int num, int holo) {
   int red = pgm_read_word(&(np_color[num][0]));
   int green = pgm_read_word(&(np_color[num][1]));
   int blue = pgm_read_word(&(np_color[num][2]));
-  bHolo.setPixelColor(0, bHolo.Color(red, green, blue));
-  fHolo.setPixelColor(0, fHolo.Color(red, green, blue));
-  tHolo.setPixelColor(0, tHolo.Color(red, green, blue));
-  bHolo.show();
-  fHolo.show();
-  tHolo.show();
-  return;
+  if (holo == 0) {
+    bHolo.setPixelColor(0, bHolo.Color(red, green, blue));
+    fHolo.setPixelColor(0, fHolo.Color(red, green, blue));
+    tHolo.setPixelColor(0, tHolo.Color(red, green, blue));
+    bHolo.show();
+    fHolo.show();
+    tHolo.show();
+    return;
+  }else if (holo==1){
+    tHolo.setPixelColor(0, tHolo.Color(red, green, blue));
+    tHolo.show();
+    return;
+  }else if (holo==2){
+    fHolo.setPixelColor(0, fHolo.Color(red, green, blue));
+    fHolo.show();
+    return;
+  }else {
+    bHolo.setPixelColor(0, bHolo.Color(red, green, blue));
+    bHolo.show();
+    return;
+  }  
 }
 
 
 
 void holoRandom() {
-  setHoloColor(curr_holo_color);
+  setHoloColor(curr_holo_color,0);
   current_time = millis();
   if (current_time - holo_timer > holo_speed) {
     holo_timer = current_time;
@@ -1027,7 +1041,7 @@ byte P_Raise() {
       if (motorUp(3)) step = 1;
       break;
     case 1:
-      perServo.write(179);
+      perServo.write(145);
       step = 2;
       break;
     case 2:
