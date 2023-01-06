@@ -17,7 +17,7 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 *               Macro Definitions               *
 *************************************************/
 #define SERVO_FREQ 50
-#define OSCIL_FREQ 27000000
+//#define OSCIL_FREQ 27000000
 #define MPU 'E'
 #define CMD_MAX_LENGTH 63
 #define HOLO_LED 1
@@ -33,35 +33,35 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 #define Z_EMIN 300
 #define Z_EMID 150
 #define Z_PIE 2
-#define Z_PMAX 125
-#define Z_PMIN 350
+#define Z_PMAX 400
+#define Z_PMIN 250
 #define LS_PIE 3
-#define LS_PMAX 400
-#define LS_PMIN 350
+#define LS_PMAX 250 //revisit
+#define LS_PMIN 400 //revisit
 #define BM_PIE 4
-#define BM_PMAX 400
-#define BM_PMIN 350
+#define BM_PMAX 475
+#define BM_PMIN 325
 #define LF_PIE 5
-#define LF_PMAX 400
-#define LF_PMIN 350
+#define LF_PMAX 475
+#define LF_PMIN 325
 #define DP1 6
-#define DP1_MIN 350
-#define DP1_MAX 400
+#define DP1_MIN 275 //done
+#define DP1_MAX 490 //done
 #define DP2 7
 #define DP2_MIN 350
 #define DP2_MAX 400
 #define DP3 8
-#define DP3_MIN 350
-#define DP3_MAX 400
+#define DP3_MIN 275 //done
+#define DP3_MAX 490 //done
 #define DP4 9
 #define DP4_MIN 350
 #define DP4_MAX 400
 #define DP5 10
-#define DP5_MIN 350
-#define DP5_MAX 400
+#define DP5_MIN 500
+#define DP5_MAX 350
 #define DP6 11
-#define DP6_MIN 350
-#define DP6_MAX 400
+#define DP6_MIN 310 //done
+#define DP6_MAX 400 //done
 
 
 //define Motor Pins
@@ -143,7 +143,7 @@ int holo_state = 0;         //Contains current state for the holoprojectors
 int life_form_state = 0;    //Contains current state for the life form scanner
 int light_saber_state = 0;  //Contains current state for the Light Saber lift
 int periscope_state = 0;    //Contains current state for the Periscope
-int seq_state = 1;          //Contains current state for the Panel Sequencer
+int seq_state = 0;          //Contains current state for the Panel Sequencer
 int z_flash_count = 0;      //Contains current number of Zapper pulses
 int z_int = 50;             //Contains current zapper pulse timeout
 int z_raise_int = 100;      //Contains the raise timeout for the Zapper
@@ -429,7 +429,7 @@ void setup() {
   Serial2.begin(9600);  //Connection with Periscope
   Serial3.begin(2400);  //Teeces Connection
   servoControl.begin();
-  servoControl.setOscillatorFrequency(OSCIL_FREQ);
+  //servoControl.setOscillatorFrequency(OSCIL_FREQ);
   servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
   bHolo.begin();
   tHolo.begin();
@@ -476,12 +476,11 @@ void setup() {
   digitalWrite(OE_PIN, LOW);
   leds = 0;
   updateShiftRegister();
-  tHolo.setPixelColor(0, tHolo.Color(0, 255, 0));
-  tHolo.show();
-  bHolo.setPixelColor(0, bHolo.Color(0, 255, 0));
-  bHolo.show();
-  fHolo.setPixelColor(0, fHolo.Color(0, 255, 0));
-  fHolo.show();
+  servoControl.setPWM(DP6,0,DP6_MAX);
+  delay(5000);
+  
+  servoControl.setPWM (DP6,0,DP6_MIN);
+
 }
 
 
@@ -504,7 +503,7 @@ byte BM_Raise() {
   static int step = 0;
   switch (step) {
     case 0:  //Open pie
-      moveServo(BM_PIE, BM_PMIN, BM_PMAX);
+      servoControl.setPWM(BM_PIE, 0, BM_PMAX);
       step = 1;
       break;
     case 1:  //Move lift up
@@ -527,7 +526,7 @@ byte BM_Lower() {
       if (motorDown(4)) step = 1;
       break;
     case 1:  //Close the pie
-      moveServo(BM_PIE, BM_PMAX, BM_PMIN);
+     servoControl.setPWM(BM_PIE, 0, BM_PMIN);
       step = 2;
       break;
     case 2:  //Final cleanup and return 1 for a job well done
@@ -760,6 +759,7 @@ byte LF_Raise() {
   static int step = 0;
   switch (step) {
     case 0:  //Move lift up
+      servoControl.setPWM(LF_PIE, 0, LF_PMAX);
       if (motorUp(5)) step = 1;
       break;
     case 1:
@@ -791,6 +791,7 @@ byte LF_Lower() {
       break;
     case 2:  //Final cleanup and return 1 for a job well done
       step = 0;
+      servoControl.setPWM(LF_PIE, 0, LF_PMIN);
       return 1;
       break;
   }
@@ -819,6 +820,7 @@ int LF_Alt_Raise() {
   static int step = 0;
   static byte dir = 0;
   static byte hall_hit = 0;
+servoControl.setPWM(LF_PIE, 0, LF_PMAX);  
   switch (step) {
     case 0:  //Move lift up
       if (motorUp(5)) step = 1;
@@ -865,7 +867,7 @@ byte LS_Raise() {
   static int step = 0;
   switch (step) {
     case 0:  //Open pie
-      moveServo(LS_PIE, LS_PMIN, LS_PMAX);
+      servoControl.setPWM(LS_PIE, 0, LS_PMAX);
       step = 1;
       break;
     case 1:  //Move lift up
@@ -888,7 +890,7 @@ byte LS_Lower() {
       if (motorDown(2)) step = 1;
       break;
     case 1:  //Close the pie
-      moveServo(LS_PIE, LS_PMAX, LS_PMIN);
+      servoControl.setPWM(LS_PIE, 0, LS_PMIN);
       step = 2;
     case 2:  //Final cleanup and return 1 for a job well done
       step = 0;
@@ -1295,7 +1297,7 @@ byte Z_Lower() {
       if (motorDown(1)) step = 4;
       break;
     case 4:  //Close the pie
-      moveServo(Z_PIE, Z_PMAX, Z_PMIN);
+     servoControl.setPWM(Z_PIE, 0, Z_PMIN);
       step = 5;
       break;
     case 5:  //Final cleanup and return 1 for a job well done
@@ -1310,7 +1312,7 @@ byte Z_Raise() {
   static int step = 0;
   switch (step) {
     case 0:  //Open pie
-      moveServo(Z_PIE, Z_PMIN, Z_PMAX);
+      servoControl.setPWM(Z_PIE, 0, Z_PMAX);
       step = 1;
       break;
     case 1:  //Move lift up
@@ -1343,7 +1345,7 @@ byte zapSeq1() {
   static int step = 0;
   switch (step) {
     case 0:  //Open pie
-      moveServo(Z_PIE, Z_PMIN, Z_PMAX);
+     servoControl.setPWM(Z_PIE, 0, Z_PMAX);
       step = 1;
       break;
     case 1:  //Raise Zapper
@@ -1458,7 +1460,7 @@ byte zapSeq1() {
       if (motorDown(1)) step = 23;
       break;
     case 23:  //Close Pie
-      moveServo(Z_PIE, Z_PMAX, Z_PMIN);
+      servoControl.setPWM(Z_PIE, 0, Z_PMIN);
       step = 24;
       break;
     case 24:
@@ -1506,7 +1508,7 @@ void Sequencer(int opt) {
 int runSeq(uint16_t const sequence_array[][11]) {
   static int seq_step = 0;
   static byte servo_moved = 0;
-  seq_Timeout = pgm_read_word(&(sequence_array[seq_step][0]));  // restart timer with step time value
+  seq_Timeout = pgm_read_word(&(sequence_array[seq_step][0]))*10;  // restart timer with step time value
   if (seq_Timeout == 0) {
     servo_moved = 0;
     seq_step = 0;
