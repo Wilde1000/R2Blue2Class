@@ -503,7 +503,7 @@ byte BM_Raise() {
   static int step = 0;
   switch (step) {
     case 0:  //Open pie
-      servoControl.setPWM(BM_PIE, 0, BM_PMAX);
+      moveServo(BM_PIE, BM_PMAX);
       step = 1;
       break;
     case 1:  //Move lift up
@@ -526,7 +526,7 @@ byte BM_Lower() {
       if (motorDown(4)) step = 1;
       break;
     case 1:  //Close the pie
-     servoControl.setPWM(BM_PIE, 0, BM_PMIN);
+     moveServo(BM_PIE, BM_PMIN);
       step = 2;
       break;
     case 2:  //Final cleanup and return 1 for a job well done
@@ -759,7 +759,7 @@ byte LF_Raise() {
   static int step = 0;
   switch (step) {
     case 0:  //Move lift up
-      servoControl.setPWM(LF_PIE, 0, LF_PMAX);
+      moveServo(LF_PIE, LF_PMAX);
       if (motorUp(5)) step = 1;
       break;
     case 1:
@@ -791,7 +791,7 @@ byte LF_Lower() {
       break;
     case 2:  //Final cleanup and return 1 for a job well done
       step = 0;
-      servoControl.setPWM(LF_PIE, 0, LF_PMIN);
+      moveServo(LF_PIE, LF_PMIN);
       return 1;
       break;
   }
@@ -820,7 +820,7 @@ int LF_Alt_Raise() {
   static int step = 0;
   static byte dir = 0;
   static byte hall_hit = 0;
-servoControl.setPWM(LF_PIE, 0, LF_PMAX);  
+moveServo(LF_PIE, LF_PMAX);  
   switch (step) {
     case 0:  //Move lift up
       if (motorUp(5)) step = 1;
@@ -867,7 +867,7 @@ byte LS_Raise() {
   static int step = 0;
   switch (step) {
     case 0:  //Open pie
-      servoControl.setPWM(LS_PIE, 0, LS_PMAX);
+      moveServo(LS_PIE, LS_PMAX);
       step = 1;
       break;
     case 1:  //Move lift up
@@ -890,7 +890,7 @@ byte LS_Lower() {
       if (motorDown(2)) step = 1;
       break;
     case 1:  //Close the pie
-      servoControl.setPWM(LS_PIE, 0, LS_PMIN);
+      moveServo(LS_PIE, LS_PMIN);
       step = 2;
     case 2:  //Final cleanup and return 1 for a job well done
       step = 0;
@@ -959,18 +959,13 @@ byte motorUp(int mtr) {
 }
 
 // Move servo from the passed from to the passed to
-void moveServo(int srvNo, int from, int to) {
-  if (to > from) {
-    for (int pulselen = from; pulselen < to; pulselen++) {
-      servoControl.setPWM(srvNo, 0, pulselen);
-    }
-  } else {
-    for (int pulselen = from; pulselen > to; pulselen--) {
-      servoControl.setPWM(srvNo, 0, pulselen);
-    }
+void moveServo(int srvNo, int pulse) {
+  digitalWrite(OE_PIN, LOW);
+  servoControl.setPWM(srvNo, 0, pulse);
 
-    return;
-  }
+  digitalWrite(OE_PIN, HIGH);
+  return;
+  
 }
 
 //The parseCommand takes the command from the buildCommand function and parses into its component parts - MPU, Address, Command and Option
@@ -1198,19 +1193,19 @@ void ZapLift(int option) {
       }
       break;
     case 3:  //Rotate Zapper Open
-      moveServo(Z_ROT, Z_RMIN, Z_RMAX);
+      moveServo(Z_ROT, Z_RMAX);
       zapper_state = 0;
       break;
     case 4:  //Rotate Zapper closed
-      moveServo(Z_ROT, Z_RMAX, Z_RMIN);
+      moveServo(Z_ROT, Z_RMIN);
       zapper_state = 0;
       break;
     case 5:  //Extend Zapper
-      moveServo(Z_EXT, Z_EMIN, Z_EMAX);
+      moveServo(Z_EXT, Z_EMAX);
       zapper_state = 0;
       break;
     case 6:  //Fold Zapper
-      moveServo(Z_EXT, Z_EMAX, Z_EMIN);
+      moveServo(Z_EXT, Z_EMIN);
       zapper_state = 0;
       break;
     case 7:  //Zap!
@@ -1286,18 +1281,18 @@ byte Z_Lower() {
       step = 1;
       break;
     case 1:  //Zapper folded
-      moveServo(Z_EXT, Z_EMAX, Z_EMIN);
+      moveServo(Z_EXT, Z_EMIN);
       step = 2;
       break;
     case 2:  //Rotate the Zapper
-      moveServo(Z_ROT, Z_RMAX, Z_RMIN);
+      moveServo(Z_ROT, Z_RMIN);
       step = 3;
       break;
     case 3:  //Move Motor
       if (motorDown(1)) step = 4;
       break;
     case 4:  //Close the pie
-     servoControl.setPWM(Z_PIE, 0, Z_PMIN);
+      moveServo(Z_PIE, Z_PMIN);
       step = 5;
       break;
     case 5:  //Final cleanup and return 1 for a job well done
@@ -1312,18 +1307,18 @@ byte Z_Raise() {
   static int step = 0;
   switch (step) {
     case 0:  //Open pie
-      servoControl.setPWM(Z_PIE, 0, Z_PMAX);
+      moveServo(Z_PIE, Z_PMAX);
       step = 1;
       break;
     case 1:  //Move lift up
       if (motorUp(1)) step = 2;
       break;
     case 2:  //Rotate the zapper
-      moveServo(Z_ROT, Z_RMIN, Z_RMAX);
+      moveServo(Z_ROT, Z_RMAX);
       step = 3;
       break;
     case 3:  //Extend the zapper
-      moveServo(Z_EXT, Z_EMIN, Z_EMAX);
+      moveServo(Z_EXT, Z_EMAX);
       step = 4;
       setTimer(1, 500);
       break;
@@ -1345,14 +1340,14 @@ byte zapSeq1() {
   static int step = 0;
   switch (step) {
     case 0:  //Open pie
-     servoControl.setPWM(Z_PIE, 0, Z_PMAX);
+     moveServo(Z_PIE, Z_PMAX);
       step = 1;
       break;
     case 1:  //Raise Zapper
       if (motorUp(1)) step = 2;
       break;
     case 2:  //Extend Zapper
-      moveServo(Z_EXT, Z_EMIN, Z_EMAX);
+      moveServo(Z_EXT, Z_EMAX);
       setTimer(1, 500);
       step = 3;
       break;
@@ -1367,8 +1362,8 @@ byte zapSeq1() {
       }
       break;
     case 5:  //Move Servo to zap Position 2
-      moveServo(Z_ROT, Z_RMIN, Z_RMID);
-      moveServo(Z_EXT, Z_EMAX, Z_EMID);
+      moveServo(Z_ROT, Z_RMID);
+      moveServo(Z_EXT, Z_EMID);
       setTimer(1, 500);
       step = 6;
       break;
@@ -1383,8 +1378,8 @@ byte zapSeq1() {
       }
       break;
     case 8:  //Move to position three
-      moveServo(Z_ROT, Z_RMID, Z_RMAX);
-      moveServo(Z_EXT, Z_EMID, Z_EMAX);
+      moveServo(Z_ROT, Z_RMAX);
+      moveServo(Z_EXT, Z_EMAX);
       setTimer(1, 500);
       step = 9;
       break;
@@ -1399,7 +1394,7 @@ byte zapSeq1() {
       }
       break;
     case 11:  //Move to position four
-      moveServo(Z_EXT, Z_EMAX, Z_EMID);
+      moveServo(Z_EXT, Z_EMID);
       setTimer(1, 500);
       step = 12;
       break;
@@ -1414,8 +1409,8 @@ byte zapSeq1() {
       }
       break;
     case 14:  //Move to position five
-      moveServo(Z_ROT, Z_RMAX, Z_RMID);
-      moveServo(Z_EXT, Z_EMID, Z_EMAX);
+      moveServo(Z_ROT, Z_RMID);
+      moveServo(Z_EXT, Z_EMAX);
       setTimer(1, 500);
       step = 15;
       break;
@@ -1430,8 +1425,8 @@ byte zapSeq1() {
       }
       break;
     case 17:  //Move to position six
-      moveServo(Z_ROT, Z_RMID, Z_RMIN);
-      moveServo(Z_EXT, Z_EMAX, Z_EMID);
+      moveServo(Z_ROT, Z_RMIN);
+      moveServo(Z_EXT, Z_EMID);
       setTimer(1, 500);
       step = 18;
       break;
@@ -1446,21 +1441,21 @@ byte zapSeq1() {
       }
       break;
     case 20:  //Move to open position
-      moveServo(Z_ROT, Z_RMID, Z_RMAX);
-      moveServo(Z_EXT, Z_EMID, Z_EMAX);
+      moveServo(Z_ROT, Z_RMAX);
+      moveServo(Z_EXT, Z_EMAX);
       setTimer(1, 1000);
       step = 21;
       break;
     case 21:  //Fold the Zapper and return to store position
-      moveServo(Z_ROT, Z_RMAX, Z_RMIN);
-      moveServo(Z_EXT, Z_EMAX, Z_EMIN);
+      moveServo(Z_ROT, Z_RMIN);
+      moveServo(Z_EXT, Z_EMIN);
       step = 22;
       break;
     case 22:  //Move the Lift down
       if (motorDown(1)) step = 23;
       break;
     case 23:  //Close Pie
-      servoControl.setPWM(Z_PIE, 0, Z_PMIN);
+      moveServo(Z_PIE, Z_PMIN);
       step = 24;
       break;
     case 24:
@@ -1519,7 +1514,7 @@ int runSeq(uint16_t const sequence_array[][11]) {
     Serial.print(", ");
     for (int x = 1; x <= 10; x++) {
       uint16_t servo_pos = pgm_read_word(&sequence_array[seq_step][x]);
-      servoControl.setPWM(x + 1, 0, servo_pos);
+      moveServo(x + 1, servo_pos);
       Serial.print(servo_pos);
       Serial.print(", ");
     }
