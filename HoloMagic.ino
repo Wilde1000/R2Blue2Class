@@ -42,6 +42,7 @@ char dev_MPU;     //Contains the MPU code from incoming serial message
 char dev_cmd;
 int curr_holo_color = 13;  //Contains current color code for the holoprojectors
 int curr_tholo_color = 5;  //Contains current color code for the top holoprojector
+int current_mp_color=1;  //
 int dev_addr;              //Device address received from Serial interface
 int dev_opt;               //Device option received from the Serial interface
 int holo_speed;            //Holds the current holo timeout speed.
@@ -50,6 +51,7 @@ int mPanel_state = 0;
 long int current_time = millis();  //Contains current time
 
 long int holo_timer = current_time;  //Holds the holo random movement timer
+long int mp_timer = current_time;  //Holds the magic panel timer
 
 //Servo Objects
 Servo bh1;       //Back Holoprojector Servo 1
@@ -91,6 +93,7 @@ void setup() {
   tHolo.clear();
   mPanel.begin();
   mPanel.clear();
+  mPanel.setBrightness(255);
   th1.attach(TOP_HOLO1);
   th2.attach(TOP_HOLO2);
   fh1.attach(FRT_HOLO1);
@@ -102,6 +105,59 @@ void setup() {
 void loop() {
   checkSerial();      //Check Serial 0 for commands
   Holos(holo_state);  //Run Holo actions
+  MagicPanel(mPanel_state);
+}
+
+void MagicPanel(int opt){
+  switch(opt){
+    case 0:
+     for(int x=0; x<MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, 0);
+     mPanel.show();
+     break;
+    case 1:
+     for(int x=0; x<MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, getColor(current_mp_color));
+     mPanel.show();
+     break;
+    case 2:
+     colorWipe(getColor(current_mp_color),50);
+     break; 
+        
+  }
+}
+
+void colorWipe(uint32_t color, int wait) {
+  static int i=0;
+  if(current_time-mp_timer>wait){
+    mp_timer=current_time;
+    mPanel.setPixelColor(i, color);         //  Set pixel's color (in RAM)
+    mPanel.show();                          //  Update strip to match
+    i++;                          
+    if(i==MAGIC_PANEL_LED)i=0;
+  }
+  return;
+}
+
+void theaterChase(uint32_t color, int wait) {
+  static int b=0;
+  if(current_time-mp_timer>wait){
+    mp_timer=current_time;
+    mPanel.clear();
+    for(int c=b; c<MAGIC_PANEL_LED; c += 3) {
+        mPanel.setPixelColor(c, color); // Set pixel 'c' to value 'color'
+    }
+    mPanel.show();
+    b++;
+    if(b==3)b=0;
+    
+  }
+}
+
+
+uint32_t getColor(int num){
+  int red = pgm_read_word(&(np_color[num][0]));
+  int green = pgm_read_word(&(np_color[num][1]));
+  int blue = pgm_read_word(&(np_color[num][2]));
+  return mPanel.Color(red, green, blue);
 }
 
 
