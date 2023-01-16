@@ -12,21 +12,36 @@
 #define HOLO_LED 1
 #define MAGIC_PANEL_LED 24
 #define MAGIC_PANEL 2
-#define TOP_HOLO1 3
+#define TOP_HOLO1 10
 #define TOP_HOLO_LGT 4
-#define TOP_HOLO2 5
-#define FRT_HOLO1 6
+#define TOP_HOLO2 6
+#define FRT_HOLO1 3
 #define FRT_HOLO_LGT 7
 #define BCK_HOLO_LGT 8
-#define FRT_HOLO2 9
-#define BCK_HOLO1 10
-#define BCK_HOLO2 11
+#define FRT_HOLO2 5
+#define BCK_HOLO1 11
+#define BCK_HOLO2 9
 
+#define BH1_MAX 100
+#define BH1_MID 60
+#define BH1_MIN 20
+#define BH2_MAX 100
+#define BH2_MID 70
+#define BH2_MIN 40
 
+#define FH1_MAX 100
+#define FH1_MID 70
+#define FH1_MIN 40
+#define FH2_MAX 90
+#define FH2_MID 70
+#define FH2_MIN 40
 
-
-
-
+#define TH1_MAX 100
+#define TH1_MID 70
+#define TH1_MIN 40
+#define TH2_MAX 90
+#define TH2_MID 70
+#define TH2_MIN 40
 
 
 /************************************************
@@ -42,7 +57,7 @@ char dev_MPU;     //Contains the MPU code from incoming serial message
 char dev_cmd;
 int curr_holo_color = 13;  //Contains current color code for the holoprojectors
 int curr_tholo_color = 5;  //Contains current color code for the top holoprojector
-int current_mp_color=1;  //
+int current_mp_color = 6;  //
 int dev_addr;              //Device address received from Serial interface
 int dev_opt;               //Device option received from the Serial interface
 int holo_speed;            //Holds the current holo timeout speed.
@@ -50,18 +65,25 @@ int holo_state = 0;        //Contains current state for the holoprojectors
 int mPanel_state = 0;
 long int current_time = millis();  //Contains current time
 
-long int holo_timer = current_time;  //Holds the holo random movement timer
-long int mp_timer = current_time;  //Holds the magic panel timer
+long int holo_timer = current_time;      //Holds the holo random movement timer
+long int mp_timer = current_time;        //Holds the magic panel timer
+unsigned long pixelPrevious = 0;         // Previous Pixel Millis
+unsigned long patternPrevious = 0;       // Previous Pattern Millis
+int patternCurrent = 0;                  // Current Pattern Number
+int patternInterval = 5000;              // Pattern Interval (ms)
+int pixelInterval = 10;                  // Pixel Interval (ms)
+int pixelQueue = 0;                      // Pattern Pixel Queue
+int pixelCycle = 0;                      // Pattern Pixel Cycle
+uint16_t pixelCurrent = 0;               // Pattern Current Pixel Number
+uint16_t pixelNumber = MAGIC_PANEL_LED;  // Total Number of Pixels
 
 //Servo Objects
-Servo bh1;       //Back Holoprojector Servo 1
-Servo bh2;       //Back Holoprojector Servo 2
-Servo fh1;       //Front Holoprojector Servo 1
-Servo fh2;       //Front Holoprojector Servo 2
-Servo lfServo;   //Life Form Continous Rotation Servo
-Servo perServo;  //Periscope Continous Rotation Servo
-Servo th1;       //Top Holoprojector Servo 1
-Servo th2;       //Top Holoprojector Servo 2
+Servo bh1;  //Back Holoprojector Servo 1
+Servo bh2;  //Back Holoprojector Servo 2
+Servo fh1;  //Front Holoprojector Servo 1
+Servo fh2;  //Front Holoprojector Servo 2
+Servo th1;  //Top Holoprojector Servo 1
+Servo th2;  //Top Holoprojector Servo 2
 
 //  Color Sequences stored in Program Memory
 const uint16_t np_color[][3] PROGMEM = {
@@ -93,7 +115,10 @@ void setup() {
   tHolo.clear();
   mPanel.begin();
   mPanel.clear();
-  mPanel.setBrightness(255);
+  mPanel.setBrightness(100);
+  bHolo.setBrightness(150);
+  fHolo.setBrightness(150);
+  tHolo.setBrightness(150);
   th1.attach(TOP_HOLO1);
   th2.attach(TOP_HOLO2);
   fh1.attach(FRT_HOLO1);
@@ -108,52 +133,64 @@ void loop() {
   MagicPanel(mPanel_state);
 }
 
-void MagicPanel(int opt){
-  switch(opt){
+void MagicPanel(int opt) {
+
+  switch (opt) {
     case 0:
-     for(int x=0; x<MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, 0);
-     mPanel.show();
-     break;
+      for (int x = 0; x < MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, 0);
+      mPanel.show();
+      break;
     case 1:
-     for(int x=0; x<MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, getColor(current_mp_color));
-     mPanel.show();
-     break;
+      for (int x = 0; x < MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, getColor(current_mp_color));
+      mPanel.show();
+      break;
     case 2:
-     colorWipe(getColor(current_mp_color),50);
-     break; 
-        
+      colorWipe(getColor(current_mp_color), 25);
+      break;
+    case 3:
+      theaterChase(getColor(current_mp_color), 100);
+      break;
+    case 4:
+      theaterChaseRainbow(100);
+      break;
+    case 5:
+      rainbow(10);
+      break;
   }
 }
 
 void colorWipe(uint32_t color, int wait) {
-  static int i=0;
-  if(current_time-mp_timer>wait){
-    mp_timer=current_time;
-    mPanel.setPixelColor(i, color);         //  Set pixel's color (in RAM)
-    mPanel.show();                          //  Update strip to match
-    i++;                          
-    if(i==MAGIC_PANEL_LED)i=0;
+  current_time = millis();
+  static int i = 0;
+  if (current_time - mp_timer > wait) {
+    mp_timer = current_time;
+    mPanel.setPixelColor(i, color);  //  Set pixel's color (in RAM)
+    mPanel.show();
+    i++;
+    if (i == MAGIC_PANEL_LED) i = 0;
   }
-  return;
 }
 
 void theaterChase(uint32_t color, int wait) {
-  static int b=0;
-  if(current_time-mp_timer>wait){
-    mp_timer=current_time;
-    mPanel.clear();
-    for(int c=b; c<MAGIC_PANEL_LED; c += 3) {
-        mPanel.setPixelColor(c, color); // Set pixel 'c' to value 'color'
+  current_time = millis();
+  static int b = 0;
+  if (current_time - mp_timer > wait) {
+    mp_timer = current_time;
+    mPanel.clear();  //   Set all pixels in RAM to 0 (off)
+    // 'c' counts up from 'b' to end of strip in steps of 3...
+    for (int c = b; c < mPanel.numPixels(); c += 3) {
+      mPanel.setPixelColor(c, color);  // Set pixel 'c' to value 'color'
     }
-    mPanel.show();
+    mPanel.show();  // Update strip with new contents
     b++;
-    if(b==3)b=0;
-    
+    if (b == 3) b = 0;
   }
 }
 
 
-uint32_t getColor(int num){
+
+
+uint32_t getColor(int num) {
   int red = pgm_read_word(&(np_color[num][0]));
   int green = pgm_read_word(&(np_color[num][1]));
   int blue = pgm_read_word(&(np_color[num][2]));
@@ -265,10 +302,16 @@ int doScommand(int addr, int opt) {
     case 90:  //Holoprojectors
       if (opt < 14) curr_holo_color = opt;
       break;
+    case 95:
+      if (opt < 14) current_mp_color = opt;
+      break;
   }
 }
 
+
+
 void Holos(int opt) {
+  static int servoPOS = 0;
   switch (opt) {
     case 0:
       setHoloColor(0, 0);
@@ -286,6 +329,38 @@ void Holos(int opt) {
     case 3:  //fast random motion
       holo_speed = 500;
       holoRandom();
+      break;
+    case 4:
+      //fh2.write(FH2_MIN);
+      th1.write(TH1_MIN);
+      holo_state = 0;
+      break;
+    case 5:
+      th1.write(TH1_MAX);
+      //fh2.write(FH2_MAX);
+
+      holo_state = 0;
+      break;
+      case 6:
+      th1.write(TH1_MID);
+      th2.write(TH2_MID);
+      //fh2.write(FH2_MAX);
+
+      holo_state = 0;
+      break;
+    case 7:
+      servoPOS += 10;
+      th1.write(servoPOS);
+      Serial.print("Position is ");
+      Serial.println(servoPOS);
+      holo_state = 0;
+      break;
+    case 8:
+      servoPOS -= 10;
+      th1.write(servoPOS);
+      Serial.print("Position is ");
+      Serial.println(servoPOS);
+      holo_state = 0;
       break;
   }
   return;
@@ -329,4 +404,46 @@ void holoRandom() {
     th1.write(random(45, 135));
     th2.write(random(45, 135));
   }
+}
+
+// Rainbow cycle along whole mPanel. Pass delay time (in ms) between frames.
+void rainbow(int wait) {
+  current_time = millis();
+  static long firstPixelHue = 0;
+  if (current_time - mp_timer > wait) {
+    mp_timer = current_time;
+    mPanel.rainbow(firstPixelHue);
+    // Above line is equivalent to:
+    // mPanel.rainbow(firstPixelHue, 1, 255, 255, true);
+    mPanel.show();  // Update strip with new contents
+    firstPixelHue += 256;
+    if (firstPixelHue >= 5 * 65536) firstPixelHue = 0;
+  }
+}
+
+
+// Rainbow-enhanced theater marquee. Pass delay time (in ms) between frames.
+void theaterChaseRainbow(int wait) {
+  int static firstPixelHue = 0;  // First pixel starts at red (hue 0)
+  int static b = 0;
+
+  current_time = millis();
+  if (current_time - mp_timer > wait) {
+    mp_timer = current_time;
+    mPanel.clear();  //   Set all pixels in RAM to 0 (off)
+    // 'c' counts up from 'b' to end of strip in increments of 3...
+    for (int c = b; c < mPanel.numPixels(); c += 3) {
+      // hue of pixel 'c' is offset by an amount to make one full
+      // revolution of the color wheel (range 65536) along the length
+      // of the strip (mPanel.numPixels() steps):
+      int hue = firstPixelHue + c * 65536L / mPanel.numPixels();
+      uint32_t color = mPanel.gamma32(mPanel.ColorHSV(hue));  // hue -> RGB
+      mPanel.setPixelColor(c, color);                         // Set pixel 'c' to value 'color'
+    }
+    mPanel.show();
+    firstPixelHue += 65536 / 90;  // One cycle of color wheel over 90 frames
+    b++;
+    if (b == 3) b = 0;
+  }
+  return;
 }
