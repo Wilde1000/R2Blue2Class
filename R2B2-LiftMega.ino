@@ -20,7 +20,7 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 //#define OSCIL_FREQ 27000000
 #define MPU 'E'
 #define CMD_MAX_LENGTH 63
-#define HOLO_LED 1
+
 
 //define Adafruit PWM servo Pins and Limits
 
@@ -79,20 +79,6 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 #define P_ROT 12
 #define LF_ROT 13
 //define Holoprojector servo pins
-#define TOP_HOLO1 22
-#define TOP_HOLO2 23
-#define FRT_HOLO1 24
-#define FRT_HOLO2 25
-#define BCK_HOLO1 26
-#define BCK_HOLO2 27
-
-//define Holo Light pins
-#define TOP_HOLO_LGT 29
-#define FRT_HOLO_LGT 31
-#define BCK_HOLO_LGT 28
-
-
-#define MAGIC_PANEL 35
 
 //define the Output Enable Pin for the Adafruit servo driver
 #define OE_PIN 34
@@ -121,10 +107,7 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 *                Global Variables               *
 *************************************************/
 //Neo-Pixel Objects
-Adafruit_NeoPixel bHolo(HOLO_LED, BCK_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Back Holo Light
-Adafruit_NeoPixel fHolo(HOLO_LED, FRT_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Front Holo Light
-Adafruit_NeoPixel tHolo(HOLO_LED, TOP_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Top Holo Light
-byte leds = 0;                                                          //Contains LED pattern as a 8-bit number
+byte leds = 0;  //Contains LED pattern as a 8-bit number
 
 char cmdStr[64];   //Contains the incoming message from Serial0
 char cmdStr1[64];  //Contains the incoming message from Serial1
@@ -133,12 +116,8 @@ char dev_cmd;      //Contains the command code from the incoming serial message
 
 int bad_motive_state = 0;   //Contains current state for Bad Motivator
 int bm_int = 75;            //Delay interval for the Bad Motivator lights (keep under 100)
-int curr_holo_color = 13;   //Contains current color code for the holoprojectors
-int curr_tholo_color = 5;   //Contains current color code for the top holoprojector
 int dev_addr;               //Device address received from Serial interface
 int dev_opt;                //Device option received from the Serial interface
-int holo_speed;             //Holds the current holo timeout speed.
-int holo_state = 0;         //Contains current state for the holoprojectors
 int life_form_state = 0;    //Contains current state for the life form scanner
 int light_saber_state = 0;  //Contains current state for the Light Saber lift
 int periscope_state = 0;    //Contains current state for the Periscope
@@ -167,17 +146,10 @@ long int z_raise_timer = current_time;  //Holds the zapper raise timer
 long int bm_timer = current_time;       //Holds the timer for bad motivator lights
 long int p_timer = current_time;        //Holds the rotational timer for the Periscope
 long int seq_timer = current_time;      //Holds the sequence step timer for the Panel Sequencer
-long int holo_timer = current_time;     //Holds the holo random movement timer
 
 //Servo Objects
-Servo bh1;       //Back Holoprojector Servo 1
-Servo bh2;       //Back Holoprojector Servo 2
-Servo fh1;       //Front Holoprojector Servo 1
-Servo fh2;       //Front Holoprojector Servo 2
 Servo lfServo;   //Life Form Continous Rotation Servo
 Servo perServo;  //Periscope Continous Rotation Servo
-Servo th1;       //Top Holoprojector Servo 1
-Servo th2;       //Top Holoprojector Servo 2
 
 uint16_t seq_Timeout;  //Holds the sequence step timeout for the Panel Sequencer (must be a 16 bit integer)
 
@@ -424,19 +396,11 @@ const uint16_t np_color[][3] PROGMEM = {
 
 void setup() {
   Serial.begin(9600);   //Connection with controller Arduino
-  Serial1.begin(9600);  //Connection with Body Arduino
+  Serial1.begin(9600);  //Connection with Holo Projector Nano
   Serial2.begin(9600);  //Connection with Periscope
   Serial3.begin(2400);  //Teeces Connection
   servoControl.begin();
-  //servoControl.setOscillatorFrequency(OSCIL_FREQ);
   servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
-  bHolo.begin();
-  tHolo.begin();
-  fHolo.begin();
-
-  bHolo.clear();
-  fHolo.clear();
-  tHolo.clear();
   int x;
   for (x = 0; x <= 7; x++) lifts[1][x] = zapper[x];
   for (x = 0; x <= 7; x++) lifts[2][x] = lSaber[x];
@@ -457,14 +421,6 @@ void setup() {
   //Attach the servo objects to pins
   perServo.attach(P_ROT);
   lfServo.attach(LF_ROT);
-
-
-  th1.attach(TOP_HOLO1);
-  th2.attach(TOP_HOLO2);
-  fh1.attach(FRT_HOLO1);
-  fh2.attach(FRT_HOLO2);
-  bh1.attach(BCK_HOLO1);
-  bh2.attach(BCK_HOLO2);
   perServo.write(90);
   lfServo.write(90);
 
@@ -487,14 +443,12 @@ void setup() {
 
 void loop() {
   checkSerial();              //Check Serial 0 for commands
-  checkSerial1();             //Check Serial 1 for commands
   ZapLift(zapper_state);      // Run actions on the Zapper if any
   LSLift(light_saber_state);  //Run actions on the Light Saber if any
   PLift(periscope_state);     //Run actions on the Periscope if any
   BMLift(bad_motive_state);   //Run actions on the Bad Motivator if any
   LFLift(life_form_state);    //Run actions on the Life Form Scanner if any
   Sequencer(seq_state);       //Run panel sequences
-  Holos(holo_state);          //Run Holo actions
 }
 
 
@@ -601,25 +555,6 @@ int buildCommand(char ch, char* output_str) {
   return false;
 }
 
-//The buildCommand1 takes the current byte from the Serial1 buffer and builds a command for processing.  It returns a 0
-//while in the building process and a 1 when the command is ready.
-int buildCommand1(char ch, char* output_str) {
-  static int pos = 0;
-  switch (ch) {
-    case '\n':
-    case '\r':
-    case '\0':
-      output_str[pos] = '\0';
-      pos = 0;
-      return true;
-      break;
-    default:
-      output_str[pos] = ch;
-      if (pos <= CMD_MAX_LENGTH - 1) pos++;
-      break;
-  }
-  return false;
-}
 
 
 
@@ -639,19 +574,7 @@ void checkSerial() {
   }
 }
 
-//The checkSerial1 function is the second thread of seven threads in this program.  It checks the Serial1 buffer for incoming serial
-//data and then sends it to be processed.
-void checkSerial1() {
-  char ch;
-  byte cmd_Complete;
-  if (Serial1.available()) {
-    ch = Serial1.read();
-    cmd_Complete = buildCommand1(ch, cmdStr1);
-    if (cmd_Complete) {
-      parseCommand(cmdStr1);
-    }
-  }
-}
+
 
 
 //The doTcommand handles all T commands sent from the parseCommand function
@@ -676,9 +599,6 @@ int doTcommand(int addr, int opt) {
     case 80:
       seq_state = opt;
       break;
-    case 90:  //Holoprojectors
-      holo_state = opt;
-      break;
   }
 }
 
@@ -689,77 +609,10 @@ int doScommand(int addr, int opt) {
     case 80:
       seq_state = opt;
       break;
-    case 90:  //Holoprojectors
-      if (opt < 14) curr_holo_color = opt;
-      break;
   }
 }
 
 
-
-void Holos(int opt) {
-  switch (opt) {
-    case 0:
-      setHoloColor(0, 0);
-      break;
-    case 1:  //Turn on holos with current color
-      setHoloColor(curr_holo_color, 0);
-      break;
-    case 2:  //Standard random motion
-      holo_speed = 1000;
-      holoRandom();
-      break;
-    case 3:  //fast random motion
-      holo_speed = 500;
-      holoRandom();
-      break;
-  }
-  return;
-}
-void setHoloColor(int num, int holo) {
-  int red = pgm_read_word(&(np_color[num][0]));
-  int green = pgm_read_word(&(np_color[num][1]));
-  int blue = pgm_read_word(&(np_color[num][2]));
-  if (holo == 0) {
-    bHolo.setPixelColor(0, bHolo.Color(red, green, blue));
-    fHolo.setPixelColor(0, fHolo.Color(red, green, blue));
-    tHolo.setPixelColor(0, tHolo.Color(red, green, blue));
-    bHolo.show();
-    fHolo.show();
-    tHolo.show();
-    return;
-  } else if (holo == 1) {
-    tHolo.setPixelColor(0, tHolo.Color(red, green, blue));
-    tHolo.show();
-    return;
-  } else if (holo == 2) {
-    fHolo.setPixelColor(0, fHolo.Color(red, green, blue));
-    fHolo.show();
-    return;
-  } else {
-    bHolo.setPixelColor(0, bHolo.Color(red, green, blue));
-    bHolo.show();
-    return;
-  }
-}
-
-
-
-
-
-void holoRandom() {
-  setHoloColor(curr_holo_color, 0);
-  current_time = millis();
-  if (current_time - holo_timer > holo_speed) {
-    holo_timer = current_time;
-    bh1.write(random(45, 135));
-    bh2.write(random(45, 135));
-    fh1.write(random(45, 135));
-    fh2.write(random(45, 135));
-    th1.write(random(45, 135));
-    th2.write(random(45, 135));
-  }
-}
 
 
 //Raises the Life Form Scanner - Return 0 while raising and 1 when raised
@@ -1005,6 +858,13 @@ int parseCommand(char* input_str) {
         Serial2.write(input_str[x]);
       }
       Serial2.write(13);
+    }
+    if (mpu == 'D
+    ') {
+      for (int x = 0; x < length; x++) {
+        Serial1.write(input_str[x]);
+      }
+      Serial1.write(13);
     }
     return;
   }
@@ -1548,7 +1408,7 @@ void Sequencer(int opt) {
     case 16:
       servoControl.setPWM(DP2, 0, DP2_MAX);
       seq_state = 0;
-      break;      
+      break;
     case 17:
       servoControl.setPWM(DP3, 0, DP3_MAX);
       seq_state = 0;
@@ -1564,7 +1424,7 @@ void Sequencer(int opt) {
     case 20:
       servoControl.setPWM(DP6, 0, DP6_MAX);
       seq_state = 0;
-      break;      
+      break;
     case 21:
       servoControl.setPWM(Z_PIE, 0, Z_PMIN);
       seq_state = 0;
@@ -1588,7 +1448,7 @@ void Sequencer(int opt) {
     case 26:
       servoControl.setPWM(DP2, 0, DP2_MIN);
       seq_state = 0;
-      break;      
+      break;
     case 27:
       servoControl.setPWM(DP3, 0, DP3_MIN);
       seq_state = 0;
@@ -1604,9 +1464,7 @@ void Sequencer(int opt) {
     case 30:
       servoControl.setPWM(DP6, 0, DP6_MIN);
       seq_state = 0;
-      break;      
-          
-    
+      break;
   }
   return;
 }
