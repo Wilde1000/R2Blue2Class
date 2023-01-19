@@ -5,21 +5,25 @@
 #include <Adafruit_NeoPixel.h>
 #include <time.h>
 #include <stdlib.h>
+#include <SPI.h>
+#include <MFRC522.h>
 
+#define SS_PIN 10
+#define RST_PIN 6
 
 #define MPU 'D'
 #define CMD_MAX_LENGTH 63
 #define HOLO_LED 1
 #define MAGIC_PANEL_LED 24
 #define MAGIC_PANEL 2
-#define TOP_HOLO1 10
+#define TOP_HOLO1 A2
 #define TOP_HOLO_LGT 4
-#define TOP_HOLO2 6
+#define TOP_HOLO2 A1
 #define FRT_HOLO1 3
 #define FRT_HOLO_LGT 7
 #define BCK_HOLO_LGT 8
 #define FRT_HOLO2 5
-#define BCK_HOLO1 11
+#define BCK_HOLO1 A3
 #define BCK_HOLO2 9
 
 #define BH1_MAX 100
@@ -52,6 +56,9 @@ Adafruit_NeoPixel bHolo(HOLO_LED, BCK_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Back H
 Adafruit_NeoPixel fHolo(HOLO_LED, FRT_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Front Holo Light
 Adafruit_NeoPixel tHolo(HOLO_LED, TOP_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Top Holo Light
 Adafruit_NeoPixel mPanel(MAGIC_PANEL_LED, MAGIC_PANEL, NEO_GRB + NEO_KHZ800);
+
+byte nuidPICC[4];
+
 char cmdStr[64];  //Contains the incoming message from Serial0
 char dev_MPU;     //Contains the MPU code from incoming serial message
 char dev_cmd;
@@ -65,8 +72,12 @@ int holo_state = 0;        //Contains current state for the holoprojectors
 int mPanel_state = 0;
 long int current_time = millis();  //Contains current time
 
-long int holo_timer = current_time;      //Holds the holo random movement timer
-long int mp_timer = current_time;        //Holds the magic panel timer
+long int holo_timer = current_time;  //Holds the holo random movement timer
+long int mp_timer = current_time;    //Holds the magic panel timer
+
+MFRC522 rfid(SS_PIN, RST_PIN);  // Instance of the class
+MFRC522::MIFARE_Key key;
+
 unsigned long pixelPrevious = 0;         // Previous Pixel Millis
 unsigned long patternPrevious = 0;       // Previous Pattern Millis
 int patternCurrent = 0;                  // Current Pattern Number
@@ -107,6 +118,8 @@ const uint16_t np_color[][3] PROGMEM = {
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);  //Connection with controller Arduino
+  SPI.begin();
+  rfid.PCD_Init();
   bHolo.begin();
   tHolo.begin();
   fHolo.begin();
@@ -119,19 +132,26 @@ void setup() {
   bHolo.setBrightness(150);
   fHolo.setBrightness(150);
   tHolo.setBrightness(150);
-  th1.attach(TOP_HOLO1);
-  th2.attach(TOP_HOLO2);
-  fh1.attach(FRT_HOLO1);
-  fh2.attach(FRT_HOLO2);
-  bh1.attach(BCK_HOLO1);
-  bh2.attach(BCK_HOLO2);
+  //th1.attach(TOP_HOLO1);
+  //th2.attach(TOP_HOLO2);
+  //fh1.attach(FRT_HOLO1);
+  //fh2.attach(FRT_HOLO2);
+  //bh1.attach(BCK_HOLO1);
+  //bh2.attach(BCK_HOLO2);
+  for (byte i = 0; i < 6; i++) {
+    key.keyByte[i] = 0xFF;
+  }
 }
 
 void loop() {
   checkSerial();      //Check Serial 0 for commands
   Holos(holo_state);  //Run Holo actions
   MagicPanel(mPanel_state);
+  
 }
+
+
+
 
 void MagicPanel(int opt) {
 
@@ -341,7 +361,7 @@ void Holos(int opt) {
 
       holo_state = 0;
       break;
-      case 6:
+    case 6:
       th1.write(TH1_MID);
       th2.write(TH2_MID);
       //fh2.write(FH2_MAX);
