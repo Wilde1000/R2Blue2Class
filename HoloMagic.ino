@@ -58,10 +58,15 @@ Adafruit_NeoPixel tHolo(HOLO_LED, TOP_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Top Ho
 Adafruit_NeoPixel mPanel(MAGIC_PANEL_LED, MAGIC_PANEL, NEO_GRB + NEO_KHZ800);
 
 byte nuidPICC[4];
+byte bufferLen = 18;
+byte readBlockData[18];
+
 
 char cmdStr[64];  //Contains the incoming message from Serial0
 char dev_MPU;     //Contains the MPU code from incoming serial message
 char dev_cmd;
+
+int blockNum = 2;
 int curr_holo_color = 13;  //Contains current color code for the holoprojectors
 int curr_tholo_color = 5;  //Contains current color code for the top holoprojector
 int current_mp_color = 6;  //
@@ -75,8 +80,10 @@ long int current_time = millis();  //Contains current time
 long int holo_timer = current_time;  //Holds the holo random movement timer
 long int mp_timer = current_time;    //Holds the magic panel timer
 
-MFRC522 rfid(SS_PIN, RST_PIN);  // Instance of the class
-MFRC522::MIFARE_Key key;
+MFRC522 mfrc522(SS_PIN, RST_PIN);  // Instance of the class
+MFRC522::MIFARE_Key key;           // Create instance of MIFARE key
+MFRC522::StatusCode status;        //Create instance of MIFARE status
+
 
 unsigned long pixelPrevious = 0;         // Previous Pixel Millis
 unsigned long patternPrevious = 0;       // Previous Pattern Millis
@@ -118,8 +125,8 @@ const uint16_t np_color[][3] PROGMEM = {
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);  //Connection with controller Arduino
-  SPI.begin();
-  rfid.PCD_Init();
+  SPI.begin();         //Initialize SPI bus
+  mfrc522.PCD_Init();  //Initialize MFRC522 Module
   bHolo.begin();
   tHolo.begin();
   fHolo.begin();
@@ -147,10 +154,23 @@ void loop() {
   checkSerial();      //Check Serial 0 for commands
   Holos(holo_state);  //Run Holo actions
   MagicPanel(mPanel_state);
-  
+  checkRFID();
 }
 
+void checkRFID() {
+  if (!mfrc522.PICC_IsNewCardPresent()) return;  //No card - leave
+  if (!mfrc522.PICC_ReadCardSerial()) return;    //If no card read - leave
+  Serial.println();
+  ReadDataFromBlock(blockNum, readBlockData);
+  Serial.print("Data in Block: ");
+  Serial.print(blockNum);
+  Serial.print("---> ");
+  for (int j = 0; j < 16; j++) Serial.print(readBlockData[j]);
+  Serial.println();
+}
 
+void ReadDataFromBlock(int blockNum, byte readBlockData[]) {
+}
 
 
 void MagicPanel(int opt) {
