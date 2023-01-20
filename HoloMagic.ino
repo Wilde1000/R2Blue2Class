@@ -84,7 +84,7 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);  // Instance of the class
 MFRC522::MIFARE_Key key;           // Create instance of MIFARE key
 MFRC522::StatusCode status;        //Create instance of MIFARE status
 
-
+unsigned long rf_timer = current_time;
 unsigned long pixelPrevious = 0;         // Previous Pixel Millis
 unsigned long patternPrevious = 0;       // Previous Pattern Millis
 int patternCurrent = 0;                  // Current Pattern Number
@@ -155,22 +155,52 @@ void loop() {
 }
 
 void checkRFID() {
-  for (byte i = 0; i < 6; i++) {
-    key.keyByte[i] = 0xFF;
-  }
-  byte bufferLen = 18;
-  byte readBlockData[18];
+
   if (!mfrc522.PICC_IsNewCardPresent()) return;  //No card - leave
   if (!mfrc522.PICC_ReadCardSerial()) return;    //If no card read - leave
   Serial.println();
-  ReadDataFromBlock(blockNum, readBlockData);
-  Serial.print("Data in Block: ");
-  Serial.print(blockNum);
-  Serial.print("---> ");
-  for (int j = 0; j < 16; j++) Serial.write(readBlockData[j]);
-  Serial.println();
+  char rfData[5][16];
+  blockNum = 1;
+  for (int x = 0; x < 5; x++) {
+    byte bufferLen = 18;
+    byte readBlockData[18];
+    for (byte i = 0; i < 6; i++) {
+      key.keyByte[i] = 0xFF;
+    }
+    ReadDataFromBlock(blockNum, readBlockData);
+    for (int j = 0; j < 16; j++) {
+      rfData[x][j] = readBlockData[j];
+    }
+    blockNum++;
+    if (blockNum == 3) blockNum = 4;
+  }
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
+  executeRFID(rfData);
+}
+
+void executeRFID(char rfcommand[5][16]) {
+  /*determine the number of commands in RFID tag - a command should begin with a letter for the MPU
+    that is to execute it or a 'W'  indicating a wait state or delay before the next executed command
+  */
+  int numOfCommands=0;
+  while(rfcommand[numOfCommands][0]>64&&numOfCommands<5)numOfCommands++;
+  
+  char comm[16];
+  byte count = 0;
+  current_time=millis();
+  if (rfcommand[0][count] > 0) {
+    char comm[16];
+
+    while (rfcommand[0][count] != '#') {
+      comm[count] = rfcommand[0][count];
+      count++;
+    }
+    comm[count]='\r';
+    for (int x = 0; x <= count; x++) Serial.print(comm[x]);
+  }
+  
+  parseCommand(comm);
 }
 
 void ReadDataFromBlock(int blockNum, byte readBlockData[]) {
@@ -306,7 +336,17 @@ int parseCommand(char* input_str) {
   if (length < 2) goto deadCmd;  //not enough characters
   int mpu = input_str[pos];      //MPU is the first character
   if (MPU != mpu) {              //if command is not for this MPU - send it on its way
-    Serial.flush();
+    
+     // Serial.println("HERE");
+      //Serial.flush();
+
+      for (int x = 0; x < length; x++) {
+        Serial.write(input_str[x]);
+       
+      }
+      Serial.write(13);
+     // Serial.println("DONE");
+    
     return;
   }
   if ((mpu > 64 && mpu < 71) || mpu == '@') dev_MPU = mpu;
