@@ -443,6 +443,7 @@ void setup() {
 
 void loop() {
   checkSerial();              //Check Serial 0 for commands
+  checkSerial1();              //Check Serial 0 for commands
   ZapLift(zapper_state);      // Run actions on the Zapper if any
   LSLift(light_saber_state);  //Run actions on the Light Saber if any
   PLift(periscope_state);     //Run actions on the Periscope if any
@@ -555,6 +556,27 @@ int buildCommand(char ch, char* output_str) {
   return false;
 }
 
+//The buildCommand takes the current byte from the Serial0 buffer and builds a command for processing.  It returns a 0
+//while in the building process and a 1 when the command is ready.
+int buildCommand1(char ch, char* output_str) {
+  //Serial.print("here");
+  static int pos = 0;
+  switch (ch) {
+    case '\n':
+    case '\r':
+    case '\0':
+      output_str[pos] = '\0';
+      pos = 0;
+      return true;
+      break;
+    default:
+      output_str[pos] = ch;
+      if (pos <= CMD_MAX_LENGTH - 1) pos++;
+      break;
+  }
+  return false;
+}
+
 
 
 
@@ -567,6 +589,22 @@ void checkSerial() {
     ch = Serial.read();
     Serial.print(ch);
     cmd_Complete = buildCommand(ch, cmdStr);
+    if (cmd_Complete) {
+      parseCommand(cmdStr);
+      Serial.println();
+    }
+  }
+}
+
+
+void checkSerial1() {
+  char ch;
+  byte cmd_Complete;
+  
+  if (Serial1.available()) {
+    ch = Serial1.read();
+    Serial.print(ch);
+    cmd_Complete = buildCommand1(ch, cmdStr);
     if (cmd_Complete) {
       parseCommand(cmdStr);
       Serial.println();
@@ -859,8 +897,7 @@ int parseCommand(char* input_str) {
       }
       Serial2.write(13);
     }
-    if (mpu == 'D
-    ') {
+    if (mpu == 'D') {
       for (int x = 0; x < length; x++) {
         Serial1.write(input_str[x]);
       }
