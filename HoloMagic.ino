@@ -145,9 +145,6 @@ void setup() {
   //fh2.attach(FRT_HOLO2);
   //bh1.attach(BCK_HOLO1);
   //bh2.attach(BCK_HOLO2);
-  for (byte i = 0; i < 6; i++) {
-    key.keyByte[i] = 0xFF;
-  }
 }
 
 void loop() {
@@ -158,6 +155,11 @@ void loop() {
 }
 
 void checkRFID() {
+  for (byte i = 0; i < 6; i++) {
+    key.keyByte[i] = 0xFF;
+  }
+  byte bufferLen = 18;
+  byte readBlockData[18];
   if (!mfrc522.PICC_IsNewCardPresent()) return;  //No card - leave
   if (!mfrc522.PICC_ReadCardSerial()) return;    //If no card read - leave
   Serial.println();
@@ -165,11 +167,32 @@ void checkRFID() {
   Serial.print("Data in Block: ");
   Serial.print(blockNum);
   Serial.print("---> ");
-  for (int j = 0; j < 16; j++) Serial.print(readBlockData[j]);
+  for (int j = 0; j < 16; j++) Serial.write(readBlockData[j]);
   Serial.println();
+  mfrc522.PICC_HaltA();
+  mfrc522.PCD_StopCrypto1();
 }
 
 void ReadDataFromBlock(int blockNum, byte readBlockData[]) {
+  /* Authenticating the desired data block for Read access using Key A */
+  byte status = mfrc522.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockNum, &key, &(mfrc522.uid));
+
+  if (status != MFRC522::STATUS_OK) {
+    Serial.print("Authentication failed for Read: ");
+    Serial.println(mfrc522.GetStatusCodeName(status));
+    return;
+  } else {
+    Serial.println("Authentication success");
+  }
+  /* Reading data from the Block */
+  status = mfrc522.MIFARE_Read(blockNum, readBlockData, &bufferLen);
+  if (status != MFRC522::STATUS_OK) {
+    Serial.print("Reading failed: ");
+    Serial.println(mfrc522.GetStatusCodeName(status));
+    return;
+  } else {
+    Serial.println("Block was read successfully");
+  }
 }
 
 
