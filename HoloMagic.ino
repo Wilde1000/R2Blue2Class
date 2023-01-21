@@ -76,7 +76,8 @@ int dev_opt;               //Device option received from the Serial interface
 int holo_speed;            //Holds the current holo timeout speed.
 int holo_state = 0;        //Contains current state for the holoprojectors
 int mPanel_state = 0;
-int sequencer_state=0;
+int sequencer_state = 0;
+int rf_wait=5;
 long int current_time = millis();  //Contains current time
 
 long int holo_timer = current_time;  //Holds the holo random movement timer
@@ -153,7 +154,7 @@ void loop() {
   checkSerial();      //Check Serial 0 for commands
   Holos(holo_state);  //Run Holo actions
   MagicPanel(mPanel_state);
-  if(sequencer_state) sequencer();
+  if (sequencer_state) sequencer();
   else checkRFID();
 }
 
@@ -176,28 +177,45 @@ void checkRFID() {
     }
     blockNum++;
     if (blockNum == 3) blockNum = 4;
-    if (blockNum == 7) blockNum =8 ;
+    if (blockNum == 7) blockNum = 8;
     if (blockNum == 11) blockNum = 12;
   }
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
-  sequencer_state=1;
+  sequencer_state = 1;
 }
 
-void sequencer(){
-  static byte step=0;
-  if(rfData[step][0]=='@'){
+void sequencer() {
+  static byte step = 0;
+  if (rfData[step][0] == '@') {
     //final step is reached
     //Clear the rfData
-    for(int x=0; x>10; x++){
-      for(int y=0; y<16; y++){
-        rfData[x][y]=0;
+    for (int x = 0; x > 10; x++) {
+      for (int y = 0; y < 16; y++) {
+        rfData[x][y] = 0;
       }
     }
-    sequencer_state=0;
+    sequencer_state = 0;
     return;
   }
-  current_time=millis();
+  current_time = millis();
+  if (current_time - rf_timer > rf_wait) {
+    rf_timer = current_time;
+    rf_wait=0;  //reset wait time 
+    //Process current step
+    byte cmd[16];
+    byte count=0;
+    while(rfData[step][count]!='#'){
+      cmd[count]=rfData[step][count];
+      count++;
+    }
+    cmd[count]='\r';
+    if(cmd[0]=='W'){
+        // set the Wait state in seconds
+        rf_wait=atoi(cmd[1])*1000;    
+    }   
+
+  }
 }
 
 
