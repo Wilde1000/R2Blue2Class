@@ -65,6 +65,7 @@ byte readBlockData[18];
 char cmdStr[64];  //Contains the incoming message from Serial0
 char dev_MPU;     //Contains the MPU code from incoming serial message
 char dev_cmd;
+char rfData[10][16];
 
 int blockNum = 2;
 int curr_holo_color = 13;  //Contains current color code for the holoprojectors
@@ -75,6 +76,7 @@ int dev_opt;               //Device option received from the Serial interface
 int holo_speed;            //Holds the current holo timeout speed.
 int holo_state = 0;        //Contains current state for the holoprojectors
 int mPanel_state = 0;
+int sequencer_state=0;
 long int current_time = millis();  //Contains current time
 
 long int holo_timer = current_time;  //Holds the holo random movement timer
@@ -151,7 +153,8 @@ void loop() {
   checkSerial();      //Check Serial 0 for commands
   Holos(holo_state);  //Run Holo actions
   MagicPanel(mPanel_state);
-  checkRFID();
+  if(sequencer_state) sequencer();
+  else checkRFID();
 }
 
 void checkRFID() {
@@ -161,7 +164,7 @@ void checkRFID() {
   Serial.println();
   char rfData[5][16];
   blockNum = 1;
-  for (int x = 0; x < 5; x++) {
+  for (int x = 0; x < 10; x++) {
     byte bufferLen = 18;
     byte readBlockData[18];
     for (byte i = 0; i < 6; i++) {
@@ -173,22 +176,44 @@ void checkRFID() {
     }
     blockNum++;
     if (blockNum == 3) blockNum = 4;
+    if (blockNum == 7) blockNum =8 ;
+    if (blockNum == 11) blockNum = 12;
   }
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
-  executeRFID(rfData);
+  sequencer_state=1;
 }
 
-void executeRFID(char rfcommand[5][16]) {
+void sequencer(){
+  static byte step=0;
+  if(rfData[step][0]=='@'){
+    //final step is reached
+    //Clear the rfData
+    for(int x=0; x>10; x++){
+      for(int y=0; y<16; y++){
+        rfData[x][y]=0;
+      }
+    }
+    sequencer_state=0;
+    return;
+  }
+  current_time=millis();
+}
+
+
+
+
+
+void executeRFID(char rfcommand[][16]) {
   /*determine the number of commands in RFID tag - a command should begin with a letter for the MPU
     that is to execute it or a 'W'  indicating a wait state or delay before the next executed command
   */
-  int numOfCommands=0;
-  while(rfcommand[numOfCommands][0]>64&&numOfCommands<5)numOfCommands++;
-  
+  int numOfCommands = 0;
+  while (rfcommand[numOfCommands][0] > 64 && numOfCommands < 5) numOfCommands++;
+
   char comm[16];
   byte count = 0;
-  current_time=millis();
+  current_time = millis();
   if (rfcommand[0][count] > 0) {
     char comm[16];
 
@@ -196,10 +221,10 @@ void executeRFID(char rfcommand[5][16]) {
       comm[count] = rfcommand[0][count];
       count++;
     }
-    comm[count]='\r';
-    for (int x = 0; x <= count; x++) Serial.print(comm[x]);
+    comm[count] = '\r';
+    //for (int x = 0; x <= count; x++) Serial.print(comm[x]);
   }
-  
+
   parseCommand(comm);
 }
 
@@ -211,8 +236,6 @@ void ReadDataFromBlock(int blockNum, byte readBlockData[]) {
     Serial.print("Authentication failed for Read: ");
     Serial.println(mfrc522.GetStatusCodeName(status));
     return;
-  } else {
-    Serial.println("Authentication success");
   }
   /* Reading data from the Block */
   status = mfrc522.MIFARE_Read(blockNum, readBlockData, &bufferLen);
@@ -220,8 +243,6 @@ void ReadDataFromBlock(int blockNum, byte readBlockData[]) {
     Serial.print("Reading failed: ");
     Serial.println(mfrc522.GetStatusCodeName(status));
     return;
-  } else {
-    Serial.println("Block was read successfully");
   }
 }
 
@@ -336,17 +357,16 @@ int parseCommand(char* input_str) {
   if (length < 2) goto deadCmd;  //not enough characters
   int mpu = input_str[pos];      //MPU is the first character
   if (MPU != mpu) {              //if command is not for this MPU - send it on its way
-    
-     // Serial.println("HERE");
-      //Serial.flush();
 
-      for (int x = 0; x < length; x++) {
-        Serial.write(input_str[x]);
-       
-      }
-      Serial.write(13);
-     // Serial.println("DONE");
-    
+    // Serial.println("HERE");
+    //Serial.flush();
+
+    for (int x = 0; x < length; x++) {
+      Serial.write(input_str[x]);
+    }
+    Serial.write(13);
+    // Serial.println("DONE");
+
     return;
   }
   if ((mpu > 64 && mpu < 71) || mpu == '@') dev_MPU = mpu;
