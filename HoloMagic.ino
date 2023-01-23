@@ -11,6 +11,8 @@
 #define SS_PIN 10
 #define RST_PIN 6
 
+#define MAX_RF_CMD 25
+
 #define MPU 'D'
 #define CMD_MAX_LENGTH 63
 #define HOLO_LED 1
@@ -65,7 +67,7 @@ byte readBlockData[18];
 char cmdStr[64];  //Contains the incoming message from Serial0
 char dev_MPU;     //Contains the MPU code from incoming serial message
 char dev_cmd;
-char rfData[10][16];
+char rfData[MAX_RF_CMD][16];
 
 int blockNum = 2;
 int curr_holo_color = 13;  //Contains current color code for the holoprojectors
@@ -163,9 +165,8 @@ void checkRFID() {
   if (!mfrc522.PICC_IsNewCardPresent()) return;  //No card - leave
   if (!mfrc522.PICC_ReadCardSerial()) return;    //If no card read - leave
   Serial.println();
-  char rfData[5][16];
   blockNum = 1;
-  for (int x = 0; x < 10; x++) {
+  for (int x = 0; x < MAX_RF_CMD; x++) {
     byte bufferLen = 18;
     byte readBlockData[18];
     for (byte i = 0; i < 6; i++) {
@@ -176,9 +177,7 @@ void checkRFID() {
       rfData[x][j] = readBlockData[j];
     }
     blockNum++;
-    if (blockNum == 3) blockNum = 4;
-    if (blockNum == 7) blockNum = 8;
-    if (blockNum == 11) blockNum = 12;
+    if (blockNum % 4==3) blockNum ++;
   }
   mfrc522.PICC_HaltA();
   mfrc522.PCD_StopCrypto1();
@@ -187,7 +186,9 @@ void checkRFID() {
 
 void sequencer() {
   static byte step = 0;
+  
   if (rfData[step][0] == '@') {
+    Serial.println("Final Command");
     //final step is reached
     //Clear the rfData
     for (int x = 0; x > 10; x++) {
@@ -195,25 +196,39 @@ void sequencer() {
         rfData[x][y] = 0;
       }
     }
+    step=0;
     sequencer_state = 0;
     return;
   }
   current_time = millis();
   if (current_time - rf_timer > rf_wait) {
     rf_timer = current_time;
-    rf_wait=0;  //reset wait time 
+    rf_wait=3;  //reset wait time 
     //Process current step
-    byte cmd[16];
+    
+    char cmd[16];
     byte count=0;
-    while(rfData[step][count]!='#'){
+    while(rfData[step][count]!=35){
       cmd[count]=rfData[step][count];
       count++;
     }
-    cmd[count]='\r';
+    cmd[count]=13;
+    int cmdLen=count;
+    count=0;
+    step++;
+
+    for(int x=0; x<cmdLen; x++){
+      Serial.print(cmd[x]);
+    } 
+    Serial.println();
     if(cmd[0]=='W'){
+
         // set the Wait state in seconds
-        rf_wait=atoi(cmd[1])*1000;    
-    }   
+        rf_wait=((cmd[1]-48)*10+(cmd[2]-48))*1000;
+        Serial.println(rf_wait);
+        return;    
+    }else if (cmd[0]>=65 && cmd[0]<=71) parseCommand(cmd);
+    return;
 
   }
 }
