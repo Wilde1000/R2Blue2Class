@@ -3,7 +3,81 @@
 
 #define SS_PIN 10
 #define RST_PIN 6
-const byte demo_card[][16] PROGMEM = {
+const byte lightsaber_demo_card[][16] PROGMEM = {
+  { "G3T100#          " },
+  { "E52T1#           " },
+  { "G3MLIGHT SABER#  " },
+  { "W05#             " },
+  { "E52T2#           " },
+  { "G0T1#            " },
+  { "@@@@@@#          " }
+};
+const byte motivator_demo_card[][16] PROGMEM = {
+  { "G3T100#          " },
+  { "E54T1#           " },
+  { "G3MMOTIVATOR#    " },
+  { "W05#             " },
+  { "E54T2#           " },
+  { "G0T1#            " },
+  { "@@@@@@#          " }
+};
+
+const byte lifeform_demo_card[][16] PROGMEM = {
+  { "G3T100#          " },
+  { "E55T1#           " },
+  { "G3MLIFE FORM#    " },
+  { "W05#             " },
+  { "E55T2#           " },
+  { "G0T1#            " },
+  { "@@@@@@#          " }
+};
+
+const byte periscope_demo_card[][16] PROGMEM = {
+  { "E53T1#           " },
+  { "G3T100#          " },
+  { "G3MPERISCOPE#    " },
+  { "W03#             " },
+  { "F56T001#         " },
+  { "G3MDISPLAY 1#    " },
+  { "W03#             " },
+  { "F56T002#         " },
+  { "G3MDISPLAY 2#    " },
+  { "W03#             " },
+  { "F56T003#         " },
+  { "G3MDISPLAY 3#    " },
+  { "W03#             " },
+  { "F57T001#         " },
+  { "G3MEYES 1#       " },
+  { "W03#             " },
+  { "F57T002#         " },
+  { "G3MEYES 2#       " },
+  { "W03#             " },
+  { "F57T003#         " },
+  { "G3MEYES 3#       " },
+  { "W03#             " },
+  { "F58T001#         " },
+  { "G3MAIN 1#        " },
+  { "W03#             " },
+  { "F58T002#         " },
+  { "G3MAIN 2#        " },
+  { "W03#             " },
+  { "F58T003#         " },
+  { "G3MAIN 3#        " },
+  { "W03#             " },
+  { "F58T004#         " },
+  { "G3MAIN 4#        " },
+  { "W03#             " },
+  { "F58T005#         " },
+  { "G3MAIN 5#        " },
+  { "W03#             " },
+  { "F58T006#         " },
+  { "G3MAIN 6#        " },
+  { "W03#             " },
+  { "E53T2#           " },
+  { "G0T1#            " },
+  { "@@@@@@#          " }
+};
+const byte tools_demo_card[][16] PROGMEM = {
   { "D90S1#           " },
   { "D95S1#           " },
   { "D90T1#           " },
@@ -75,10 +149,10 @@ void loop() {
     return;
   }
   Serial.println("Card is selected successfully!");
-  for (int x = 0; x < 41; x++) {
+  for (int x = 0; x < 7; x++) {
     byte read_data[18];
-    for(int y=0; y<16; y++){
-    data[y] = pgm_read_byte(&(demo_card[x][y]));
+    for (int y = 0; y < 16; y++) {
+      data[y] = pgm_read_byte(&(lifeform_demo_card[x][y]));
     }
     writeBlock(block, data);
     readBlock(block, read_data);
@@ -89,7 +163,7 @@ void loop() {
     }
     Serial.println("");
     block++;
-    if(block%4==3)block++;
+    if (block % 4 == 3) block++;
   }
 }
 
