@@ -3,12 +3,104 @@
 
 #define SS_PIN 10
 #define RST_PIN 6
+
+const byte panel_open_close_wave_card[][16] PROGMEM = {
+{"G3T100#          "},
+{"E80T6#           "},
+{"G3MOPEN CLOSE WV#"},
+{"W05#             "},
+{"G0T1#            "},
+{"@@@@@@#          "}  
+    
+};
+
+
+const byte all_tools_card[][16] PROGMEM = {
+{"E51T1#           "},
+{"W03#             "},
+{"E52T1#           "},
+{"W03#             "},
+{"E53T1#           "},
+{"W03#             "},
+{"E54T1#           "},
+{"W03#             "},
+{"E55T1#           "},
+{"W10#             "},
+{"E51T2#           "},
+{"W03#             "},
+{"E52T2#           "},
+{"W03#             "},
+{"E53T2#           "},
+{"W03#             "},
+{"E54T2#           "},
+{"W03#             "},
+{"E55T2#           "},
+{"@@@@@@#          "}
+};
+
+
+const byte panel_all_open_card[][16] PROGMEM = {
+{"G3T100#          "},
+{"E80T2#           "},
+{"G3MALL OPEN#     "},
+{"W05#             "},
+{"G0T1#            "},
+{"@@@@@@#          "}  
+    
+};
+
+const byte panel_wave_card[][16] PROGMEM = {
+{"G3T100#          "},
+{"E80T4#           "},
+{"G3MWAVE#         "},
+{"W05#             "},
+{"G0T1#            "},
+{"@@@@@@#          "}  
+    
+};
+
+const byte panel_all_open_long_card[][16] PROGMEM = {
+{"G3T100#          "},
+{"E80T3#           "},
+{"G3MALL OPEN LONG#"},
+{"W05#             "},
+{"G0T1#            "},
+{"@@@@@@#          "}  
+    
+};
+
+const byte panel_fast_wave_card[][16] PROGMEM = {
+{"G3T100#          "},
+{"E80T5#           "},
+{"G3MFAST WAVE#    "},
+{"W05#             "},
+{"G0T1#            "},
+{"@@@@@@#          "}  
+    
+};
 const byte lightsaber_demo_card[][16] PROGMEM = {
   { "G3T100#          " },
   { "E52T1#           " },
   { "G3MLIGHT SABER#  " },
   { "W05#             " },
   { "E52T2#           " },
+  { "G0T1#            " },
+  { "@@@@@@#          " }
+};
+const byte zapper_demo_card[][16] PROGMEM = {
+  { "G3T100#          " },
+  { "E51T8#           " },
+  { "G3MZAPPER#       " },
+  { "W05#             " },
+  { "G0T1#            " },
+  { "@@@@@@#          " }
+};
+const byte periscope_quick_card[][16] PROGMEM = {
+  { "G3T100#          " },
+  { "E53T1#           " },
+  { "G3MZAPPER#       " },
+  { "W05#             " },
+  { "E53T2#           " },
   { "G0T1#            " },
   { "@@@@@@#          " }
 };
@@ -149,10 +241,10 @@ void loop() {
     return;
   }
   Serial.println("Card is selected successfully!");
-  for (int x = 0; x < 7; x++) {
+  for (int x = 0; x < 20; x++) {
     byte read_data[18];
     for (int y = 0; y < 16; y++) {
-      data[y] = pgm_read_byte(&(lifeform_demo_card[x][y]));
+      data[y] = pgm_read_byte(&(all_tools_card[x][y]));
     }
     writeBlock(block, data);
     readBlock(block, read_data);
