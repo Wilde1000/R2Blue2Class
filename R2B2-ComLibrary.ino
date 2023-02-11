@@ -97,8 +97,7 @@ The command structure is as follows:
 // M - Imperial March (bank 9 sound 3)
 //
 ///////////////////////////////////////////////
-#ifndef MP3SOUND_H_
-#define MP3SOUND_H_
+
 
 /////////////////////////////////////////////////////////////////////
 // Adjust your total number of music sounds you put on the card here
@@ -176,7 +175,7 @@ void mp3_check_timer();
 
 
 
-#endif /* MP3SOUND_H_ */
+
 
 
 
@@ -188,7 +187,10 @@ void mp3_check_timer();
 
 int dev_option, dev_address;
 char dev_MPU, dev_command;
-char cmdStr[CMD_MAX_LENGHT];
+char cmdStr0[CMD_MAX_LENGHT];
+char cmdStr1[CMD_MAX_LENGHT];
+char cmdStr2[CMD_MAX_LENGHT];
+char cmdStr3[CMD_MAX_LENGHT];
 unsigned long mp3_random_timer = millis();
 int mp3_random_int = random(MP3_MIN_RANDOM_PAUSE, MP3_MAX_RANDOM_PAUSE);
 static uint8_t mp3_bank_indexes[MP3_MAX_BANKS];
@@ -214,7 +216,46 @@ byte checkSerial() {
     char ch;                                      //create a character to hold the current byte from Serial stream
     byte command_complete;                        //Establish a flag value to indicate a complete command
     ch = Serial.read();                           //Read a byte from the Serial Stream
-    command_complete = buildCommand(ch, cmdStr);  //Build the command string
+    command_complete = buildCommand(ch, cmdStr0);  //Build the command string
+    if (command_complete) {                       //if complete return 1 to start the processing
+      return 1;
+    }
+  }
+  return 0;
+}
+
+byte checkSerial1() {
+  if (Serial1.available()) {
+    char ch;                                      //create a character to hold the current byte from Serial stream
+    byte command_complete;                        //Establish a flag value to indicate a complete command
+    ch = Serial1.read();                           //Read a byte from the Serial Stream
+    command_complete = buildCommand(ch, cmdStr1);  //Build the command string
+    if (command_complete) {                       //if complete return 1 to start the processing
+      return 1;
+    }
+  }
+  return 0;
+}
+
+byte checkSerial2() {
+  if (Serial2.available()) {
+    char ch;                                      //create a character to hold the current byte from Serial stream
+    byte command_complete;                        //Establish a flag value to indicate a complete command
+    ch = Serial2.read();                           //Read a byte from the Serial Stream
+    command_complete = buildCommand(ch, cmdStr2);  //Build the command string
+    if (command_complete) {                       //if complete return 1 to start the processing
+      return 1;
+    }
+  }
+  return 0;
+}
+
+byte checkSerial3() {
+  if (Serial3.available()) {
+    char ch;                                      //create a character to hold the current byte from Serial stream
+    byte command_complete;                        //Establish a flag value to indicate a complete command
+    ch = Serial3.read();                           //Read a byte from the Serial Stream
+    command_complete = buildCommand(ch, cmdStr3);  //Build the command string
     if (command_complete) {                       //if complete return 1 to start the processing
       return 1;
     }
@@ -233,6 +274,9 @@ byte parseCommand(char* input_str) {
   int mpu = input_str[pos];
   if (MPU != mpu) {  //if command is not for this MPU - send it on its way
     switch (mpu) {
+      case '$':
+        mp3_parse_command(input_str);
+        break;
       case 'B':
         Serial2.write(input_str);
         break;
@@ -355,7 +399,10 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if (checkSerial()) parseCommand(cmdStr);
+  if (checkSerial()) parseCommand(cmdStr0);
+  if (checkSerial1()) parseCommand(cmdStr1);
+  if (checkSerial2()) parseCommand(cmdStr2);
+  if (checkSerial3()) parseCommand(cmdStr3);
 }
 
 
