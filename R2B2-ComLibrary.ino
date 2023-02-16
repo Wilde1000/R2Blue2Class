@@ -98,7 +98,31 @@ The command structure is as follows:
 //
 ///////////////////////////////////////////////
 
+#include <time.h>
+#include <stdlib.h>
+#include <Adafruit_PWMServoDriver.h>
+Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 
+
+#define UA_TOP 0
+#define UA_TOP_MAX 200
+#define UA_TOP_MIN 500
+#define UA_BOT 1
+#define UA_BOT_MAX 200
+#define UA_BOT_MIN 450
+#define IA_DOR 2
+#define IA_DOR_MAX 275
+#define IA_DOR_MIN 400
+#define IA_LFT 3
+#define IA_LFT_MAX 475
+#define IA_LFT_MIN 150
+#define IA_EXT 4
+#define GA_DOR 5
+#define GA_LFT 6
+#define GA_EXT 7
+#define DP_DOR 8
+
+#define OE_PIN 8
 /////////////////////////////////////////////////////////////////////
 // Adjust your total number of music sounds you put on the card here
 /////////////////////////////////////////////////////////////////////
@@ -109,7 +133,7 @@ The command structure is as follows:
 
 // #define _MP3_DEBUG_MESSAGES_
 
-
+#define SERVO_FREQ 50
 
 #define MP3_MAX_BANKS 9             // nine banks
 #define MP3_MAX_SOUNDS_PER_BANK 25  // no more than 25 sound in each
@@ -129,14 +153,14 @@ The command structure is as follows:
 #define MP3_BANK9_SOUNDS MP3_MAX_SOUNDS_PER_BANK  // mus sounds, numbered 201 t0 225
 
 // this defines where the startup sound is
-#define MP3_EMPTY_SOUND 254  // workaround, used to stop sounds
-#define MP3_START_SOUND 255  // startup sound is number 255
-#define SOUND_START_CHAR '$' //Lead character for sound commands
-#define MP3_VOLUME_MID 50    // guessing mid volume 32 is right in-between...
-#define MP3_VOLUME_MIN 100   // doc says anything below 64 is inaudible, not true, 100 is. 82 is another good value
-#define MP3_VOLUME_MAX 0     // doc says max is 0
-#define MP3_VOLUME_STEPS 20  // R2 Touch app has 20 steps from min to max
-#define MP3_VOLUME_OFF 254   // to turn it off... 255 gets a buzz.
+#define MP3_EMPTY_SOUND 254   // workaround, used to stop sounds
+#define MP3_START_SOUND 255   // startup sound is number 255
+#define SOUND_START_CHAR '$'  //Lead character for sound commands
+#define MP3_VOLUME_MID 50     // guessing mid volume 32 is right in-between...
+#define MP3_VOLUME_MIN 100    // doc says anything below 64 is inaudible, not true, 100 is. 82 is another good value
+#define MP3_VOLUME_MAX 0      // doc says max is 0
+#define MP3_VOLUME_STEPS 20   // R2 Touch app has 20 steps from min to max
+#define MP3_VOLUME_OFF 254    // to turn it off... 255 gets a buzz.
 
 #define MP3_PLAY_CMD 't'    // command to play sound file on the MP3 trigger
 #define MP3_VOLUME_CMD 'v'  // command to play sound file on the MP3 trigger
@@ -209,15 +233,17 @@ static uint8_t mp3_volume = MP3_VOLUME_MID;
 static uint8_t saveflag;
 const char strSoundCmdError[] PROGMEM = "Invalid MP3Trigger Sound Command";
 uint8_t mp3_random_mode_flag = 0;  // the switch to check random sound mode
+byte ua_State = 0;
+byte ia_State = 0;
 
 
 byte checkSerial() {
   if (Serial.available()) {
-    char ch;                                      //create a character to hold the current byte from Serial stream
-    byte command_complete;                        //Establish a flag value to indicate a complete command
-    ch = Serial.read();                           //Read a byte from the Serial Stream
+    char ch;                                       //create a character to hold the current byte from Serial stream
+    byte command_complete;                         //Establish a flag value to indicate a complete command
+    ch = Serial.read();                            //Read a byte from the Serial Stream
     command_complete = buildCommand(ch, cmdStr0);  //Build the command string
-    if (command_complete) {                       //if complete return 1 to start the processing
+    if (command_complete) {                        //if complete return 1 to start the processing
       return 1;
     }
   }
@@ -226,11 +252,11 @@ byte checkSerial() {
 
 byte checkSerial1() {
   if (Serial1.available()) {
-    char ch;                                      //create a character to hold the current byte from Serial stream
-    byte command_complete;                        //Establish a flag value to indicate a complete command
+    char ch;                                       //create a character to hold the current byte from Serial stream
+    byte command_complete;                         //Establish a flag value to indicate a complete command
     ch = Serial1.read();                           //Read a byte from the Serial Stream
     command_complete = buildCommand(ch, cmdStr1);  //Build the command string
-    if (command_complete) {                       //if complete return 1 to start the processing
+    if (command_complete) {                        //if complete return 1 to start the processing
       return 1;
     }
   }
@@ -239,11 +265,11 @@ byte checkSerial1() {
 
 byte checkSerial2() {
   if (Serial2.available()) {
-    char ch;                                      //create a character to hold the current byte from Serial stream
-    byte command_complete;                        //Establish a flag value to indicate a complete command
+    char ch;                                       //create a character to hold the current byte from Serial stream
+    byte command_complete;                         //Establish a flag value to indicate a complete command
     ch = Serial2.read();                           //Read a byte from the Serial Stream
     command_complete = buildCommand(ch, cmdStr2);  //Build the command string
-    if (command_complete) {                       //if complete return 1 to start the processing
+    if (command_complete) {                        //if complete return 1 to start the processing
       return 1;
     }
   }
@@ -252,11 +278,11 @@ byte checkSerial2() {
 
 byte checkSerial3() {
   if (Serial3.available()) {
-    char ch;                                      //create a character to hold the current byte from Serial stream
-    byte command_complete;                        //Establish a flag value to indicate a complete command
+    char ch;                                       //create a character to hold the current byte from Serial stream
+    byte command_complete;                         //Establish a flag value to indicate a complete command
     ch = Serial3.read();                           //Read a byte from the Serial Stream
     command_complete = buildCommand(ch, cmdStr3);  //Build the command string
-    if (command_complete) {                       //if complete return 1 to start the processing
+    if (command_complete) {                        //if complete return 1 to start the processing
       return 1;
     }
   }
@@ -268,6 +294,7 @@ byte parseCommand(char* input_str) {
   byte hasArgument = false;
   int argument;
   int address;
+  Serial.println("parse");
   byte pos = 0;
   byte length = strlen(input_str);
   if (length < 2) goto deadCmd;  //not enough characters
@@ -278,20 +305,24 @@ byte parseCommand(char* input_str) {
         mp3_parse_command(input_str);
         break;
       case 'B':
-        Serial2.write(input_str);
+        for (int i = 0; i < length; i++) Serial2.write(input_str[i]);
+        Serial2.write(13);
         break;
       case 'C':
-        Serial3.write(input_str);
+        for (int i = 0; i < length; i++) Serial3.write(input_str[i]);
+        Serial3.write(13);
         break;
       case 'D':
       case 'E':
       case 'F':
       case 'G':
-        Serial.write(input_str);
+        for (int i = 0; i < length; i++) Serial.write(input_str[i]);
+        Serial.write(13);
         break;
       case 'H':
       case 'I':
-        Serial2.write(input_str);
+        for (int i = 0; i < length; i++) Serial2.write(input_str[i]);
+        Serial2.write(13);
         break;
     }
     return;
@@ -359,6 +390,12 @@ deadCmd:
 
 void doTcommand(int address, int argument) {
   switch (address) {
+    case 10:
+      ua_State = argument;
+      break;
+    case 11:
+      ia_State = argument;
+      break;
   }
 }
 
@@ -373,6 +410,8 @@ byte buildCommand(char ch, char* output_str) {
   static int pos = 0;
   switch (ch) {
     case '\r':  //end character reached
+    case '\n':
+    case '\0':
       output_str[pos] = '\0';
       pos = 0;
       return true;
@@ -393,8 +432,16 @@ void setup() {
   Serial2.begin(9600);  //Serial Connection with Lights Mega
   Serial3.begin(9600);  //Serial Connection with Xbox Uno
   //Wait 3 seconds before playing startup sound
+  servoControl.begin();
+  servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
+  pinMode(OE_PIN, OUTPUT);
+  digitalWrite(OE_PIN, LOW);
   delay(3000);
   mp3_init();
+  servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
+  servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
+  servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
+  servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
 }
 
 void loop() {
@@ -403,6 +450,40 @@ void loop() {
   if (checkSerial1()) parseCommand(cmdStr1);
   if (checkSerial2()) parseCommand(cmdStr2);
   if (checkSerial3()) parseCommand(cmdStr3);
+  utilityArms(ua_State);
+  interfaceArm(ia_State);  
+}
+
+void interfaceArm(int option) {
+  switch (option) {
+    case 0:
+      return;
+    case 1:
+      servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
+     
+
+      break;
+    case 2:
+      servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
+      break;
+  }
+}
+
+
+
+void utilityArms(int option) {
+  switch (option) {
+    case 0:
+      return;
+    case 1:
+      servoControl.setPWM(UA_TOP, 0, UA_TOP_MAX);
+      servoControl.setPWM(UA_BOT, 0, UA_BOT_MAX);
+      break;
+    case 2:
+      servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
+      servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
+      break;
+  }
 }
 
 
@@ -431,352 +512,311 @@ void mp3_do_random() {
   mp3_random_int = random(MP3_MIN_RANDOM_PAUSE, MP3_MAX_RANDOM_PAUSE);
 }
 
-void mp3_volumemid()
-{
-	mp3_volume=MP3_VOLUME_MID;
-	mp3_setvolume(mp3_volume);
+void mp3_volumemid() {
+  mp3_volume = MP3_VOLUME_MID;
+  mp3_setvolume(mp3_volume);
 }
 
-void mp3_setvolume(uint8_t vol)
-{
-	mp3_send_command_byte(MP3_VOLUME_CMD);
-	mp3_send_command_byte(vol);
-
+void mp3_setvolume(uint8_t vol) {
+  mp3_send_command_byte(MP3_VOLUME_CMD);
+  mp3_send_command_byte(vol);
 }
 
 // Sends the hardware command, assumes MP3 is connected to suart2 on the MarcDuino
-void mp3_send_command_byte(char command)
-{
-	// sends a single byte at a time
-	Serial1.write(command);
+void mp3_send_command_byte(char command) {
+  // sends a single byte at a time
+  Serial1.write(command);
 }
 
-void mp3_playstartsound()
-{
-	// access the start sound directly through the global bank 0
-	mp3_sound(0,MP3_START_SOUND);
+void mp3_playstartsound() {
+  // access the start sound directly through the global bank 0
+  mp3_sound(0, MP3_START_SOUND);
 }
 
 // play sound from bank. If sound=0, plays next sound in bank
 // for bank 1 to 4, and first sound in bank for bank 5-9
 // Bank 0 can access any sound
-void mp3_sound(uint8_t bank, uint8_t sound)
-{
-	uint8_t filenum;
+void mp3_sound(uint8_t bank, uint8_t sound) {
+  uint8_t filenum;
 
-	if(bank>MP3_MAX_BANKS) return;
-	if(bank!=0 && sound>MP3_MAX_SOUNDS_PER_BANK) return;
+  if (bank > MP3_MAX_BANKS) return;
+  if (bank != 0 && sound > MP3_MAX_SOUNDS_PER_BANK) return;
 
-	// if bank=0 play the sound number provided
-	if(bank==0) filenum=sound;
+  // if bank=0 play the sound number provided
+  if (bank == 0) filenum = sound;
 
-	else if(sound!=0)
-	{
-		// calculate actual file number on the MP3 memory card
-		filenum = (bank-1)*MP3_MAX_SOUNDS_PER_BANK + sound;
-		// also adjust last sound played index for the next sound command
-		// make sure not to go past max sounds
-		if(sound>mp3_max_sounds[bank])
-			mp3_bank_indexes[bank]= mp3_max_sounds[bank];
-		else
-			mp3_bank_indexes[bank]= sound;
-	}
-	// sound "0", play first or next sound depending on bank
-	else
-	{
-		if(bank<=MP3_BANK_CUTOFF)
-		{
-			// advance index, rewind to first sound if at end
-			if((++mp3_bank_indexes[bank]) > mp3_max_sounds[bank])
-				mp3_bank_indexes[bank]=1;
-			// we'll play the new indexed sound
-			sound=mp3_bank_indexes[bank];
-		}
-		else
-		{
-			// for banks that always play the first sound
-			sound=1;
-		}
-		filenum = (bank-1)*MP3_MAX_SOUNDS_PER_BANK + sound;
-	}
+  else if (sound != 0) {
+    // calculate actual file number on the MP3 memory card
+    filenum = (bank - 1) * MP3_MAX_SOUNDS_PER_BANK + sound;
+    // also adjust last sound played index for the next sound command
+    // make sure not to go past max sounds
+    if (sound > mp3_max_sounds[bank])
+      mp3_bank_indexes[bank] = mp3_max_sounds[bank];
+    else
+      mp3_bank_indexes[bank] = sound;
+  }
+  // sound "0", play first or next sound depending on bank
+  else {
+    if (bank <= MP3_BANK_CUTOFF) {
+      // advance index, rewind to first sound if at end
+      if ((++mp3_bank_indexes[bank]) > mp3_max_sounds[bank])
+        mp3_bank_indexes[bank] = 1;
+      // we'll play the new indexed sound
+      sound = mp3_bank_indexes[bank];
+    } else {
+      // for banks that always play the first sound
+      sound = 1;
+    }
+    filenum = (bank - 1) * MP3_MAX_SOUNDS_PER_BANK + sound;
+  }
 
-	// send a 't'nnn number where nnn=file number
-	mp3_send_command_byte(MP3_PLAY_CMD);
-	mp3_send_command_byte(filenum);
-
+  // send a 't'nnn number where nnn=file number
+  mp3_send_command_byte(MP3_PLAY_CMD);
+  mp3_send_command_byte(filenum);
 }
 
-void mp3_parse_command(char* commandstr)
-{
-	////////////////////////////////////////////////
-	// Play sound command by bank/sound numbers
-	// $xyy
-	// x=bank number
-	// yy=sound number. If none, next sound is played in the bank
-	//
-	// Other commands
-	// $c
-	// where c is a command character
-	// R - random from 4 first banks
-	// O - sound off
-	// L - Leia message (bank 7 sound 1)
-	// C - Cantina music (bank 9 sound 5)
-	// c - Beep cantina (bank 9 sound 1)
-	// S - Scream (bank 6 sound 1)
-	// F - Faint/Short Circuit (bank 6 sound 3)
-	// D - Disco (bank 9 sound 6)
-	// s - stop sounds
-	// + - volume up
-	// - - volume down
-	// m - volume mid
-	// f - volume max
-	// p - volume min
-	// W - Star Wars music (bank 9 sound 2)
-	// M - Imperial March (bank 9 sound 3)
-	//
-	///////////////////////////////////////////////
+void mp3_parse_command(char* commandstr) {
+  ////////////////////////////////////////////////
+  // Play sound command by bank/sound numbers
+  // $xyy
+  // x=bank number
+  // yy=sound number. If none, next sound is played in the bank
+  //
+  // Other commands
+  // $c
+  // where c is a command character
+  // R - random from 4 first banks
+  // O - sound off
+  // L - Leia message (bank 7 sound 1)
+  // C - Cantina music (bank 9 sound 5)
+  // c - Beep cantina (bank 9 sound 1)
+  // S - Scream (bank 6 sound 1)
+  // F - Faint/Short Circuit (bank 6 sound 3)
+  // D - Disco (bank 9 sound 6)
+  // s - stop sounds
+  // + - volume up
+  // - - volume down
+  // m - volume mid
+  // f - volume max
+  // p - volume min
+  // W - Star Wars music (bank 9 sound 2)
+  // M - Imperial March (bank 9 sound 3)
+  //
+  ///////////////////////////////////////////////
 
 
-	uint8_t len=strlen(commandstr);
-	// check the start character
-	if(commandstr[0]!=SOUND_START_CHAR)
-	{
-		Serial1.write(strSoundCmdError);
-		return;
-	}
+  uint8_t len = strlen(commandstr);
+  // check the start character
+  if (commandstr[0] != SOUND_START_CHAR) {
+    Serial1.write(strSoundCmdError);
+    return;
+  }
 
-	// should have between 2 and 4 characters
-	if (len<2 || len>4)
-	{
-		Serial1.write(strSoundCmdError);
-		return;
-	}
+  // should have between 2 and 4 characters
+  if (len < 2 || len > 4) {
+    Serial1.write(strSoundCmdError);
+    return;
+  }
 
-	char cmdch=commandstr[1];
+  char cmdch = commandstr[1];
 
-	// if the command character is a digit, this is a sound play command
-	if(isdigit(cmdch))
-	{
-		mp3_stop_random(); // any manual sound command stops random automatically
-		uint8_t bank=(uint8_t)cmdch - 48; // cheap ASCII to number conversion
-		uint8_t sound=0;
-		if(len>2)
-		{
-			sound=atoi(commandstr+2);
-		}
-		mp3_sound(bank, sound);
-		return;
-	}
+  // if the command character is a digit, this is a sound play command
+  if (isdigit(cmdch)) {
+    mp3_stop_random();                   // any manual sound command stops random automatically
+    uint8_t bank = (uint8_t)cmdch - 48;  // cheap ASCII to number conversion
+    uint8_t sound = 0;
+    if (len > 2) {
+      sound = atoi(commandstr + 2);
+    }
+    mp3_sound(bank, sound);
+    return;
+  }
 
-	// the command is a character
-	switch(cmdch)
-	{
-		case 'R':	// R - random from 4 first banks
-			mp3_start_random();	// keep firing random sounds
-			//mp3_random();		// this is just a one shot
-			break;
-		case 'O':	// O - sound off
-			mp3_stop_random();
-			mp3_volumeoff();
-			break;
-		case 'L':	// L - Leia message (bank 7 sound 1)
-			//mp3_stop_random();		// so long (34s), just stop random?
-			mp3_suspend_random();
-			mp3_sound(7,1);
-			mp3_random_timer=4400; // 34s + 10s extra long delay
-			mp3_resume_random();
-			break;
-		case 'C':	// C - Cantina music (bank 9 sound 5)
-			//mp3_stop_random();		// so long, just stop random
-			mp3_suspend_random();
-			mp3_sound(8,5);
-			mp3_random_timer=5600; // extra long delay
-			mp3_resume_random();
-			break;
-		case 'c':	// c - Beep cantina (bank 9 sound 1)
-			mp3_suspend_random();
-			mp3_sound(8,1);
-			mp3_random_timer=2700; // extra long delay
-			mp3_resume_random();
-			break;
-		case 'S':	// S - Scream (bank 6 sound 1)
-			mp3_suspend_random();
-			mp3_sound(6,1);
-			mp3_resume_random();
-			break;
-		case 'F':	// F - Faint/Short Circuit (bank 6 sound 3)
-			mp3_suspend_random();
-			mp3_sound(6,3);
-			mp3_resume_random();
-			break;
-		case 'D':	// D - Disco (bank 9 sound 6)
-			mp3_suspend_random();
-			mp3_sound(8,6);
-			mp3_random_timer=39600; // 6:26 +10s min extra long delay
-			mp3_resume_random();
-			break;
-		case 's':	// s - stop sounds
-			mp3_stop_random();
-			mp3_stop();
-			break;
-		case '+':	// + - volume up
-			mp3_volumeup();
-			break;
-		case '-':	// - - volume down
-			mp3_volumedown();
-			break;
-		case 'm':	// m - volume mid
-			mp3_volumemid();
-			break;
-		case 'f':	// f - volume max
-			mp3_volumemax();
-			break;
-		case 'p':	// p - volume min
-			mp3_volumemin();
-			break;
-		case 'W':	// W - Star Wars music (bank 9 sound 2)
-			mp3_stop_random();		// so long, just stop random
-			//mp3_suspend_random();
-			mp3_sound(8,2);
-			//mp3_resume_random();
-			break;
-		case 'M':	// M - Imperial March (bank 9 sound 3)
-			mp3_stop_random();		// so long, just stop random
-			//mp3_suspend_random();
-			mp3_sound(8,3);
-			//mp3_resume_random();
-			break;
-		default:
-			Serial1.write(strSoundCmdError);
-			break;
-	}
+  // the command is a character
+  switch (cmdch) {
+    case 'R':              // R - random from 4 first banks
+      mp3_start_random();  // keep firing random sounds
+      //mp3_random();		// this is just a one shot
+      break;
+    case 'O':  // O - sound off
+      mp3_stop_random();
+      mp3_volumeoff();
+      break;
+    case 'L':  // L - Leia message (bank 7 sound 1)
+      //mp3_stop_random();		// so long (34s), just stop random?
+      mp3_suspend_random();
+      mp3_sound(7, 1);
+      mp3_random_timer = 4400;  // 34s + 10s extra long delay
+      mp3_resume_random();
+      break;
+    case 'C':  // C - Cantina music (bank 9 sound 5)
+      //mp3_stop_random();		// so long, just stop random
+      mp3_suspend_random();
+      mp3_sound(8, 5);
+      mp3_random_timer = 5600;  // extra long delay
+      mp3_resume_random();
+      break;
+    case 'c':  // c - Beep cantina (bank 9 sound 1)
+      mp3_suspend_random();
+      mp3_sound(8, 1);
+      mp3_random_timer = 2700;  // extra long delay
+      mp3_resume_random();
+      break;
+    case 'S':  // S - Scream (bank 6 sound 1)
+      mp3_suspend_random();
+      mp3_sound(6, 1);
+      mp3_resume_random();
+      break;
+    case 'F':  // F - Faint/Short Circuit (bank 6 sound 3)
+      mp3_suspend_random();
+      mp3_sound(6, 3);
+      mp3_resume_random();
+      break;
+    case 'D':  // D - Disco (bank 9 sound 6)
+      mp3_suspend_random();
+      mp3_sound(8, 6);
+      mp3_random_timer = 39600;  // 6:26 +10s min extra long delay
+      mp3_resume_random();
+      break;
+    case 's':  // s - stop sounds
+      mp3_stop_random();
+      mp3_stop();
+      break;
+    case '+':  // + - volume up
+      mp3_volumeup();
+      break;
+    case '-':  // - - volume down
+      mp3_volumedown();
+      break;
+    case 'm':  // m - volume mid
+      mp3_volumemid();
+      break;
+    case 'f':  // f - volume max
+      mp3_volumemax();
+      break;
+    case 'p':  // p - volume min
+      mp3_volumemin();
+      break;
+    case 'W':             // W - Star Wars music (bank 9 sound 2)
+      mp3_stop_random();  // so long, just stop random
+      //mp3_suspend_random();
+      mp3_sound(8, 2);
+      //mp3_resume_random();
+      break;
+    case 'M':             // M - Imperial March (bank 9 sound 3)
+      mp3_stop_random();  // so long, just stop random
+      //mp3_suspend_random();
+      mp3_sound(8, 3);
+      //mp3_resume_random();
+      break;
+    default:
+      Serial1.write(strSoundCmdError);
+      break;
+  }
 }
 
-void mp3_start_random()
-{
-	mp3_random_timer=0;
-	mp3_random_mode_flag=1;
+void mp3_start_random() {
+  mp3_random_timer = 0;
+  mp3_random_mode_flag = 1;
 }
 
-void mp3_stop_random()
-{
-	mp3_random_mode_flag=0;
-	mp3_random_timer=0;
+void mp3_stop_random() {
+  mp3_random_mode_flag = 0;
+  mp3_random_timer = 0;
 }
 
-void mp3_suspend_random()
-{
-	mp3_random_timer=MP3_MAX_PAUSE_ON_RESUME;
-	saveflag=mp3_random_mode_flag;
-	mp3_random_mode_flag=0;
+void mp3_suspend_random() {
+  mp3_random_timer = MP3_MAX_PAUSE_ON_RESUME;
+  saveflag = mp3_random_mode_flag;
+  mp3_random_mode_flag = 0;
 }
 
-void mp3_resume_random()
-{
-	mp3_random_mode_flag=saveflag;
+void mp3_resume_random() {
+  mp3_random_mode_flag = saveflag;
 }
 
-void mp3_stop()
-{
-	// this doesn't work as this is a start/stop combined
-	//mp3_send_command_byte(MP3_STOP_CMD);
-	// instead go to an empty sound
-	mp3_sound(0,MP3_EMPTY_SOUND);
-//#ifdef _MP3_DEBUG_MESSAGES_
-//	printstr("MP3 stop: ");
-//	printlnchar(MP3_STOP_CMD);
-//#endif
+void mp3_stop() {
+  // this doesn't work as this is a start/stop combined
+  //mp3_send_command_byte(MP3_STOP_CMD);
+  // instead go to an empty sound
+  mp3_sound(0, MP3_EMPTY_SOUND);
+  //#ifdef _MP3_DEBUG_MESSAGES_
+  //	printstr("MP3 stop: ");
+  //	printlnchar(MP3_STOP_CMD);
+  //#endif
 }
 
-void mp3_volumeup()
-{
-	uint8_t step=(MP3_VOLUME_MIN - MP3_VOLUME_MAX)/MP3_VOLUME_STEPS;
-	// volume was at max or too high
-	if(mp3_volume<=MP3_VOLUME_MAX) mp3_volume=MP3_VOLUME_MAX;
-	else
-	{
-		// the step would be too big, peg to maximum
-		if (mp3_volume-MP3_VOLUME_MAX<step)
-			mp3_volume=MP3_VOLUME_MAX;
-		// go up down step (volume goes inverse with value)
-		else
-			mp3_volume-=step;
-	}
-	mp3_setvolume(mp3_volume);
+void mp3_volumeup() {
+  uint8_t step = (MP3_VOLUME_MIN - MP3_VOLUME_MAX) / MP3_VOLUME_STEPS;
+  // volume was at max or too high
+  if (mp3_volume <= MP3_VOLUME_MAX) mp3_volume = MP3_VOLUME_MAX;
+  else {
+    // the step would be too big, peg to maximum
+    if (mp3_volume - MP3_VOLUME_MAX < step)
+      mp3_volume = MP3_VOLUME_MAX;
+    // go up down step (volume goes inverse with value)
+    else
+      mp3_volume -= step;
+  }
+  mp3_setvolume(mp3_volume);
 }
 
-void mp3_volumedown()
-{
-	uint8_t step=(MP3_VOLUME_MIN-MP3_VOLUME_MAX)/MP3_VOLUME_STEPS;
-	// volume was set to off, or ended up too low
-	if(mp3_volume>MP3_VOLUME_MIN) mp3_volume=MP3_VOLUME_MIN;
-	else
-	{
-		// the step would be too bit, peg to minimum
-		if (MP3_VOLUME_MIN-mp3_volume<step)
-			mp3_volume=MP3_VOLUME_MIN;
-		// go up one step (volume goes inverse with value)
-		else
-			mp3_volume+=step;
-	}
-	mp3_setvolume(mp3_volume);
+void mp3_volumedown() {
+  uint8_t step = (MP3_VOLUME_MIN - MP3_VOLUME_MAX) / MP3_VOLUME_STEPS;
+  // volume was set to off, or ended up too low
+  if (mp3_volume > MP3_VOLUME_MIN) mp3_volume = MP3_VOLUME_MIN;
+  else {
+    // the step would be too bit, peg to minimum
+    if (MP3_VOLUME_MIN - mp3_volume < step)
+      mp3_volume = MP3_VOLUME_MIN;
+    // go up one step (volume goes inverse with value)
+    else
+      mp3_volume += step;
+  }
+  mp3_setvolume(mp3_volume);
 }
 
-void mp3_random()
-{
-	uint8_t num;
-	// Plays a random sound from the first 5 banks only
-	num = random(1,MP3_BANK1_SOUNDS+MP3_BANK2_SOUNDS+ MP3_BANK3_SOUNDS+MP3_BANK4_SOUNDS+MP3_BANK5_SOUNDS);
-	if(num<=MP3_BANK1_SOUNDS)
-	{
-		mp3_sound(1, num);
-		return;
-	}
-	num-=MP3_BANK1_SOUNDS;
-	if(num<=MP3_BANK2_SOUNDS)
-	{
-		mp3_sound(2, num);
-		return;
-	}
-	num-=MP3_BANK2_SOUNDS;
-	if(num<=MP3_BANK3_SOUNDS)
-	{
-		mp3_sound(3, num);
-		return;
-	}
-	num-=MP3_BANK3_SOUNDS;
-	if(num<=MP3_BANK4_SOUNDS)
-	{
-		mp3_sound(4, num);
-		return;
-	}
-	num-=MP3_BANK4_SOUNDS;
-	if(num<=MP3_BANK5_SOUNDS)
-	{
-		mp3_sound(5, num);
-		return;
-	}
+void mp3_random() {
+  uint8_t num;
+  // Plays a random sound from the first 5 banks only
+  num = random(1, MP3_BANK1_SOUNDS + MP3_BANK2_SOUNDS + MP3_BANK3_SOUNDS + MP3_BANK4_SOUNDS + MP3_BANK5_SOUNDS);
+  if (num <= MP3_BANK1_SOUNDS) {
+    mp3_sound(1, num);
+    return;
+  }
+  num -= MP3_BANK1_SOUNDS;
+  if (num <= MP3_BANK2_SOUNDS) {
+    mp3_sound(2, num);
+    return;
+  }
+  num -= MP3_BANK2_SOUNDS;
+  if (num <= MP3_BANK3_SOUNDS) {
+    mp3_sound(3, num);
+    return;
+  }
+  num -= MP3_BANK3_SOUNDS;
+  if (num <= MP3_BANK4_SOUNDS) {
+    mp3_sound(4, num);
+    return;
+  }
+  num -= MP3_BANK4_SOUNDS;
+  if (num <= MP3_BANK5_SOUNDS) {
+    mp3_sound(5, num);
+    return;
+  }
 }
 
-void mp3_volumeoff()
-{
-	mp3_volume=MP3_VOLUME_OFF;
-	mp3_setvolume(mp3_volume);
-
+void mp3_volumeoff() {
+  mp3_volume = MP3_VOLUME_OFF;
+  mp3_setvolume(mp3_volume);
 }
 
-void mp3_volumemax()
-{
-	mp3_volume=MP3_VOLUME_MAX;
-	mp3_setvolume(mp3_volume);
+void mp3_volumemax() {
+  mp3_volume = MP3_VOLUME_MAX;
+  mp3_setvolume(mp3_volume);
 }
 
-void mp3_volumemin()
-{
-	mp3_volume=MP3_VOLUME_MIN;
-	mp3_setvolume(mp3_volume);
+void mp3_volumemin() {
+  mp3_volume = MP3_VOLUME_MIN;
+  mp3_setvolume(mp3_volume);
 }
-
-
-
-
