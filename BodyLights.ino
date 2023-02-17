@@ -1,7 +1,7 @@
 /* This is the Lighting control program for the body of Blue Crew's mascot R2-Blue2.  This program is based on the original 
  *  Dataport/CBI program by Michael Erwin with additions from CuriousMarc, VAShadow, and S. Sloan. 
  * 
- * R2-Blue2 uses Michael Erwin's CBI and Dataport boards which utilize the MAX7219 chip to control LEDs.  In addition, R2 has three
+ * R2-Blue2  uses Michael Erwin's CBI and Dataport boards which utilize the MAX7219 chip to control LEDs.  In addition, R2 has three
  * team created light features using NeoPixels, the Large Dataport, the Coin Slots, and the Lightbar (on the DPL). These will be accessed
  * by using the FastLED.h and pixeltypes.h, its helper library
  * 
@@ -50,13 +50,13 @@
 
 //Set this to which Analog Pin you use for the voltage in.
 #define analoginput 0
-
 #define greenVCC 12.5   // Green LED on if above this voltage
 #define yellowVCC 12.0  // Yellow LED on if above this voltage
 #define redVCC 11.5     // Red LED on if above this voltage
 
 // For 15volts: R1=47k, R2=24k
 // For 30volts: R1=47k, R2=9.4k
+
 #define R1 47000.0  // >> resistance of R1 in ohms << the more accurate these values are
 #define R2 24000.0  // >> resistance of R2 in ohms << the more accurate the measurement will be
 
@@ -135,10 +135,10 @@ void updateTopBlocks();                                       //Updates the Top 
 
 
 void setup() {
-  Serial.begin(9600); 
+  Serial.begin(9600);
   Serial1.begin(9600);
   Serial2.begin(9600);
-  Serial3.begin(9600);                                    //Set up Serial Communication
+  Serial3.begin(9600);                                      //Set up Serial Communication
   FastLED.addLeds<WS2811, LB_PIN, GRB>(lb, LB_LEDS);        //Adds LEDs to FastLED array
   FastLED.addLeds<WS2811, CS_PIN, GRB>(cs, CS_LEDS);        //Adds LEDs to FastLED array
   FastLED.addLeds<WS2811, LDPL_PIN, GRB>(ldpl, LDPL_LEDS);  //Adds LEDs to FastLED array
@@ -171,48 +171,52 @@ void loop() {
   checkSerial();
   coinslot(cs_State);
   updateLDPL(ldpl_State);
-  dpl(0);
-  cbi(0);
+  dpl(dpl_State);
+  cbi(cbi_State);
 }
 
 
-void dpl(int DPLDoorStatus) {
-  if (DPLDoorStatus == 0) {  //If the Dataport door is open then set the LEDs - S.Sloan
-    // this is the new code. Every block of LEDs is handled independently
-    // Serial.print("\nDataPort");
-    updateTopBlocks();
-    bargraphDisplay(0);
-    updatebottomLEDs();
-    updateRedLEDs();
-#ifndef BLUELEDTRACKGRAPH
-    updateBlueLEDs();
-#endif
-    updateLightBar();
-
-  } else {  //If the Dataport door is closed then switch off the LEDs - S.Sloan
-    //switch off all data leds
-    lc.setRow(DATAPORT, 1, 0);  // top yellow blocks
-    lc.setRow(DATAPORT, 2, 0);  // top yellow blocks
-    lc.setRow(DATAPORT, 3, 0);  // top yellow blocks
-    lc.setRow(DATAPORT, 4, 0);  // top yellow blocks
-    lc.setRow(DATAPORT, 5, 0);  // top green blocks
-    lc.setRow(DATAPORT, 0, 0);  // blue LEDs
-    for (int x = 0; x < 16; x++) lb[x] = CRGB::Black;
-    FastLED.show();
+void dpl(int option) {
+  switch (option) {
+    case 0:
+      return;
+    case 1:
+      updateTopBlocks();
+      bargraphDisplay(0);
+      updatebottomLEDs();
+      updateRedLEDs();
+      updateLightBar();
+      break;
+    case 2:
+      lc.setRow(DATAPORT, 1, 0);  // top yellow blocks
+      lc.setRow(DATAPORT, 2, 0);  // top yellow blocks
+      lc.setRow(DATAPORT, 3, 0);  // top yellow blocks
+      lc.setRow(DATAPORT, 4, 0);  // top yellow blocks
+      lc.setRow(DATAPORT, 5, 0);  // top green blocks
+      lc.setRow(DATAPORT, 0, 0);  // blue LEDs
+      for (int x = 0; x < 16; x++) lb[x] = CRGB::Black;
+      FastLED.show();
+      dpl_State = 0;
+      break;
   }
 }
 
 
-void cbi(int CBIDoorStatus) {
+void cbi(int option) {
   //Charge Bay Indicator LED sequence
-  if (CBIDoorStatus == 0) {  //If the CBI door is open then Set the LEDs - S.Sloan
-    updateCBILEDs();
+  switch (option) {
+    case 0:
+      return;
+    case 1:
+      updateCBILEDs();
 #ifdef monitorVCC
-    getVCC();
+      getVCC();
 #endif
-  } else {  //If the CBI door is closed then switch off the LEDs - S.Sloan
-    //switch off all CBI leds
-    for (int row = 0; row < 7; row++) cc.setRow(CBI, row, 0);
+      break;
+    case 2:
+      for (int row = 0; row < 7; row++) cc.setRow(CBI, row, 0);
+      cbi_State=0;
+      break;
   }
 }
 
@@ -540,7 +544,7 @@ int parseCommand(char* input_str) {
       case 'E':
       case 'F':
       case 'G':
-    
+
         for (int x = 0; x < length; x++) {
           Serial.write(input_str[x]);
         }
