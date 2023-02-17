@@ -117,24 +117,29 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 #define IA_LFT_MAX 475
 #define IA_LFT_MIN 150
 #define IA_EXT 4
+#define IA_EXT_MAX 200
+#define IA_EXT_MIN 400
 #define GA_DOR 5
+#define GA_DOR_MAX 200
+#define GA_DOR_MIN 400
 #define GA_LFT 6
+#define GA_LFT_MAX 200
+#define GA_LFT_MIN 400
 #define GA_EXT 7
+#define GA_EXT_MAX 200
+#define GA_EXT_MIN 400
 #define DP_DOR 8
-
+#define DP_DOR_MAX 200
+#define DP_DOR_MIN 400
 #define OE_PIN 8
+
+
 /////////////////////////////////////////////////////////////////////
 // Adjust your total number of music sounds you put on the card here
 /////////////////////////////////////////////////////////////////////
 #define USER_MUSIC_SOUNDS_NUMBER 5
 
-
-//////////////// don't change anything below this line //////////////
-
-// #define _MP3_DEBUG_MESSAGES_
-
 #define SERVO_FREQ 50
-
 #define MP3_MAX_BANKS 9             // nine banks
 #define MP3_MAX_SOUNDS_PER_BANK 25  // no more than 25 sound in each
 #define MP3_BANK_CUTOFF 4           // cutoff for banks that play "next" sound on $x
@@ -162,13 +167,14 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 #define MP3_VOLUME_STEPS 20   // R2 Touch app has 20 steps from min to max
 #define MP3_VOLUME_OFF 254    // to turn it off... 255 gets a buzz.
 
-#define MP3_PLAY_CMD 't'    // command to play sound file on the MP3 trigger
-#define MP3_VOLUME_CMD 'v'  // command to play sound file on the MP3 trigger
-#define MP3_STOP_CMD 'O'    // command to stop/play  - not used
-
+#define MP3_PLAY_CMD 't'              // command to play sound file on the MP3 trigger
+#define MP3_VOLUME_CMD 'v'            // command to play sound file on the MP3 trigger
+#define MP3_STOP_CMD 'O'              // command to stop/play  - not used
 #define MP3_MIN_RANDOM_PAUSE 600      // min wait on random sounds
 #define MP3_MAX_RANDOM_PAUSE 1000     // max wait on random sounds
 #define MP3_MAX_PAUSE_ON_RESUME 1200  // default wait to resume random. Works for short sound. Set mp3_random_timer manually for long ones.
+#define CMD_MAX_LENGHT 64             //Defines max command Length - same as serial buffer
+#define MPU 'A'                       //Defines the MPU code for the program
 
 
 // public
@@ -199,23 +205,20 @@ void mp3_check_timer();
 
 
 
-
-
-
-
-
-
-
-#define CMD_MAX_LENGHT 64  //Defines max command Length - same as serial buffer
-#define MPU 'A'            //Defines the MPU code for the program
-
 int dev_option, dev_address;
 char dev_MPU, dev_command;
 char cmdStr0[CMD_MAX_LENGHT];
 char cmdStr1[CMD_MAX_LENGHT];
 char cmdStr2[CMD_MAX_LENGHT];
 char cmdStr3[CMD_MAX_LENGHT];
+unsigned long current_time = millis();
+unsigned long door_time = current_time;
+unsigned long lift_time = current_time;
+unsigned long ext_time = current_time;
 unsigned long mp3_random_timer = millis();
+long door_int = 1500;
+long lift_int = 2000;
+long ext_int = 2000;
 int mp3_random_int = random(MP3_MIN_RANDOM_PAUSE, MP3_MAX_RANDOM_PAUSE);
 static uint8_t mp3_bank_indexes[MP3_MAX_BANKS];
 static const uint8_t mp3_max_sounds[] = {
@@ -235,7 +238,8 @@ const char strSoundCmdError[] PROGMEM = "Invalid MP3Trigger Sound Command";
 uint8_t mp3_random_mode_flag = 0;  // the switch to check random sound mode
 byte ua_State = 0;
 byte ia_State = 0;
-
+byte ga_State = 0;
+byte dp_State = 0;
 
 byte checkSerial() {
   if (Serial.available()) {
@@ -396,6 +400,12 @@ void doTcommand(int address, int argument) {
     case 11:
       ia_State = argument;
       break;
+    case 12:
+      ga_State = argument;
+      break;
+    case 13:
+      dp_State = argument;
+      break;
   }
 }
 
@@ -436,12 +446,15 @@ void setup() {
   servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
   pinMode(OE_PIN, OUTPUT);
   digitalWrite(OE_PIN, LOW);
-  delay(3000);
-  mp3_init();
+
   servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
   servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
-  servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
-  servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
+
+  //servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
+  //servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
+  //servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
+  delay(3000);
+  mp3_init();
 }
 
 void loop() {
@@ -451,20 +464,162 @@ void loop() {
   if (checkSerial2()) parseCommand(cmdStr2);
   if (checkSerial3()) parseCommand(cmdStr3);
   utilityArms(ua_State);
-  interfaceArm(ia_State);  
+  interfaceArm(ia_State);
+  gripper(ga_State);
+  dataport(dp_State);
 }
 
-void interfaceArm(int option) {
-  switch (option) {
+void dataport(int option){
+  switch(option){
     case 0:
       return;
     case 1:
-      servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
-     
+      Serial2.write("B")
+      servoControl.setPWM(DP_DOR, 0, DP_DOR_MAX);
 
+  }
+}
+
+
+
+void gripper(int option) {
+  static int step = 0;
+  static int count = 0;
+  switch (option) {
+
+    current_time = millis();
+    case 0:
+      return;
+    case 1:
+      switch (step) {
+        case 0:
+          servoControl.setPWM(GA_DOR, 0, GA_DOR_MAX);
+          step++;
+          break;
+        case 1:
+          if (current_time - door_time > door_int) {
+            door_time = current_time;
+            servoControl.setPWM(GA_LFT, 0, GA_LFT_MAX);
+            step++;
+          }
+          break;
+        case 2:
+          if (current_time - lift_time > lift_int) {
+            lift_time = current_time;
+            servoControl.setPWM(GA_EXT, 0, GA_EXT_MAX);
+            step = 3;
+          }
+          count++;
+          break;
+        case 3:
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
+            servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
+            step = 2;
+            count++;
+            if (count == 3) {
+              step = 0;
+              count = 0;
+              ga_State = 0;
+            }
+          }
+
+          break;
+      }
       break;
     case 2:
-      servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
+      switch(step){
+        case 0:
+          servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
+          step=1;
+          break;
+        case 1:
+          if(current_time-ext_time>ext_int){
+            ext_time=current_time;
+            servoControl.setPWM(GA_LFT, 0, GA_LFT_MIN);
+            step=2;
+          }
+          break;
+        case 2:
+          if(current_time-door_time>door_int){
+            ext_time=current_time;
+            servoControl.setPWM(GA_DOR, 0, GA_DOR_MIN);
+            step=0;
+            ga_State=0;
+          }
+          break;
+      }    
+      break;
+  }
+}
+
+void interfaceArm(int option) {
+  static int step = 0;
+  static int count = 0;
+  switch (option) {
+
+    current_time = millis();
+    case 0:
+      return;
+    case 1:
+      switch (step) {
+        case 0:
+          servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
+          step++;
+          break;
+        case 1:
+          if (current_time - door_time > door_int) {
+            door_time = current_time;
+            servoControl.setPWM(IA_LFT, 0, IA_LFT_MAX);
+            step++;
+          }
+          break;
+        case 2:
+          if (current_time - lift_time > lift_int) {
+            lift_time = current_time;
+            servoControl.setPWM(IA_EXT, 0, IA_EXT_MAX);
+            step = 3;
+          }
+          count++;
+          break;
+        case 3:
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
+            servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
+            step = 2;
+            count++;
+            if (count == 3) {
+              step = 0;
+              count = 0;
+              ia_State = 0;
+            }
+          }
+
+          break;
+      }
+      break;
+    case 2:
+      switch(step){
+        case 0:
+          servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
+          step=1;
+          break;
+        case 1:
+          if(current_time-ext_time>ext_int){
+            ext_time=current_time;
+            servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
+            step=2;
+          }
+          break;
+        case 2:
+          if(current_time-door_time>door_int){
+            ext_time=current_time;
+            servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
+            step=0;
+            ia_State=0;
+          }
+          break;
+      }    
       break;
   }
 }
