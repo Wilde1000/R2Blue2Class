@@ -110,27 +110,30 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 #define UA_BOT 1
 #define UA_BOT_MAX 200
 #define UA_BOT_MIN 450
+
 #define IA_DOR 2
 #define IA_DOR_MAX 275
-#define IA_DOR_MIN 400
+#define IA_DOR_MIN 375
 #define IA_LFT 3
 #define IA_LFT_MAX 475
 #define IA_LFT_MIN 150
-#define IA_EXT 4
-#define IA_EXT_MAX 200
-#define IA_EXT_MIN 400
-#define GA_DOR 5
-#define GA_DOR_MAX 200
-#define GA_DOR_MIN 400
-#define GA_LFT 6
-#define GA_LFT_MAX 200
-#define GA_LFT_MIN 400
+#define IA_EXT 6
+#define IA_EXT_MAX 375
+#define IA_EXT_MIN 200
+
+#define GA_DOR 4
+#define GA_DOR_MAX 375
+#define GA_DOR_MIN 200
+#define GA_LFT 5
+#define GA_LFT_MAX 150
+#define GA_LFT_MIN 450
 #define GA_EXT 7
 #define GA_EXT_MAX 200
-#define GA_EXT_MIN 400
+#define GA_EXT_MIN 375
+
 #define DP_DOR 8
-#define DP_DOR_MAX 200
-#define DP_DOR_MIN 400
+#define DP_DOR_MAX 425
+#define DP_DOR_MIN 200
 #define OE_PIN 8
 
 
@@ -242,6 +245,7 @@ byte ga_State = 0;
 byte dp_State = 0;
 
 byte checkSerial() {
+  
   if (Serial.available()) {
     char ch;                                       //create a character to hold the current byte from Serial stream
     byte command_complete;                         //Establish a flag value to indicate a complete command
@@ -298,7 +302,6 @@ byte parseCommand(char* input_str) {
   byte hasArgument = false;
   int argument;
   int address;
-  Serial.println("parse");
   byte pos = 0;
   byte length = strlen(input_str);
   if (length < 2) goto deadCmd;  //not enough characters
@@ -450,9 +453,11 @@ void setup() {
   servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
   servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
 
+  servoControl.setPWM(DP_DOR, 0, DP_DOR_MIN);
+
   //servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
   //servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
-  //servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
+ // servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
   delay(3000);
   mp3_init();
 }
@@ -469,18 +474,15 @@ void loop() {
   dataport(dp_State);
 }
 
-void dataport(int option){
-  switch(option){
+void dataport(int option) {
+  switch (option) {
     case 0:
       return;
     case 1:
-      Serial2.write("B")
+      Serial2.write("B");
       servoControl.setPWM(DP_DOR, 0, DP_DOR_MAX);
-
   }
 }
-
-
 
 void gripper(int option) {
   static int step = 0;
@@ -497,19 +499,18 @@ void gripper(int option) {
           step++;
           break;
         case 1:
-          if (current_time - door_time > door_int) {
-            door_time = current_time;
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
             servoControl.setPWM(GA_LFT, 0, GA_LFT_MAX);
             step++;
           }
           break;
         case 2:
-          if (current_time - lift_time > lift_int) {
-            lift_time = current_time;
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
             servoControl.setPWM(GA_EXT, 0, GA_EXT_MAX);
             step = 3;
           }
-          count++;
           break;
         case 3:
           if (current_time - ext_time > ext_int) {
@@ -528,27 +529,69 @@ void gripper(int option) {
       }
       break;
     case 2:
-      switch(step){
+      switch (step) {
         case 0:
           servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
-          step=1;
+          step = 1;
           break;
         case 1:
-          if(current_time-ext_time>ext_int){
-            ext_time=current_time;
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
             servoControl.setPWM(GA_LFT, 0, GA_LFT_MIN);
-            step=2;
+            step = 2;
           }
           break;
         case 2:
-          if(current_time-door_time>door_int){
-            ext_time=current_time;
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
             servoControl.setPWM(GA_DOR, 0, GA_DOR_MIN);
-            step=0;
-            ga_State=0;
+            step = 0;
+            ga_State = 0;
           }
           break;
-      }    
+      }
+      break;
+  }
+}
+
+
+void liftInterface() {
+  static int step = 0;
+  static int count = 0;
+  Serial.println(step);
+  switch (step) {
+    case 0:
+      servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
+      step = 1;  // Lift thingy
+      break;
+    case 1:
+      if (current_time - ext_time > ext_int) {
+        ext_time = current_time;
+        servoControl.setPWM(IA_LFT, 0, IA_LFT_MAX);
+        step = 2;  // Extend thingy
+      }
+      break;
+    case 2:
+      if (current_time - ext_time > ext_int) {
+        ext_time = current_time;
+        servoControl.setPWM(IA_EXT, 0, IA_EXT_MAX);
+        step = 3;  // Unextend thingy
+      }
+      break;
+    case 3:
+      if (current_time - ext_time > ext_int) {
+        ext_time = current_time;
+        servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
+        step = 2;  // Extend thingy again
+        count++;
+
+        // Stop
+        if (count == 3) {
+          step = 0;
+          count = 0;
+          ia_State = 0;
+        }
+      }
       break;
   }
 }
@@ -556,70 +599,36 @@ void gripper(int option) {
 void interfaceArm(int option) {
   static int step = 0;
   static int count = 0;
-  switch (option) {
+  current_time = millis();
 
-    current_time = millis();
+  switch (option) {
     case 0:
       return;
     case 1:
-      switch (step) {
-        case 0:
-          servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
-          step++;
-          break;
-        case 1:
-          if (current_time - door_time > door_int) {
-            door_time = current_time;
-            servoControl.setPWM(IA_LFT, 0, IA_LFT_MAX);
-            step++;
-          }
-          break;
-        case 2:
-          if (current_time - lift_time > lift_int) {
-            lift_time = current_time;
-            servoControl.setPWM(IA_EXT, 0, IA_EXT_MAX);
-            step = 3;
-          }
-          count++;
-          break;
-        case 3:
-          if (current_time - ext_time > ext_int) {
-            ext_time = current_time;
-            servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
-            step = 2;
-            count++;
-            if (count == 3) {
-              step = 0;
-              count = 0;
-              ia_State = 0;
-            }
-          }
-
-          break;
-      }
+      liftInterface();
       break;
     case 2:
-      switch(step){
+      switch (step) {
         case 0:
           servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
-          step=1;
+          step = 1;
           break;
         case 1:
-          if(current_time-ext_time>ext_int){
-            ext_time=current_time;
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
             servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
-            step=2;
+            step = 2;
           }
           break;
         case 2:
-          if(current_time-door_time>door_int){
-            ext_time=current_time;
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
             servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
-            step=0;
-            ia_State=0;
+            step = 0;
+            ia_State = 0;
           }
           break;
-      }    
+      }
       break;
   }
 }
