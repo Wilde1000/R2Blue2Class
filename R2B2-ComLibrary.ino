@@ -40,6 +40,8 @@ The command structure is as follows:
   Command - T
   Option - 102
 */
+//We have used (with slight modifications for our droid) most of the MP3sound.h and MP3sound.c 
+//functions with credit given below:
 
 
 /***********************************************************
@@ -102,47 +104,48 @@ The command structure is as follows:
 #include <stdlib.h>
 #include <Adafruit_PWMServoDriver.h>
 Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
+//Servo Macros
+///////////////////////////////////////////////////////////////
+// Utility Arms
+#define UA_TOP 0            //Utility Arm Top Servo PCA9685 pin
+#define UA_TOP_MAX 200      //Utility Arm Top Servo (open position)
+#define UA_TOP_MIN 500      //Utility Arm Top Servo (close position)
+#define UA_BOT 1            //Utility Arm Bottom Servo PCA9685 pin
+#define UA_BOT_MAX 200      //Utility Arm Bottom Servo (open position)
+#define UA_BOT_MIN 450      //Utility Arm Bottom Servo (close position)
+// Interface Arm            
+#define IA_DOR 2            //Interface Arm Door Servo PCA9685 pin  
+#define IA_DOR_MAX 275      //Interface Arm Door Servo (open position)
+#define IA_DOR_MIN 375      //Interface Arm Door Servo (close position)
+#define IA_LFT 3            //Interface Arm Lift Servo PCA9685 pin  
+#define IA_LFT_MAX 475      //Interface Arm Lift Servo (up position)
+#define IA_LFT_MIN 150      //Interface Arm Lift Servo (down position)
+#define IA_EXT 6            //Interface Arm Extension Servo PCA9685 pin 
+#define IA_EXT_MAX 375      //Interface Arm Extension (out position)
+#define IA_EXT_MIN 200      //Interface Arm Extension (in position)
+//Gripper Arm
+#define GA_DOR 4            //Gripper Arm Door Servo PCA9685 pin 
+#define GA_DOR_MAX 375      //Gripper Arm Door Servo (open position)
+#define GA_DOR_MIN 200      //Gripper Arm Door Servo (close position)
+#define GA_LFT 5            //Gripper Arm Lift Servo PCA9685 pin 
+#define GA_LFT_MAX 150      //Gripper Arm Lift Servo (up position) 
+#define GA_LFT_MIN 450      //Gripper Arm Lift Servo (down position) 
+#define GA_EXT 7            //Gripper Arm Extension Servo PCA9685 pin 
+#define GA_EXT_MAX 200      //Gripper Arm Extension Servo (open gripper) 
+#define GA_EXT_MIN 375      //Gripper Arm Extension Servo (close gripper)
+//Data Panel Door
+#define DP_DOR 8            //Data Panel Door Servo PCA9685 pin 
+#define DP_DOR_MAX 425      //Data Panel Door Servo (open position)
+#define DP_DOR_MIN 200      //Data Panel Door Servo (close position)
+
+#define OE_PIN 8            //Set low to enable servos - low to disable servos
+#define SERVO_FREQ 50       //Standard servo frequency is 50Kz
+//////////////////////////////////////////////////////////////////////////////
 
 
-#define UA_TOP 0
-#define UA_TOP_MAX 200
-#define UA_TOP_MIN 500
-#define UA_BOT 1
-#define UA_BOT_MAX 200
-#define UA_BOT_MIN 450
-
-#define IA_DOR 2
-#define IA_DOR_MAX 275
-#define IA_DOR_MIN 375
-#define IA_LFT 3
-#define IA_LFT_MAX 475
-#define IA_LFT_MIN 150
-#define IA_EXT 6
-#define IA_EXT_MAX 375
-#define IA_EXT_MIN 200
-
-#define GA_DOR 4
-#define GA_DOR_MAX 375
-#define GA_DOR_MIN 200
-#define GA_LFT 5
-#define GA_LFT_MAX 150
-#define GA_LFT_MIN 450
-#define GA_EXT 7
-#define GA_EXT_MAX 200
-#define GA_EXT_MIN 375
-
-#define DP_DOR 8
-#define DP_DOR_MAX 425
-#define DP_DOR_MIN 200
-#define OE_PIN 8
-
-
-/////////////////////////////////////////////////////////////////////
-// Adjust your total number of music sounds you put on the card here
-/////////////////////////////////////////////////////////////////////
+// Music Macros
+/////////////////////////////////////////////////////////////////////////////
 #define USER_MUSIC_SOUNDS_NUMBER 5
-
-#define SERVO_FREQ 50
 #define MP3_MAX_BANKS 9             // nine banks
 #define MP3_MAX_SOUNDS_PER_BANK 25  // no more than 25 sound in each
 #define MP3_BANK_CUTOFF 4           // cutoff for banks that play "next" sound on $x
@@ -179,7 +182,7 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 #define CMD_MAX_LENGHT 64             //Defines max command Length - same as serial buffer
 #define MPU 'A'                       //Defines the MPU code for the program
 
-
+//Sound functions from MP3Sound.h and MP3Sound.c
 // public
 void mp3_init();  // wait at least 3s after mp3trigger power up before calling
 void mp3_parse_command(char* commandstr);
@@ -206,14 +209,17 @@ void mp3_stop_random();
 void mp3_start_random();
 void mp3_check_timer();
 
+////////////////////////////////////////////////////////////
+//Global Variables
 
 
-int dev_option, dev_address;
 char dev_MPU, dev_command;
 char cmdStr0[CMD_MAX_LENGHT];
 char cmdStr1[CMD_MAX_LENGHT];
 char cmdStr2[CMD_MAX_LENGHT];
 char cmdStr3[CMD_MAX_LENGHT];
+
+int dev_option, dev_address;
 unsigned long current_time = millis();
 unsigned long door_time = current_time;
 unsigned long lift_time = current_time;
@@ -367,17 +373,6 @@ byte parseCommand(char* input_str) {
       if (!hasArgument) goto deadCmd;  // invalid, no argument after command
       doTcommand(dev_address, dev_option);
       break;
-    /*case 'D':                           // D command is weird, does not need an argument, ignore if it has one
-      doDcommand(address);
-      break;
-    case 'P':    
-      if(!hasArgument) goto beep;       // invalid, no argument after command
-      doPcommand(address, argument);
-      break;
-    case 'R':    
-      if(!hasArgument) goto beep;       // invalid, no argument after command
-      doRcommand(address, argument);
-      break; */
     case 'S':
       if (!hasArgument) goto deadCmd;  // invalid, no argument after command
       doScommand(dev_address, dev_option);
@@ -449,18 +444,23 @@ void setup() {
   servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
   pinMode(OE_PIN, OUTPUT);
   digitalWrite(OE_PIN, LOW);
-
-  servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
-  servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
-
-  servoControl.setPWM(DP_DOR, 0, DP_DOR_MIN);
-
-  //servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
-  //servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
- // servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
-  delay(3000);
+  safeReset();
   mp3_init();
 }
+void safeReset(){
+  servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
+  servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
+  servoControl.setPWM(DP_DOR, 0, DP_DOR_MIN);
+  servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
+  servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
+  delay(2000);
+  servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
+  servoControl.setPWM(GA_LFT, 0, GA_LFT_MIN);
+  delay(2000);
+  servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
+  servoControl.setPWM(GA_DOR, 0, GA_DOR_MIN);
+}
+
 
 void loop() {
   // put your main code here, to run repeatedly:
