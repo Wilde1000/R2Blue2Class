@@ -479,8 +479,19 @@ void dataport(int option) {
     case 0:
       return;
     case 1:
-      Serial2.write("B");
+      char cmd0[]="B24T1";
+      for(int x=0; x<5; x++) Serial2.write(cmd0[x]);
+      Serial2.write(13);
       servoControl.setPWM(DP_DOR, 0, DP_DOR_MAX);
+      dp_State=0;
+      break;
+    case 2:
+      char cmd1[]="B24T2";
+      servoControl.setPWM(DP_DOR, 0, DP_DOR_MAX);
+      for(int x=0; x<5; x++) Serial2.write(cmd1[x]);
+      Serial2.write(13);
+      dp_State=0;
+      break;
   }
 }
 
