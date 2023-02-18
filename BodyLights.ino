@@ -58,13 +58,13 @@
 // For 30volts: R1=47k, R2=9.4k
 
 #define R1 47000.0  // >> resistance of R1 in ohms << the more accurate these values are
-#define R2 24000.0  // >> resistance of R2 in ohms << the more accurate the measurement will be
+#define R2 33000.0  // >> resistance of R2 in ohms << the more accurate the measurement will be
 
 // uncomment this to test the LEDS one after the other at startup
 //#define TEST
 
 // If you are using the voltage monitor uncomment this
-//#define monitorVCC
+#define monitorVCC
 
 
 
@@ -97,6 +97,7 @@ int cs_Tspeed = 10;                                                 // Sets defa
 int ldpl_State = 16;                                                // Sets default Large Data Port Logics State to off
 int ldpl_Speed = 200;                                               // Sets default Large Data Port Logics speed to Medium
 int ldpl_Tspeed = 10;                                               // Sets default Large Data Port Logics throb speed (0-99)
+int dpl_State=0;
 CRGB lb[LB_LEDS];
 CRGB ldpl[LDPL_LEDS];
 CRGB cs[CS_LEDS];
@@ -135,7 +136,7 @@ void updateTopBlocks();                                       //Updates the Top 
 
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(9600);              //Serial connection to Body Master
   Serial1.begin(9600);
   Serial2.begin(9600);
   Serial3.begin(9600);                                      //Set up Serial Communication
@@ -166,13 +167,11 @@ void setup() {
 
 
 void loop() {
-
-
   checkSerial();
   coinslot(cs_State);
   updateLDPL(ldpl_State);
   dpl(dpl_State);
-  cbi(cbi_State);
+  cbi();
 }
 
 
@@ -202,22 +201,11 @@ void dpl(int option) {
 }
 
 
-void cbi(int option) {
-  //Charge Bay Indicator LED sequence
-  switch (option) {
-    case 0:
-      return;
-    case 1:
+void cbi() {
       updateCBILEDs();
 #ifdef monitorVCC
       getVCC();
 #endif
-      break;
-    case 2:
-      for (int row = 0; row < 7; row++) cc.setRow(CBI, row, 0);
-      cbi_State=0;
-      break;
-  }
 }
 
 ///////////////////////////////////////////////////
@@ -558,7 +546,7 @@ int parseCommand(char* input_str) {
 
     return;
   }
-  if ((mpu > 64 && mpu < 71) || mpu == '@') dev_MPU = mpu;
+  if ((mpu > 64 && mpu < 73) || mpu == '$') dev_MPU = mpu;
   else goto deadCmd;  //Not a valid MPU - end command
   // Now the address which should be the next two characters
   char addrStr[3];  //set up a char array to hold them (plus the EOS (end of String) character)
@@ -596,17 +584,19 @@ deadCmd:
 
 //The doTcommand handles all T commands sent from the parseCommand function
 int doTcommand(int addr, int option) {
-  Serial.println("T command");
+  //Serial.println("T command");
   switch (addr) {
-    case 81:              // Address of Coin Slots is 81
+    case 21:              // Address of Coin Slots is 21
       cs_State = option;  // Set the Coin Slot state to the option
       break;
-    case 82:                // Address of Dataport is 82
+    case 22:                // Address of Dataport is 22
       ldpl_State = option;  // Set the Dataport state to the option
       break;
-    case 83:  // Address of Charging port is 83
+    case 23:  // Address of Charging port is 23
       //Code for Charging Port
-      //cp_State=option;                          // set the Charging port to the option
+      break;
+    case 24:  //Address of the Dataport is 24
+      dpl_State = option;
       break;
   }
 }
