@@ -55,27 +55,32 @@ Command createCommand(const char* onCommand, const char* offCommand) {
 /// Runs the correct command in a `Command` struct.
 Command runCommand(Command* command) {
   auto commandString = !command->isOn ? command->onCommand : command->offCommand;
-  Serial.write(commandString);
-  Serial.println();
-
-
+  byte length = strlen(commandString);
+  for(int x=0; x<length; x++) Serial.write(commandString[x]);
+  Serial.write(13);
   command->isOn = !command->isOn;
+  return;
 }
-
-
+Command utility = createCommand("A10T001", "A10T002");
+Command interface = createCommand("A11T001", "A11T002");
+Command gripper = createCommand("A12T001", "A12T002");
+Command dataport = createCommand("A13T001", "A13T002");
+Command coinslot = createCommand("B21T016", "B21T000");
+Command ldpl = createCommand("B22T016", "B22T000");
 Command zapper = createCommand("E51T008", "E51T008");
 Command lightSaber = createCommand("E52T001", "E52T002");
 Command periscope = createCommand("E53T001", "E53T002");
 Command motivator = createCommand("E54T001", "E54T002");
 Command lifeForm = createCommand("E55T001", "E55T002");
-
+Command holos = createCommand("D90T001", "D90T002");
+Command magic = createCommand("D95T001", "D95T002");
 
 void setup() {
   Serial.begin(9600);
 
 
   if (Usb.Init() == -1) {
-    Serial.print(F("\r\nOSC did not start"));
+    //Serial.print(F("\r\nOSC did not start"));
     while (1)
       ;  //halt
   }
@@ -83,18 +88,11 @@ void setup() {
   LFoot.writeMicroseconds(1500);
   RFoot.attach(RIGHT_PWM);
   RFoot.writeMicroseconds(1500);
-  //pinMode(LEFT_PWM, OUTPUT);
-  //pinMode(RIGHT_PWM, OUTPUT);
-
-
-
-
-  // analogWrite(RIGHT_PWM,90);
-  // analogWrite(LEFT_PWM,50);
   pinMode(DOME_ENABLE, OUTPUT);
   pinMode(IN1_DOME_MOTOR, OUTPUT);
   pinMode(IN2_DOME_MOTOR, OUTPUT);
 }
+
 void loop() {
   Usb.Task();
   if (Xbox.XboxReceiverConnected) {
@@ -138,13 +136,13 @@ void loop() {
     }
 
 
-    if (Xbox.getButtonPress(LT, CONTROLLER) || Xbox.getButtonPress(RT, CONTROLLER)) {
+    if (Xbox.getButtonPress(L2, CONTROLLER) || Xbox.getButtonPress(R2, CONTROLLER)) {
       auto direction = 0;
 
 
-      if (Xbox.getButtonPress(LT, CONTROLLER) > TRIGGER_DEAD_ZONE)
+      if (Xbox.getButtonPress(L2, CONTROLLER) > TRIGGER_DEAD_ZONE)
         direction -= 1;
-      if (Xbox.getButtonPress(RT, CONTROLLER) > TRIGGER_DEAD_ZONE)
+      if (Xbox.getButtonPress(R2, CONTROLLER) > TRIGGER_DEAD_ZONE)
         direction += 1;
 
 
@@ -160,7 +158,7 @@ void loop() {
       }
 
 
-      Serial.println(direction);
+      //Serial.println(direction);
     }
 
 
@@ -168,41 +166,41 @@ void loop() {
 
 
     if (Xbox.getButtonClick(UP, CONTROLLER)) {
-      Serial.println(F("Coin Slots"));
+      runCommand(&coinslot);
     }
     if (Xbox.getButtonClick(DOWN, CONTROLLER)) {
-      Serial.println(F("LDPL On/Off"));
+      runCommand(&ldpl);
     }
     if (Xbox.getButtonClick(LEFT, CONTROLLER)) {
-      Serial.println(F("Magic panel"));
+      runCommand(&magic);
     }
     if (Xbox.getButtonClick(RIGHT, CONTROLLER)) {
-      Serial.println(F("Holos"));
+      runCommand(&holos);
     }
 
 
     if (Xbox.getButtonClick(START, CONTROLLER)) {
-      Xbox.setLedMode(ALTERNATING, CONTROLLER);
+      //Xbox.setLedMode(ALTERNATING, CONTROLLER);
       runCommand(&zapper);
     }
     if (Xbox.getButtonClick(BACK, CONTROLLER)) {
-      Xbox.setLedBlink(ALL, CONTROLLER);
-      Serial.println(F("Ultility"));
+      //Xbox.setLedBlink(ALL, CONTROLLER);
+      runCommand(&utility);
     }
 
 
-    if (Xbox.getButtonClick(LB, CONTROLLER))
-      Serial.println(F("D Open/Close"));
-    if (Xbox.getButtonClick(RB, CONTROLLER))
-      Serial.println(F("Open Gripper"));
+    if (Xbox.getButtonClick(L3, CONTROLLER))
+      runCommand(&dataport);
+    if (Xbox.getButtonClick(R3, CONTROLLER))
+      runCommand(&gripper);
     if (Xbox.getButtonClick(XBOX, CONTROLLER)) {
       Xbox.setLedMode(ROTATING, CONTROLLER);
-      Serial.print(F("Xbox (Battery: "));
-      Serial.print(Xbox.getBatteryLevel(CONTROLLER));  // The battery level in the range 0-3
-      Serial.println(F(")"));
+      //Serial.print(F("Xbox (Battery: "));
+      //Serial.print(Xbox.getBatteryLevel(CONTROLLER));  // The battery level in the range 0-3
+      //Serial.println(F(")"));
     }
     if (Xbox.getButtonClick(SYNC, CONTROLLER)) {
-      Serial.println(F("Sync"));
+      //Serial.println(F("Sync"));
       Xbox.disconnect(CONTROLLER);
     }
 
