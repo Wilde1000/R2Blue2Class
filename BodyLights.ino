@@ -1,3 +1,41 @@
+/*
+We will be using a Jawa-Lite inspired technique to control all the MPU's in 
+R2-Blue2.
+The command structure is as follows:
+    Element 0 - MPU Code - Single Character indicating the Microprocessor Unit
+    Element 1, 2 - two digit Integer representing the device attached to the MPU
+    Element 3 - one character command code
+    Element 4 - the command option
+    MPU Codes:
+      
+      A - Body Master Mega
+      B - Lights Mega
+      C - Drive Uno
+      D - RFID Uno
+      E - Lifts Mega
+      F - Periscope Nano
+      G - Teeces Micro
+      H - CBI Nano
+      I - Exp. Nano
+    Device Codes:
+      0-9 - Teeces
+      10-19 - Body Master
+      20-29 - Lights Mega
+      30-39 - Drive Mega
+      40-49 - RFID Nano
+      50-59 - Lift Mega
+      60-69 - Periscope Nano
+      70-79 - CBI Nano
+      80-99 - Exp. Nano
+  A valid command would look like this:
+    E51T102
+  And would consist of the following:
+  MPU code - E
+  Device Address - 51
+  Command - T
+  Option - 102
+*/
+
 /* This is the Lighting control program for the body of Blue Crew's mascot R2-Blue2.  This program is based on the original 
  *  Dataport/CBI program by Michael Erwin with additions from CuriousMarc, VAShadow, and S. Sloan. 
  * 
@@ -43,10 +81,7 @@
 #define NUMDEV 1              // One for the dataport, one for the battery indicator/CBI
 #define DATAPORTINTENSITY 15  // 15 is max
 #define CBIINTENSITY 15       // 15 is max
-#define MAX_COMMAND_LENGTH 64
-// Currently, our droid uses two unconnected MAX7219 driven light systems - the DPL and the CBI
-
-
+#define MAX_COMMAND_LENGTH 64 // Max size for a serial command
 
 //Set this to which Analog Pin you use for the voltage in.
 #define analoginput 0
@@ -54,6 +89,7 @@
 #define yellowVCC 12.0  // Yellow LED on if above this voltage
 #define redVCC 11.5     // Red LED on if above this voltage
 
+// For 12volts: R1=47k, R2=33k
 // For 15volts: R1=47k, R2=24k
 // For 30volts: R1=47k, R2=9.4k
 
@@ -66,41 +102,38 @@
 // If you are using the voltage monitor uncomment this
 #define monitorVCC
 
-
-
-
-
 // Uncomment this if you want an alternate effect for the blue LEDs, where it moves
 // in sync with the bar graph
 //#define BLUELEDTRACKGRAPH
 
 //========================End Macro Definitions ====================================================
 
-
+//
 /*************************************************************************
  * ********************** GLOBAL VARIABLES *******************************
  * ***********************************************************************/
-
+CRGB lb[LB_LEDS];                            // Create a CRGB object for Data Panel Light Bar
+CRGB ldpl[LDPL_LEDS];                        // Create a CRGB object for Large Data Panel Logics
+CRGB cs[CS_LEDS];                            // Create a CRGB object for the Coin Slots
 float vout = 0.0;  // for voltage out measured analog input
 int value = 0;     // used to hold the analog value coming out of the voltage divider
 float vin = 0.0;   // voltage calulcated... since the divider allows for 15 volts
 char cmdStr0[MAX_COMMAND_LENGTH];
+// Currently, our droid uses two unconnected MAX7219 driven light systems - the DPL and the CBI
 // Instantiate LedControl driver
 LedControl cc = LedControl(CBI_DATA, CBI_CLOCK, CBI_LOAD, NUMDEV);  // CBI
 LedControl lc = LedControl(DPL_DATA, DPL_CLOCK, DPL_LOAD, NUMDEV);  // Dataport
-int displayEffect = 100;                                            // 100=no change, 4=whistle/heart sequence
-int dev_addr, dev_opt;                                              // Create variables for device address and device option
-char dev_cmd, dev_MPU;                                              // Create variable for the device command
-int cs_State = 16;                                                  // Sets default Coin Slot State to off
-int cs_Speed = 425;                                                 // Sets default Coin Slot speed to Medium
-int cs_Tspeed = 10;                                                 // Sets default Coin Slot throb speed (0-99)
-int ldpl_State = 16;                                                // Sets default Large Data Port Logics State to off
-int ldpl_Speed = 200;                                               // Sets default Large Data Port Logics speed to Medium
-int ldpl_Tspeed = 10;                                               // Sets default Large Data Port Logics throb speed (0-99)
-int dpl_State=0;
-CRGB lb[LB_LEDS];
-CRGB ldpl[LDPL_LEDS];
-CRGB cs[CS_LEDS];
+int displayEffect = 100;                     // 100=no change, 4=whistle/heart sequence
+int dev_addr, dev_opt;                       // Create variables for device address and device option
+char dev_cmd, dev_MPU;                       // Create variable for the device command
+int cs_State = 16;                           // Sets default Coin Slot State to off
+int cs_Speed = 425;                          // Sets default Coin Slot speed to Medium
+int cs_Tspeed = 10;                          // Sets default Coin Slot throb speed (0-99)
+int ldpl_State = 16;                         // Sets default Large Data Port Logics State to off
+int ldpl_Speed = 200;                        // Sets default Large Data Port Logics speed to Medium
+int ldpl_Tspeed = 10;                        // Sets default Large Data Port Logics throb speed (0-99)
+int dpl_State=0;                             // Set default Data Port Logics to off                       
+
 //========================End Global Variables ====================================================
 
 /*************************************************************************
@@ -137,32 +170,25 @@ void updateTopBlocks();                                       //Updates the Top 
 
 void setup() {
   Serial.begin(9600);              //Serial connection to Body Master
-  Serial1.begin(9600);
-  Serial2.begin(9600);
-  Serial3.begin(9600);                                      //Set up Serial Communication
-  FastLED.addLeds<WS2811, LB_PIN, GRB>(lb, LB_LEDS);        //Adds LEDs to FastLED array
-  FastLED.addLeds<WS2811, CS_PIN, GRB>(cs, CS_LEDS);        //Adds LEDs to FastLED array
-  FastLED.addLeds<WS2811, LDPL_PIN, GRB>(ldpl, LDPL_LEDS);  //Adds LEDs to FastLED array
+  //Serial1.begin(9600);           //Connected to Dome 25-pin Serial 2 - Not currently used
+  //Serial2.begin(9600);           //Connected to CBI Nano - Not currently used
+  //Serial3.begin(9600);           //Connected to EXP Nano - Not currently used
+  FastLED.addLeds<WS2811, LB_PIN, GRB>(lb, LB_LEDS);        //Adds Data Panel Light Bar LEDs to FastLED array
+  FastLED.addLeds<WS2811, CS_PIN, GRB>(cs, CS_LEDS);        //Adds Coin Slot LEDs to FastLED array
+  FastLED.addLeds<WS2811, LDPL_PIN, GRB>(ldpl, LDPL_LEDS);  //Adds Large Data Panel LEDs to FastLED array
   // initialize Maxim driver chips
-  lc.shutdown(DATAPORT, false);                  // take out of shutdown
-  lc.clearDisplay(DATAPORT);                     // clear
-  lc.setIntensity(DATAPORT, DATAPORTINTENSITY);  // set intensity
-  cc.shutdown(CBI, false);                       // take out of shutdown
-  cc.clearDisplay(CBI);                          // clear
-  cc.setIntensity(CBI, CBIINTENSITY);            // set intensity
-
-#ifdef TEST  // test LEDs
-  singleTest();
+  lc.shutdown(DATAPORT, false);                  // take Data Port out of shutdown
+  lc.clearDisplay(DATAPORT);                     // clear Data Port LEDs 
+  lc.setIntensity(DATAPORT, DATAPORTINTENSITY);  // set intensity of Data Port LEDs
+  cc.shutdown(CBI, false);                       // take Charging Bay Indicator out of shutdown
+  cc.clearDisplay(CBI);                          // clear CBI LEDs
+  cc.setIntensity(CBI, CBIINTENSITY);            // set intensity of CBI LEDs
+// test LEDs
+  singleTest();    //Tests all Maxim connected leds in turn
   delay(2000);
-#endif
-
   pinMode(DPLDoorPin, INPUT_PULLUP);  //Pin on the Arduino Mini Breakout Board connected to left door switch HIGH=Door closed (NC when door closed) - S.Sloan
-  pinMode(CBIDoorPin, INPUT_PULLUP);  //Pin on the Arduino Mini Breakout Board connected to right door switch HIGH=Door closed (NC when door closed) - S.Sloan
-
-
-#ifndef monitorVCC
   pinMode(analoginput, INPUT);
-#endif
+
 }
 
 
@@ -185,6 +211,9 @@ void dpl(int option) {
       updatebottomLEDs();
       updateRedLEDs();
       updateLightBar();
+      char cmd[]={"A13T001"};
+      for(int x=0; x<7; x++) Serial.write(cmd[x]);
+      Serial.write(13);
       break;
     case 2:
       lc.setRow(DATAPORT, 1, 0);  // top yellow blocks
@@ -196,6 +225,9 @@ void dpl(int option) {
       for (int x = 0; x < 16; x++) lb[x] = CRGB::Black;
       FastLED.show();
       dpl_State = 0;
+      char cmd1[]={"A13T002"};
+      for(int x=0; x<7; x++) Serial.write(cmd1[x]);
+      Serial.write(13);
       break;
   }
 }
@@ -203,9 +235,8 @@ void dpl(int option) {
 
 void cbi() {
       updateCBILEDs();
-#ifdef monitorVCC
+
       getVCC();
-#endif
 }
 
 ///////////////////////////////////////////////////
