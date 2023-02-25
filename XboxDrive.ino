@@ -64,7 +64,7 @@ Command runCommand(Command* command) {
 Command utility = createCommand("A10T1", "A10T2");
 Command interface = createCommand("A11T1", "A11T2");
 Command gripper = createCommand("A12T1", "A12T2");
-Command dataport = createCommand("A13T1", "A13T2");
+Command dataport = createCommand("B24T1", "B24T2");
 Command coinslot = createCommand("B21T16", "B21T0");
 Command ldpl = createCommand("B22T16", "B22T0");
 Command zapper = createCommand("E51T8", "E51T2");
@@ -74,8 +74,9 @@ Command motivator = createCommand("E54T1", "E54T2");
 Command lifeForm = createCommand("E55T1", "E55T2");
 Command holos = createCommand("D90T1", "D90T2");
 Command magic = createCommand("D95T1", "D95T2");
-
-bool mtrsEnable = 0;
+Command scream = createCommand("$S   ", "$F   ");
+Command leia = createCommand("$L   ", "$W   ");
+Command music = createCommand("$C   ", "$D   ") bool mtrsEnable = 0;
 
 void setup() {
   Serial.begin(9600);  //Connection with MPU A - Body Master
@@ -137,102 +138,94 @@ void loop() {
       if (Xbox.getAnalogHat(RightHatY) < DEAD_ZONE && Xbox.getAnalogHat(RightHatY) > -DEAD_ZONE) {
         RFoot.writeMicroseconds(1500);
       }
-    }
 
-    //Check the Left and Right triggers
-    if (Xbox.getButtonPress(L2) > TRIGGER_DEAD_ZONE) {
-      if (Xbox.getButtonPress(R2) > TRIGGER_DEAD_ZONE) {
-        digitalWrite(IN1_DOME_MOTOR, LOW);
-        digitalWrite(IN2_DOME_MOTOR, LOW);
-      } else {
-        analogWrite(DOME_ENABLE, Xbox.getButtonPress(L2));
-        digitalWrite(IN1_DOME_MOTOR, HIGH);
-        digitalWrite(IN2_DOME_MOTOR, LOW);
+
+      //Check the Left and Right triggers
+      if (Xbox.getButtonPress(L2) > TRIGGER_DEAD_ZONE) {
+        if (Xbox.getButtonPress(R2) > TRIGGER_DEAD_ZONE) {
+          digitalWrite(IN1_DOME_MOTOR, LOW);
+          digitalWrite(IN2_DOME_MOTOR, LOW);
+        } else {
+          analogWrite(DOME_ENABLE, Xbox.getButtonPress(L2));
+          digitalWrite(IN1_DOME_MOTOR, HIGH);
+          digitalWrite(IN2_DOME_MOTOR, LOW);
+        }
       }
+      if (Xbox.getButtonPress(R2) > TRIGGER_DEAD_ZONE) {
+        if (Xbox.getButtonPress(L2) > TRIGGER_DEAD_ZONE) {
+          digitalWrite(IN1_DOME_MOTOR, LOW);
+          digitalWrite(IN2_DOME_MOTOR, LOW);
+        } else {
+          analogWrite(DOME_ENABLE, Xbox.getButtonPress(R2));
+          digitalWrite(IN1_DOME_MOTOR, HIGH);
+          digitalWrite(IN2_DOME_MOTOR, LOW);
+        }
+      }
+
+
+
+      if (Xbox.getButtonClick(UP)) {
+        runCommand(&scream);
+      }
+      if (Xbox.getButtonClick(DOWN)) {
+        runCommand(&leia);
+      }
+      if (Xbox.getButtonClick(LEFT)) {
+        runCommand(&music);
+      }
+      if (Xbox.getButtonClick(RIGHT)) {
+        runCommand(&holos);
+      }
+
+
+      if (Xbox.getButtonClick(START)) {
+        //Xbox.setLedMode(ALTERNATING);
+        runCommand(&interface);
+      }
+      if (Xbox.getButtonClick(BACK)) {
+        //Xbox.setLedBlink(ALL);
+        runCommand(&gripper);
+      }
+      if (Xbox.getButtonClick(L1))
+        runCommand(&zapper);
+      //if (Xbox.getButtonClick(R1)) runCommand(&utility);
+
+      if (Xbox.getButtonClick(L3))
+        runCommand(&dataport);
+      if (Xbox.getButtonClick(R3))
+        runCommand(&utility);
+      if (Xbox.getButtonClick(XBOX)) {
+        mtrsEnable = !mtrsEnable;
+        if (mtrsEnable) {
+          Xbox.setLedMode(ROTATING);
+          LFoot.attach(LEFT_PWM);
+          LFoot.writeMicroseconds(1500);
+          RFoot.attach(RIGHT_PWM);
+          RFoot.writeMicroseconds(1500);
+        } else {
+          Xbox.setLedOff();
+          Xbox.setLedOn(1);
+          LFoot.detach();
+          RFoot.detach();
+        }
+        //Serial.print(F("Xbox (Battery: "));
+        //Serial.print(Xbox.getBatteryLevel(CONTROLLER));  // The battery level in the range 0-3
+        //Serial.println(F(")"));
+      }
+      if (Xbox.getButtonClick(SYNC)) {
+        //Serial.println(F("Sync"));
+        Xbox.disconnect(CONTROLLER);
+      }
+
+
+      if (Xbox.getButtonClick(A))
+        runCommand(&lightSaber);
+      if (Xbox.getButtonClick(B))
+        runCommand(&periscope);
+      if (Xbox.getButtonClick(X))
+        runCommand(&motivator);
+      if (Xbox.getButtonClick(Y))
+        runCommand(&lifeForm);
     }
-    if (Xbox.getButtonPress(R2, CONTROLLER) > TRIGGER_DEAD_ZONE)
-      direction += 1;
-
-
-
-
-    if (direction > 0) {
-      digitalWrite(IN1_DOME_MOTOR, HIGH);
-      digitalWrite(IN2_DOME_MOTOR, LOW);
-    } else if (direction < 0) {
-      digitalWrite(IN1_DOME_MOTOR, LOW);
-      digitalWrite(IN2_DOME_MOTOR, HIGH);
-    }
-
-
-    //Serial.println(direction);
   }
-
-
-
-
-
-  if (Xbox.getButtonClick(UP, CONTROLLER)) {
-    runCommand(&ldpl);
-  }
-  if (Xbox.getButtonClick(DOWN, CONTROLLER)) {
-    runCommand(&coinslot);
-  }
-  if (Xbox.getButtonClick(LEFT, CONTROLLER)) {
-    runCommand(&magic);
-  }
-  if (Xbox.getButtonClick(RIGHT, CONTROLLER)) {
-    runCommand(&holos);
-  }
-
-
-  if (Xbox.getButtonClick(START, CONTROLLER)) {
-    //Xbox.setLedMode(ALTERNATING, CONTROLLER);
-    runCommand(&interface);
-  }
-  if (Xbox.getButtonClick(BACK, CONTROLLER)) {
-    //Xbox.setLedBlink(ALL, CONTROLLER);
-    runCommand(&gripper);
-  }
-  if (Xbox.getButtonClick(L1, CONTROLLER))
-    runCommand(&zapper);
-  //if (Xbox.getButtonClick(R1, CONTROLLER)) runCommand(&utility);
-
-  if (Xbox.getButtonClick(L3, CONTROLLER))
-    runCommand(&dataport);
-  if (Xbox.getButtonClick(R3, CONTROLLER))
-    runCommand(&utility);
-  if (Xbox.getButtonClick(XBOX, CONTROLLER)) {
-    mtrsEnable = !mtrsEnable;
-    if (mtrsEnable) {
-      Xbox.setLedMode(ROTATING, CONTROLLER);
-      LFoot.attach(LEFT_PWM);
-      LFoot.writeMicroseconds(1500);
-      RFoot.attach(RIGHT_PWM);
-      RFoot.writeMicroseconds(1500);
-    } else {
-      Xbox.setLedOff();
-      Xbox.setLedOn(1);
-      LFoot.detach();
-      RFoot.detach();
-    }
-    //Serial.print(F("Xbox (Battery: "));
-    //Serial.print(Xbox.getBatteryLevel(CONTROLLER));  // The battery level in the range 0-3
-    //Serial.println(F(")"));
-  }
-  if (Xbox.getButtonClick(SYNC, CONTROLLER)) {
-    //Serial.println(F("Sync"));
-    Xbox.disconnect(CONTROLLER);
-  }
-
-
-  if (Xbox.getButtonClick(A, CONTROLLER))
-    runCommand(&lightSaber);
-  if (Xbox.getButtonClick(B, CONTROLLER))
-    runCommand(&periscope);
-  if (Xbox.getButtonClick(X, CONTROLLER))
-    runCommand(&motivator);
-  if (Xbox.getButtonClick(Y, CONTROLLER))
-    runCommand(&lifeForm);
-}
 }
