@@ -244,7 +244,7 @@ static const uint8_t mp3_max_sounds[] = {
 static uint8_t mp3_volume = MP3_VOLUME_MID;
 static uint8_t saveflag;
 const char strSoundCmdError[] PROGMEM = "Invalid MP3Trigger Sound Command";
-uint8_t mp3_random_mode_flag = 0;  // the switch to check random sound mode
+uint8_t mp3_random_mode_flag = 1;  // the switch to check random sound mode
 byte ua_State = 0;
 byte ia_State = 0;
 byte ga_State = 0;
@@ -401,9 +401,7 @@ void doTcommand(int address, int argument) {
     case 12:
       ga_State = argument;
       break;
-    case 13:
-      dp_State = argument;
-      break;
+    
   }
 }
 
@@ -420,7 +418,7 @@ byte buildCommand(char ch, char* output_str) {
     case '\r':  //end character reached
     case '\n':
     case '\0':
-      output_str[pos] = '\0';
+      output_str[pos] = 13;
       pos = 0;
       return true;
       break;
@@ -450,7 +448,6 @@ void setup() {
 void safeReset(){
   servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
   servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
-  servoControl.setPWM(DP_DOR, 0, DP_DOR_MIN);
   servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
   servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
   delay(2000);
@@ -463,6 +460,7 @@ void safeReset(){
 
 
 void loop() {
+  mp3_do_random();
   // put your main code here, to run repeatedly:
   if (checkSerial()) parseCommand(cmdStr0);
   if (checkSerial1()) parseCommand(cmdStr1);
@@ -471,29 +469,8 @@ void loop() {
   utilityArms(ua_State);
   interfaceArm(ia_State);
   gripper(ga_State);
-  dataport(dp_State);
 }
 
-void dataport(int option) {
-  switch (option) {
-    case 0:
-      return;
-    case 1:
-      char cmd0[]="B24T1";
-      for(int x=0; x<5; x++) Serial2.write(cmd0[x]);
-      Serial2.write(13);
-      servoControl.setPWM(DP_DOR, 0, DP_DOR_MAX);
-      dp_State=0;
-      break;
-    case 2:
-      char cmd1[]="B24T2";
-      servoControl.setPWM(DP_DOR, 0, DP_DOR_MAX);
-      for(int x=0; x<5; x++) Serial2.write(cmd1[x]);
-      Serial2.write(13);
-      dp_State=0;
-      break;
-  }
-}
 
 void gripper(int option) {
   static int step = 0;
@@ -569,7 +546,7 @@ void gripper(int option) {
 void liftInterface() {
   static int step = 0;
   static int count = 0;
-  Serial.println(step);
+  //Serial.println(step);
   switch (step) {
     case 0:
       servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
@@ -653,10 +630,12 @@ void utilityArms(int option) {
     case 1:
       servoControl.setPWM(UA_TOP, 0, UA_TOP_MAX);
       servoControl.setPWM(UA_BOT, 0, UA_BOT_MAX);
+      ua_State=0;
       break;
     case 2:
       servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
       servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
+      ua_State=0;
       break;
   }
 }
@@ -670,7 +649,7 @@ void mp3_init() {
   }
 
   // set volume somewhere in the middle
-  mp3_volumemid();
+  mp3_volumemax();
 
   // play the startup sound (this function return immediately)
   mp3_playstartsound();
