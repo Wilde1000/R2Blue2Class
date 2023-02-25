@@ -1,5 +1,52 @@
 /*R2 Lift System program
 Written by Gold and Blue FTC comp. Tech*/
+
+/*
+We will be using a Jawa-Lite inspired technique to control all the MPU's in 
+R2-Blue2.
+
+The command structure is as follows:
+
+    Element 0 - MPU Code - Single Character indicating the Microprocessor Unit
+    Element 1, 2 - two digit Integer representing the device attached to the MPU
+    Element 3 - one character command code
+    Element 4 - the command option
+
+    MPU Codes:
+      
+      A - Body Master Mega
+      B - Lights Mega
+      C - Drive Uno
+      D - RFID Uno
+      E - Lifts Mega
+      F - Periscope Nano
+      G - Teeces Micro
+      H - CBI Nano
+      I - Exp. Nano
+
+    Device Codes:
+      0-9 - Teeces
+      10-19 - Body Master
+      20-29 - Lights Mega
+      30-39 - Drive Mega
+      40-49 - RFID Nano
+      50-59 - Lift Mega
+      60-69 - Periscope Nano
+      70-79 - CBI Nano
+      80-99 - Exp. Nano
+
+  A valid command would look like this:
+    E51T102
+  And would consist of the following:
+  MPU code - E
+  Device Address - 51
+  Command - T
+  Option - 102
+*/
+
+
+
+
 /************************************************
 *               Included Libraries              *
 *************************************************/
@@ -443,7 +490,7 @@ void setup() {
 
 void loop() {
   checkSerial();              //Check Serial 0 for commands
-  checkSerial1();              //Check Serial 0 for commands
+  checkSerial1();             //Check Serial 0 for commands
   ZapLift(zapper_state);      // Run actions on the Zapper if any
   LSLift(light_saber_state);  //Run actions on the Light Saber if any
   PLift(periscope_state);     //Run actions on the Periscope if any
@@ -544,7 +591,7 @@ int buildCommand(char ch, char* output_str) {
     case '\n':
     case '\r':
     case '\0':
-      output_str[pos] = '\0';
+      output_str[pos] = 13;
       pos = 0;
       return true;
       break;
@@ -565,7 +612,7 @@ int buildCommand1(char ch, char* output_str) {
     case '\n':
     case '\r':
     case '\0':
-      output_str[pos] = '\0';
+      output_str[pos] = 13;
       pos = 0;
       return true;
       break;
@@ -587,11 +634,11 @@ void checkSerial() {
   byte cmd_Complete;
   if (Serial.available()) {
     ch = Serial.read();
-    Serial.print(ch);
+    //Serial.print(ch);
     cmd_Complete = buildCommand(ch, cmdStr);
     if (cmd_Complete) {
       parseCommand(cmdStr);
-      Serial.println();
+      //Serial.println();
     }
   }
 }
@@ -600,14 +647,13 @@ void checkSerial() {
 void checkSerial1() {
   char ch;
   byte cmd_Complete;
-  
   if (Serial1.available()) {
     ch = Serial1.read();
-    Serial.print(ch);
-    cmd_Complete = buildCommand1(ch, cmdStr);
+    //Serial.print(ch);
+    cmd_Complete = buildCommand1(ch, cmdStr1);
     if (cmd_Complete) {
-      parseCommand(cmdStr);
-      Serial.println();
+      parseCommand(cmdStr1);
+      //Serial.println();
     }
   }
 }
@@ -617,7 +663,7 @@ void checkSerial1() {
 
 //The doTcommand handles all T commands sent from the parseCommand function
 int doTcommand(int addr, int opt) {
-  Serial.println("T command");
+  //Serial.println("T command");
   switch (addr) {
     case 51:
       zapper_state = opt;
@@ -642,7 +688,7 @@ int doTcommand(int addr, int opt) {
 
 //The doScommand handles all T commands sent from the parseCommand function
 int doScommand(int addr, int opt) {
-  Serial.println("S command");
+  //Serial.println("S command");
   switch (addr) {
     case 80:
       seq_state = opt;
@@ -879,33 +925,36 @@ int parseCommand(char* input_str) {
   byte length = strlen(input_str);
   if (length < 2) goto deadCmd;  //not enough characters
   int mpu = input_str[pos];      //MPU is the first character
-  if (MPU != mpu) {              //if command is not for this MPU - send it on its way
-    if (mpu == 'G') {
-      //Serial.println("HERE");
-      Serial3.flush();
-
-      for (int x = 1; x < length; x++) {
-        Serial3.write(input_str[x]);
-        Serial.print(input_str[x]);
-      }
-      Serial3.write(13);
-      Serial.println();
+  if (MPU != mpu) {
+    if (mpu == 'A' || mpu == 'B' || mpu == 'C' || mpu == 'H' || mpu == 'I') {
+      Serial.flush();
+      for (int x = 0; x < length; x++) Serial.write(input_str[x]);
+      Serial.write(13);
+      return;
+    }
+    
+    if (mpu == 'D') {
+      Serial1.flush();
+      for (int x = 0; x < length; x++) Serial1.write(input_str[x]);
+      Serial1.write(13);
+      return;      
     }
     if (mpu == 'F') {
-      for (int x = 0; x < length; x++) {
-        Serial2.write(input_str[x]);
-      }
+      Serial2.flush();
+      for (int x = 0; x < length; x++) Serial2.write(input_str[x]);
       Serial2.write(13);
+      return;      
+    }    
+
+    if (mpu == 'G') {
+      Serial3.flush();
+      for (int x = 1; x < length; x++) Serial3.write(input_str[x]);
+      Serial3.write(13);
+      return;                  
     }
-    if (mpu == 'D') {
-      for (int x = 0; x < length; x++) {
-        Serial1.write(input_str[x]);
-      }
-      Serial1.write(13);
-    }
-    return;
+    
   }
-  if ((mpu > 64 && mpu < 71) || mpu == '@') dev_MPU = mpu;
+  if ((mpu > 64 && mpu < 73) || mpu == '$') dev_MPU = mpu;
   else goto deadCmd;  //Not a valid MPU - end command
   // Now the address which should be the next two characters
   char addrStr[3];  //set up a char array to hold them (plus the EOS (end of String) character)
@@ -941,17 +990,21 @@ deadCmd:
 }
 //Raises the periscope - Return 0 while raising and 1 when raised
 byte P_Raise() {
+  static bool lightsOn = false;
   static int step = 0;
   switch (step) {
     case 0:  //Move lift up
-      Serial2.write("F60T001\n");
-      if (motorUp(3)) step = 1;
+      pLights(1);
+      step = 1;
       break;
     case 1:
-      perServo.write(135);
-      step = 2;
+      if (motorUp(3)) step = 2;
       break;
     case 2:
+      perServo.write(135);
+      step = 3;
+      break;
+    case 3:
       step = 0;
       return 1;
       break;
@@ -973,7 +1026,7 @@ byte P_Lower() {
       if (motorDown(3)) step = 2;
       break;
     case 2:
-      Serial2.write("F60T000\n");
+      pLights(0);
       step = 3;
       break;
     case 3:  //Final cleanup and return 1 for a job well done
@@ -996,13 +1049,17 @@ void PLift(int option) {
       return;
       break;
     case 1:  //Raise Periscope
-      pLights(1);
+      if (!plstate) {
+        pLights(1);
+        plstate = 1;
+      }
       if (P_Raise() == 1) periscope_state = 0;
       break;
     case 2:  //lower Periscope
       if (P_Lower() == 1) {
         periscope_state = 0;
         pLights(0);
+        plstate = 0;
       }
       break;
     case 3:  // Alternate rotation
@@ -1017,39 +1074,42 @@ int P_Alt_Raise() {
   static byte hall_hit = 0;
   switch (step) {
     case 0:  //Move lift up
-      Serial2.write("F60T001\n");
-      if (motorUp(3)) step = 1;
+      pLights(1);
+      step = 1;
       break;
     case 1:
+      if (motorUp(3)) step = 2;
+      break;
+    case 2:
       if (dir) {
         perServo.write(135);
       } else {
         perServo.write(45);
       }
-      step = 2;
+      step = 3;
       break;
 
-    case 2:
+    case 3:
       current_time = millis();
       if (current_time - p_timer > 1000) {
         p_timer = current_time;
-        step = 3;
+        step = 4;
         hall_hit = 0;
       }
       break;
-    case 3:
+    case 4:
       if (digitalRead(P_HALL) == LOW && hall_hit == 0) {
         hall_hit = 1;
         perServo.write(90);
         dir = !dir;
-        step = 4;
+        step = 5;
       }
       break;
-    case 4:
+    case 5:
       current_time = millis();
       if (current_time - p_timer > 200) {
         p_timer = current_time;
-        step = 1;
+        step = 0;
       }
       break;
   }
@@ -1059,11 +1119,17 @@ int P_Alt_Raise() {
 void pLights(int num) {
   switch (num) {
     case 0:  //Periscope Lights off
-      Serial2.write("F60T002\n");
-      return;
+      char cmd0[] = "F60T2";
+      Serial2.flush();
+      for (int x = 0; x < 5; x++) Serial2.write(cmd0[x]);
+      Serial2.write(13);
+      break;
     case 1:  //Periscope Light on defalult value
-      Serial2.write("F60T001\n");
-      return;
+      char cmd1[] = "F60T1";
+      Serial2.flush();
+      for (int x = 0; x < 5; x++) Serial2.write(cmd1[x]);
+      Serial2.write(13);
+      break;
   }
   return;
 }
@@ -1516,15 +1582,15 @@ int runSeq(uint16_t const sequence_array[][11]) {
     return 1;
   }
   if (!servo_moved) {
-    Serial.print(seq_Timeout);
-    Serial.print(", ");
+    //Serial.print(seq_Timeout);
+    //Serial.print(", ");
     for (int x = 1; x <= 10; x++) {
       uint16_t servo_pos = pgm_read_word(&sequence_array[seq_step][x]);
       servoControl.setPWM(x + 1, 0, servo_pos);
-      Serial.print(servo_pos);
-      Serial.print(", ");
+      //Serial.print(servo_pos);
+      //Serial.print(", ");
     }
-    Serial.println();
+    //Serial.println();
     servo_moved = 1;
   }
   current_time = millis();
