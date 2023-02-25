@@ -10,7 +10,7 @@
 
 #define LEFT_PWM 3
 #define RIGHT_PWM 9
-#define CMD_MAX_LENGTH 16
+#define CMD_MAX_LENGTH 12
 
 #define DOME_ENABLE 2
 #define IN1_DOME_MOTOR 4
@@ -74,9 +74,10 @@ Command motivator = createCommand("E54T1", "E54T2");
 Command lifeForm = createCommand("E55T1", "E55T2");
 Command holos = createCommand("D90T1", "D90T2");
 Command magic = createCommand("D95T1", "D95T2");
-Command scream = createCommand("$S   ", "$F   ");
-Command leia = createCommand("$L   ", "$W   ");
-Command music = createCommand("$C   ", "$D   ") bool mtrsEnable = 0;
+Command scream = createCommand("$S", "$F");
+Command leia = createCommand("$L", "$W");
+Command music = createCommand("$C", "$D");
+bool mtrsEnable = 0;
 
 void setup() {
   Serial.begin(9600);  //Connection with MPU A - Body Master
@@ -157,8 +158,8 @@ void loop() {
           digitalWrite(IN2_DOME_MOTOR, LOW);
         } else {
           analogWrite(DOME_ENABLE, Xbox.getButtonPress(R2));
-          digitalWrite(IN1_DOME_MOTOR, HIGH);
-          digitalWrite(IN2_DOME_MOTOR, LOW);
+          digitalWrite(IN1_DOME_MOTOR, LOW);
+          digitalWrite(IN2_DOME_MOTOR, HIGH);
         }
       }
 
