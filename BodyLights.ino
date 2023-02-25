@@ -649,19 +649,19 @@ int doTcommand(int addr, int option) {
 
 //The doScommand handles all T commands sent from the parseCommand function
 int doScommand(int addr, int option) {
-  Serial.println("S command");
+  //Serial.println("S command");
   switch (addr) {
-    case 81:  // Address of Coin Slots is 81
+    case 21:  // Address of Coin Slots is 21
       if (option < 100) {
         cs_Speed = cal_Speed(option);  // Calculate the Speed and set it
       } else {
         if (option < 200) cs_Tspeed = cal_Speed(option);
       }
       break;
-    case 82:  // Address of Dataport is 82
+    case 22:  // Address of Dataport is 22
       //dp_Speed=option;                          // Set the Dataport state to the option
       break;
-    case 83:  // Address of Charging port is 83
+    case 23:  // Address of Charging port is 33
       //cp_Speed=option;                           // set the Charging port to the option
       break;
   }
@@ -704,67 +704,6 @@ int buildCommand(char ch, char* output_str) {
 }
 
 
-/*void checkSerial(){
-  char message[64];                               //Create a character array to hold our incoming message 
-                                                  //    (max length of serial buffer is 64)
-  int msgLength = Serial.available();             // Set msgLength to the number of bytes available in the 
-                                                  //    Serial buffer
-  if(msgLength>=7){                                  // If there is something in the serial buffer, start the loop
-    for(int x=0; x<msgLength; x++){
-      message[x]=Serial.read();                   // Read a character from the serial buffer,
-    }
-    
-    if(message[0]!='%') return;             // If not for this arduino - quit the parsing
-    dev_address = (message[1]-48)*10 + (message[2]-48);  
-    dev_command = message[3];                   // determine the device command  
-    dev_option=(message[4]-48)*100 + (message[5]-48)*10 + (message[6]-48);  
-    Serial.flush();                                 // Clear the Serial0 buffer
-    proc_command(dev_address, dev_command, dev_option); 
-    
-  }
-  return;
-}
-
-//the proc_Command or process command function takes the parsed command from the Serial interface and executes it
- 
-void proc_command(int address, char command, int option){
-                                                    //First determine the command type
-  if(command=='T'||command=='S'){                   //This program recognizes two commands - T and S
-    if(command=='T'){                              //   The T command changes the routine settings 
-       switch(address){                             // Determine which device to change
-        case 81:                                    // Address of Coin Slots is 81
-          cs_State=option;                          // Set the Coin Slot state to the option
-          break;
-        case 82:                                    // Address of Dataport is 82
-          ldpl_State=option;                          // Set the Dataport state to the option
-          break;
-        case 83:                                    // Address of Charging port is 83
-          //Code for Charging Port    
-          //cp_State=option;                          // set the Charging port to the option
-          break;
-      }
-    } 
-    if(command=='S'){                               //   The S command changes the speed settings 
-       switch(address){                             // Determine which device to update
-        case 81:                                    // Address of Coin Slots is 81
-          if(option<100){
-            cs_Speed=cal_Speed(option);             // Calculate the Speed and set it
-          }else{
-            if(option<200)cs_Tspeed=cal_Speed(option);
-          }
-          break;
-        case 82:                                    // Address of Dataport is 82
-          //dp_Speed=option;                          // Set the Dataport state to the option
-          break;
-        case 83:                                    // Address of Charging port is 83    
-          //cp_Speed=option;                           // set the Charging port to the option
-          break;
-      }
-    }
-  }
-  
-}
-*/
 
 
 //  cal_Speed returns the time in milliseconds for routine delays from the passed option
