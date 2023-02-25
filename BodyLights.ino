@@ -195,6 +195,7 @@ void setup() {
   pinMode(analoginput, INPUT);
   dp_door.attach(DP_DOOR);
   dp_door.writeMicroseconds(DP_DOOR_MIN);
+  dp_door.detach();
 
 }
 
@@ -215,8 +216,10 @@ void dpl(int option) {
       return;
     case 1:
       if(!door_open){
+        dp_door.attach(DP_DOOR);
         dp_door.writeMicroseconds(DP_DOOR_MAX);
         door_open=true;
+        dp_door.detach();
       } 
       updateTopBlocks();
       bargraphDisplay(0);
@@ -226,8 +229,10 @@ void dpl(int option) {
       break;
     case 2:
       if(door_open){
+        dp_door.attach(DP_DOOR);
         dp_door.writeMicroseconds(DP_DOOR_MIN);
         door_open=false;
+        dp_door.detach();
       }
       lc.setRow(DATAPORT, 1, 0);  // top yellow blocks
       lc.setRow(DATAPORT, 2, 0);  // top yellow blocks
@@ -669,11 +674,11 @@ void checkSerial() {
   byte cmd_Complete;
   if (Serial.available()) {
     ch = Serial.read();
-    Serial.print(ch);
+    //Serial.print(ch);
     cmd_Complete = buildCommand(ch, cmdStr0);
     if (cmd_Complete) {
       parseCommand(cmdStr0);
-      Serial.println();
+      //Serial.println();
     }
   }
 }
@@ -686,7 +691,7 @@ int buildCommand(char ch, char* output_str) {
     case '\n':
     case '\r':
     case '\0':
-      output_str[pos] = '\0';
+      output_str[pos] = 13;
       pos = 0;
       return true;
       break;
