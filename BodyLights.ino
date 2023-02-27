@@ -152,7 +152,7 @@ Servo dp_door;  //Create servo object for Dataport Door
 
 //Updates the blocks on the right of the DPL
 void bargraphDisplay(byte disp);
-int buildCommand(char ch, char* output_str)    //builds command from serial input
+int buildCommand(char ch, char* output_str);   //builds command from serial input
 int cal_Speed(int num);                        //returns a calculated speed based on passed num
 void cbi();                                    //Handles the CBI and Voltage lights           
 void checkSerial();                            //Checks for serial commands
