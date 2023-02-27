@@ -1,3 +1,12 @@
+/*************************************************************************
+ * ********************** Body Master Mega  ******************************
+ * ***********************************************************************/
+/*
+The Body Master Mega is used to route communications between the Dome Lift Mega, the Body Lights Mega
+and the Drive Uno.  It is also used to control all the body servos except the Dataport door servo. It 
+is also responisble for all sounds coming out of the droid as it is connected to the MP3 Trigger.
+*/
+
 /*
 We will be using a Jawa-Lite inspired technique to control all the MPU's in 
 R2-Blue2.
@@ -7,7 +16,7 @@ The command structure is as follows:
     Element 0 - MPU Code - Single Character indicating the Microprocessor Unit
     Element 1, 2 - two digit Integer representing the device attached to the MPU
     Element 3 - one character command code
-    Element 4 - the command option
+    Element 4, 5, 6 - the command option
 
     MPU Codes:
       
@@ -40,6 +49,8 @@ The command structure is as follows:
   Command - T
   Option - 102
 */
+
+
 //We have used (with slight modifications for our droid) most of the MP3sound.h and MP3sound.c 
 //functions with credit given below:
 
@@ -100,12 +111,20 @@ The command structure is as follows:
 //
 ///////////////////////////////////////////////
 
-#include <time.h>
-#include <stdlib.h>
-#include <Adafruit_PWMServoDriver.h>
-Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
-//Servo Macros
-///////////////////////////////////////////////////////////////
+
+
+/*************************************************************************
+ * ********************** INCLUDED LIBRARIES  ****************************
+ * ***********************************************************************/
+
+#include <Adafruit_PWMServoDriver.h>  //Needed for PCA9685 16 Servo Driver
+
+/*************************************************************************
+ * *********************** MACRO DEFINITIONS  ****************************
+ * ***********************************************************************/
+
+/*>>>>>>>>>>>>>>>>>>> Servo Macros <<<<<<<<<<<<<<<<<<<<*/
+
 // Utility Arms
 #define UA_TOP 0            //Utility Arm Top Servo PCA9685 pin
 #define UA_TOP_MAX 200      //Utility Arm Top Servo (open position)
@@ -140,11 +159,10 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 
 #define OE_PIN 8            //Set low to enable servos - low to disable servos
 #define SERVO_FREQ 50       //Standard servo frequency is 50Kz
-//////////////////////////////////////////////////////////////////////////////
 
 
-// Music Macros
-/////////////////////////////////////////////////////////////////////////////
+
+/*>>>>>>>>>>>>>>>>>>>>>>>>> Music Macros <<<<<<<<<<<<<<<<<<<<<<<<<<<*/
 #define USER_MUSIC_SOUNDS_NUMBER 5
 #define MP3_MAX_BANKS 9             // nine banks
 #define MP3_MAX_SOUNDS_PER_BANK 25  // no more than 25 sound in each
@@ -176,48 +194,23 @@ Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 #define MP3_PLAY_CMD 't'              // command to play sound file on the MP3 trigger
 #define MP3_VOLUME_CMD 'v'            // command to play sound file on the MP3 trigger
 #define MP3_STOP_CMD 'O'              // command to stop/play  - not used
-#define MP3_MIN_RANDOM_PAUSE 600      // min wait on random sounds
-#define MP3_MAX_RANDOM_PAUSE 1000     // max wait on random sounds
-#define MP3_MAX_PAUSE_ON_RESUME 1200  // default wait to resume random. Works for short sound. Set mp3_random_timer manually for long ones.
-#define CMD_MAX_LENGHT 64             //Defines max command Length - same as serial buffer
+#define MP3_MIN_RANDOM_PAUSE 10000      // min wait on random sounds
+#define MP3_MAX_RANDOM_PAUSE 20000     // max wait on random sounds
+#define MP3_MAX_PAUSE_ON_RESUME 30000  // default wait to resume random. Works for short sound. Set mp3_random_timer manually for long ones.
+#define CMD_MAX_LENGTH 64             //Defines max command Length - same as serial buffer
 #define MPU 'A'                       //Defines the MPU code for the program
 
-//Sound functions from MP3Sound.h and MP3Sound.c
-// public
-void mp3_init();  // wait at least 3s after mp3trigger power up before calling
-void mp3_parse_command(char* commandstr);
-void mp3_do_random();  // need to be called in the main loop for random sounds to work
+/*************************************************************************
+ *************************  GLOBAL VARIABLES  ****************************
+ *************************************************************************/
 
-// utilities
-void mp3_sound(uint8_t bank, uint8_t sound);
-void mp3_stop();
-void mp3_playstartsound();
-void mp3_random();
-void mp3_volumeup();
-void mp3_volumedown();
-void mp3_volumemid();
-void mp3_volumeoff();
-void mp3_volumemax();
-void mp3_volumemin();
-
-// private
-void mp3_send_command_byte(char command);
-void mp3_setvolume(uint8_t vol);
-void mp3_suspend_random();
-void mp3_resume_random();
-void mp3_stop_random();
-void mp3_start_random();
-void mp3_check_timer();
-
-////////////////////////////////////////////////////////////
-//Global Variables
-
+Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
 
 char dev_MPU, dev_command;
-char cmdStr0[CMD_MAX_LENGHT];
-char cmdStr1[CMD_MAX_LENGHT];
-char cmdStr2[CMD_MAX_LENGHT];
-char cmdStr3[CMD_MAX_LENGHT];
+char cmdStr0[CMD_MAX_LENGTH];
+char cmdStr1[CMD_MAX_LENGTH];
+char cmdStr2[CMD_MAX_LENGTH];
+char cmdStr3[CMD_MAX_LENGTH];
 
 int dev_option, dev_address;
 unsigned long current_time = millis();
@@ -241,7 +234,7 @@ static const uint8_t mp3_max_sounds[] = {
   MP3_BANK8_SOUNDS,
   MP3_BANK9_SOUNDS,
 };
-static uint8_t mp3_volume = MP3_VOLUME_MID;
+static uint8_t mp3_volume = MP3_VOLUME_MAX;
 static uint8_t saveflag;
 const char strSoundCmdError[] PROGMEM = "Invalid MP3Trigger Sound Command";
 uint8_t mp3_random_mode_flag = 1;  // the switch to check random sound mode
@@ -250,8 +243,123 @@ byte ia_State = 0;
 byte ga_State = 0;
 byte dp_State = 0;
 
+
+
+/*************************************************************************
+ ***********************  FUNCTION DEFINITIONS  **************************
+ *************************************************************************/
+
+
+
+//The buildCommand takes the output from the checkSerial functions and builds a command
+byte buildCommand(char ch, char* output_str);  
+byte checkSerial();              // Checks serial0 for commands and processes them
+byte checkSerial1();              // Checks serial1 for commands and processes them
+byte checkSerial2();              // Checks serial2 for commands and processes them
+byte checkSerial3();              // Checks serial3 for commands and processes them
+void doTcommand(int address, int argument);   //Processes T commands for this mpu
+void doScommand(int address, int argument);   //Processes S commands for this mpu
+void gripper(int option);         //Controls the Gripper Arm
+void interfaceArm(int option);    //Controls the Interface Arm
+void liftInterface();             //Raises the Interface Arm
+byte parseCommand(char* input_str);           //Parses command for processing
+void safeReset();                 //Safely resets all devices to stored position
+void utilityArms(int option);     //Controls the Utility Arms
+
+
+
+//Sound functions from MP3Sound.h and MP3Sound.c
+// public
+void mp3_init();  // wait at least 3s after mp3trigger power up before calling
+void mp3_parse_command(char* commandstr);     //Parses a music command for execution
+void mp3_do_random();  // need to be called in the main loop for random sounds to work
+
+// utilities
+void mp3_sound(uint8_t bank, uint8_t sound);  // Plays sound from bank
+void mp3_stop();                              // Stops sounds
+void mp3_playstartsound();                    // Plays starting sound
+void mp3_random();                            // Plays a random sound
+void mp3_volumeup();                          // Turns the MP3 Volume up
+void mp3_volumedown();                        // Turns the MP3 Volume down
+void mp3_volumemid();                         // Sets MP3 volume to mid 
+void mp3_volumeoff();                         // Sets MP3 volume to off
+void mp3_volumemax();                         // Sets MP3 volume to max
+void mp3_volumemin();                         // Sets MP3 volume to min
+
+// private
+void mp3_send_command_byte(char command);    //sends command byte to MP3 Trigger
+void mp3_setvolume(uint8_t vol);             //sets volume on MP3 Trigger
+void mp3_suspend_random();                   //suspends random noises
+void mp3_resume_random();                    //resumes random noises
+void mp3_stop_random();                      //stops random noises
+void mp3_start_random();                     //starts random noises
+void mp3_check_timer();                      //helper function to check timeouts
+
+
+/*************************************************************************
+ **************************  SETUP FUNCTION  *****************************
+ *************************************************************************/
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);   //Serial Connection with Dome Lift Mega
+  Serial1.begin(9600);  //Serial Connection with MP3 Trigger
+  Serial2.begin(9600);  //Serial Connection with Lights Mega
+  Serial3.begin(9600);  //Serial Connection with Xbox Uno
+  //Wait 3 seconds before playing startup sound
+  servoControl.begin();
+  servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
+  pinMode(OE_PIN, OUTPUT);
+  digitalWrite(OE_PIN, LOW);
+  safeReset();
+  mp3_init();
+}
+
+/*************************************************************************
+ ***************************  LOOP FUNCTION  *****************************
+ *************************************************************************/
+void loop() {
+  mp3_do_random();
+  // put your main code here, to run repeatedly:
+  if (checkSerial()) parseCommand(cmdStr0);
+  if (checkSerial1()) parseCommand(cmdStr1);
+  if (checkSerial2()) parseCommand(cmdStr2);
+  if (checkSerial3()) parseCommand(cmdStr3);
+  utilityArms(ua_State);
+  interfaceArm(ia_State);
+  gripper(ga_State);
+}
+
+
+
+/*************************************************************************
+ *****************************  FUNCTIONS  *******************************
+ *************************************************************************/
+
+
+//The buildCommand takes the output from the checkSerial functions and builds a command
+byte buildCommand(char ch, char* output_str) {
+  static int pos = 0;
+  switch (ch) {
+    case '\r':  //end character reached
+    case '\n':
+    case '\0':
+      output_str[pos] = 13;
+      pos = 0;
+      return true;
+      break;
+    default:
+      output_str[pos] = ch;
+      if (pos <= CMD_MAX_LENGTH - 1) pos++;
+      break;
+  }
+  return false;
+}
+
+
+//The checkSerial() function takes the serial data from Serial0 and sends it to the 
+//buildCommand function for further processing.
 byte checkSerial() {
-  
   if (Serial.available()) {
     char ch;                                       //create a character to hold the current byte from Serial stream
     byte command_complete;                         //Establish a flag value to indicate a complete command
@@ -264,6 +372,8 @@ byte checkSerial() {
   return 0;
 }
 
+//The checkSerial1() function takes the serial data from Serial1 and sends it to the 
+//buildCommand function for further processing.
 byte checkSerial1() {
   if (Serial1.available()) {
     char ch;                                       //create a character to hold the current byte from Serial stream
@@ -277,6 +387,9 @@ byte checkSerial1() {
   return 0;
 }
 
+
+//The checkSerial2() function takes the serial data from Serial2 and sends it to the 
+//buildCommand function for further processing.
 byte checkSerial2() {
   if (Serial2.available()) {
     char ch;                                       //create a character to hold the current byte from Serial stream
@@ -290,6 +403,9 @@ byte checkSerial2() {
   return 0;
 }
 
+
+//The checkSerial3() function takes the serial data from Serial3 and sends it to the 
+//buildCommand function for further processing.
 byte checkSerial3() {
   if (Serial3.available()) {
     char ch;                                       //create a character to hold the current byte from Serial stream
@@ -302,94 +418,10 @@ byte checkSerial3() {
   }
   return 0;
 }
-//
-
-byte parseCommand(char* input_str) {
-  byte hasArgument = false;
-  int argument;
-  int address;
-  byte pos = 0;
-  byte length = strlen(input_str);
-  if (length < 2) goto deadCmd;  //not enough characters
-  int mpu = input_str[pos];
-  if (MPU != mpu) {  //if command is not for this MPU - send it on its way
-    switch (mpu) {
-      case '$':
-        mp3_parse_command(input_str);
-        break;
-      case 'B':
-        for (int i = 0; i < length; i++) Serial2.write(input_str[i]);
-        Serial2.write(13);
-        break;
-      case 'C':
-        for (int i = 0; i < length; i++) Serial3.write(input_str[i]);
-        Serial3.write(13);
-        break;
-      case 'D':
-      case 'E':
-      case 'F':
-      case 'G':
-        for (int i = 0; i < length; i++) Serial.write(input_str[i]);
-        Serial.write(13);
-        break;
-      case 'H':
-      case 'I':
-        for (int i = 0; i < length; i++) Serial2.write(input_str[i]);
-        Serial2.write(13);
-        break;
-    }
-    return;
-  }
-  pos++;
-  if (mpu > 64 && mpu < 73) dev_MPU = mpu;
-  else goto deadCmd;  //Not a valid MPU - end command
-  char addrStr[3];
-  //next we need to get the device address which could be 1 or two characters
-  if (!isdigit(input_str[pos])) goto deadCmd;  //Invalid as first char not a digit
-  addrStr[pos - 1] = input_str[pos];
-  pos++;
-  if (isdigit(input_str[pos])) {
-    addrStr[pos - 1] = input_str[pos];
-    pos++;
-  }
-  addrStr[pos - 1] = '\0';
-  dev_address = atoi(addrStr);
-  if (!length > pos) goto deadCmd;  //invalid, no command after address
-                                    //check for the special case message command 'M'
-  dev_command = input_str[pos];
-  pos++;                                   // need to increment in order to peek ahead of command char
-  if (!length > pos) hasArgument = false;  // end of string reached, no arguments
-  else {
-    for (byte i = pos; i < length; i++) {
-      if (!isdigit(input_str[i])) goto deadCmd;  // invalid, end of string contains non-numerial arguments
-    }
-    dev_option = atoi(input_str + pos);  // that's the numerical argument after the command character
-    hasArgument = true;
-  }
-  // switch on command character
-  switch (dev_command)  // 2nd or third char, should be the command char
-  {
-    case 'T':
-      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
-      doTcommand(dev_address, dev_option);
-      break;
-    case 'S':
-      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
-      doScommand(dev_address, dev_option);
-      break;
-    default:
-      goto deadCmd;  // unknown command
-      break;
-  }
-
-  return;
 
 
-deadCmd:
 
-  return;
-}
-
+//The doTcommand processes all action commands rececived from the parseCommand function.
 void doTcommand(int address, int argument) {
   switch (address) {
     case 10:
@@ -406,72 +438,13 @@ void doTcommand(int address, int argument) {
 }
 
 
-
+//The doScommand processes all settings commands rececived from the parseCommand function.
 void doScommand(int address, int argument) {
   switch (argument) {
   }
 }
 
-byte buildCommand(char ch, char* output_str) {
-  static int pos = 0;
-  switch (ch) {
-    case '\r':  //end character reached
-    case '\n':
-    case '\0':
-      output_str[pos] = 13;
-      pos = 0;
-      return true;
-      break;
-    default:
-      output_str[pos] = ch;
-      if (pos <= CMD_MAX_LENGHT - 1) pos++;
-      break;
-  }
-  return false;
-}
-
-
-void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(9600);   //Serial Connection with Dome Lift Mega
-  Serial1.begin(9600);  //Serial Connection with MP3 Trigger
-  Serial2.begin(9600);  //Serial Connection with Lights Mega
-  Serial3.begin(9600);  //Serial Connection with Xbox Uno
-  //Wait 3 seconds before playing startup sound
-  servoControl.begin();
-  servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
-  pinMode(OE_PIN, OUTPUT);
-  digitalWrite(OE_PIN, LOW);
-  safeReset();
-  mp3_init();
-}
-void safeReset(){
-  servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
-  servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
-  servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
-  servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
-  delay(2000);
-  servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
-  servoControl.setPWM(GA_LFT, 0, GA_LFT_MIN);
-  delay(2000);
-  servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
-  servoControl.setPWM(GA_DOR, 0, GA_DOR_MIN);
-}
-
-
-void loop() {
-  mp3_do_random();
-  // put your main code here, to run repeatedly:
-  if (checkSerial()) parseCommand(cmdStr0);
-  if (checkSerial1()) parseCommand(cmdStr1);
-  if (checkSerial2()) parseCommand(cmdStr2);
-  if (checkSerial3()) parseCommand(cmdStr3);
-  utilityArms(ua_State);
-  interfaceArm(ia_State);
-  gripper(ga_State);
-}
-
-
+//The gripper function handles all actions for the gripper arm
 void gripper(int option) {
   static int step = 0;
   static int count = 0;
@@ -543,6 +516,46 @@ void gripper(int option) {
 }
 
 
+//The interfaceArm function handles all actions for the interface arm
+void interfaceArm(int option) {
+  static int step = 0;
+  static int count = 0;
+  current_time = millis();
+
+  switch (option) {
+    case 0:
+      return;
+    case 1:
+      liftInterface();
+      break;
+    case 2:
+      switch (step) {
+        case 0:
+          servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
+          step = 1;
+          break;
+        case 1:
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
+            servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
+            step = 2;
+          }
+          break;
+        case 2:
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
+            servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
+            step = 0;
+            ia_State = 0;
+          }
+          break;
+      }
+      break;
+  }
+}
+
+
+//The liftInterface function raises the interface arm.
 void liftInterface() {
   static int step = 0;
   static int count = 0;
@@ -584,78 +597,8 @@ void liftInterface() {
   }
 }
 
-void interfaceArm(int option) {
-  static int step = 0;
-  static int count = 0;
-  current_time = millis();
 
-  switch (option) {
-    case 0:
-      return;
-    case 1:
-      liftInterface();
-      break;
-    case 2:
-      switch (step) {
-        case 0:
-          servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
-          step = 1;
-          break;
-        case 1:
-          if (current_time - ext_time > ext_int) {
-            ext_time = current_time;
-            servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
-            step = 2;
-          }
-          break;
-        case 2:
-          if (current_time - ext_time > ext_int) {
-            ext_time = current_time;
-            servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
-            step = 0;
-            ia_State = 0;
-          }
-          break;
-      }
-      break;
-  }
-}
-
-
-
-void utilityArms(int option) {
-  switch (option) {
-    case 0:
-      return;
-    case 1:
-      servoControl.setPWM(UA_TOP, 0, UA_TOP_MAX);
-      servoControl.setPWM(UA_BOT, 0, UA_BOT_MAX);
-      ua_State=0;
-      break;
-    case 2:
-      servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
-      servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
-      ua_State=0;
-      break;
-  }
-}
-
-
-// MP3 Trigger Routines
-
-void mp3_init() {
-  for (uint8_t i = 0; i < MP3_MAX_BANKS; i++) {
-    mp3_bank_indexes[i] = 0;
-  }
-
-  // set volume somewhere in the middle
-  mp3_volumemax();
-
-  // play the startup sound (this function return immediately)
-  mp3_playstartsound();
-}
-
-
+//The mp3_do_random functions allows R2 to make random sounds from the first 4 banks
 void mp3_do_random() {
   if (!mp3_random_mode_flag) return;
   if (millis() - mp3_random_timer < mp3_random_int) return;
@@ -666,69 +609,23 @@ void mp3_do_random() {
   mp3_random_int = random(MP3_MIN_RANDOM_PAUSE, MP3_MAX_RANDOM_PAUSE);
 }
 
-void mp3_volumemid() {
-  mp3_volume = MP3_VOLUME_MID;
-  mp3_setvolume(mp3_volume);
-}
 
-void mp3_setvolume(uint8_t vol) {
-  mp3_send_command_byte(MP3_VOLUME_CMD);
-  mp3_send_command_byte(vol);
-}
-
-// Sends the hardware command, assumes MP3 is connected to suart2 on the MarcDuino
-void mp3_send_command_byte(char command) {
-  // sends a single byte at a time
-  Serial1.write(command);
-}
-
-void mp3_playstartsound() {
-  // access the start sound directly through the global bank 0
-  mp3_sound(0, MP3_START_SOUND);
-}
-
-// play sound from bank. If sound=0, plays next sound in bank
-// for bank 1 to 4, and first sound in bank for bank 5-9
-// Bank 0 can access any sound
-void mp3_sound(uint8_t bank, uint8_t sound) {
-  uint8_t filenum;
-
-  if (bank > MP3_MAX_BANKS) return;
-  if (bank != 0 && sound > MP3_MAX_SOUNDS_PER_BANK) return;
-
-  // if bank=0 play the sound number provided
-  if (bank == 0) filenum = sound;
-
-  else if (sound != 0) {
-    // calculate actual file number on the MP3 memory card
-    filenum = (bank - 1) * MP3_MAX_SOUNDS_PER_BANK + sound;
-    // also adjust last sound played index for the next sound command
-    // make sure not to go past max sounds
-    if (sound > mp3_max_sounds[bank])
-      mp3_bank_indexes[bank] = mp3_max_sounds[bank];
-    else
-      mp3_bank_indexes[bank] = sound;
-  }
-  // sound "0", play first or next sound depending on bank
-  else {
-    if (bank <= MP3_BANK_CUTOFF) {
-      // advance index, rewind to first sound if at end
-      if ((++mp3_bank_indexes[bank]) > mp3_max_sounds[bank])
-        mp3_bank_indexes[bank] = 1;
-      // we'll play the new indexed sound
-      sound = mp3_bank_indexes[bank];
-    } else {
-      // for banks that always play the first sound
-      sound = 1;
-    }
-    filenum = (bank - 1) * MP3_MAX_SOUNDS_PER_BANK + sound;
+//The mp3_init() function initiates the MP3 Trigger
+void mp3_init() {
+  for (uint8_t i = 0; i < MP3_MAX_BANKS; i++) {
+    mp3_bank_indexes[i] = 0;
   }
 
-  // send a 't'nnn number where nnn=file number
-  mp3_send_command_byte(MP3_PLAY_CMD);
-  mp3_send_command_byte(filenum);
+  // set volume somewhere in the middle
+  mp3_volumemax();
+
+  // play the startup sound (this function return immediately)
+  mp3_playstartsound();
+  return;
 }
 
+
+//The mp3_parse_command parse all Sound commands and sends the appropriate commands to the MP3 Trigger
 void mp3_parse_command(char* commandstr) {
   ////////////////////////////////////////////////
   // Play sound command by bank/sound numbers
@@ -869,67 +766,13 @@ void mp3_parse_command(char* commandstr) {
   }
 }
 
-void mp3_start_random() {
-  mp3_random_timer = 0;
-  mp3_random_mode_flag = 1;
+//The mp3_playstartsound() function plays the start sound
+void mp3_playstartsound() {
+  // access the start sound directly through the global bank 0
+  mp3_sound(0, MP3_START_SOUND);
 }
 
-void mp3_stop_random() {
-  mp3_random_mode_flag = 0;
-  mp3_random_timer = 0;
-}
-
-void mp3_suspend_random() {
-  mp3_random_timer = MP3_MAX_PAUSE_ON_RESUME;
-  saveflag = mp3_random_mode_flag;
-  mp3_random_mode_flag = 0;
-}
-
-void mp3_resume_random() {
-  mp3_random_mode_flag = saveflag;
-}
-
-void mp3_stop() {
-  // this doesn't work as this is a start/stop combined
-  //mp3_send_command_byte(MP3_STOP_CMD);
-  // instead go to an empty sound
-  mp3_sound(0, MP3_EMPTY_SOUND);
-  //#ifdef _MP3_DEBUG_MESSAGES_
-  //	printstr("MP3 stop: ");
-  //	printlnchar(MP3_STOP_CMD);
-  //#endif
-}
-
-void mp3_volumeup() {
-  uint8_t step = (MP3_VOLUME_MIN - MP3_VOLUME_MAX) / MP3_VOLUME_STEPS;
-  // volume was at max or too high
-  if (mp3_volume <= MP3_VOLUME_MAX) mp3_volume = MP3_VOLUME_MAX;
-  else {
-    // the step would be too big, peg to maximum
-    if (mp3_volume - MP3_VOLUME_MAX < step)
-      mp3_volume = MP3_VOLUME_MAX;
-    // go up down step (volume goes inverse with value)
-    else
-      mp3_volume -= step;
-  }
-  mp3_setvolume(mp3_volume);
-}
-
-void mp3_volumedown() {
-  uint8_t step = (MP3_VOLUME_MIN - MP3_VOLUME_MAX) / MP3_VOLUME_STEPS;
-  // volume was set to off, or ended up too low
-  if (mp3_volume > MP3_VOLUME_MIN) mp3_volume = MP3_VOLUME_MIN;
-  else {
-    // the step would be too bit, peg to minimum
-    if (MP3_VOLUME_MIN - mp3_volume < step)
-      mp3_volume = MP3_VOLUME_MIN;
-    // go up one step (volume goes inverse with value)
-    else
-      mp3_volume += step;
-  }
-  mp3_setvolume(mp3_volume);
-}
-
+//The mp3_random() function plays a random sound from the first 4 banks
 void mp3_random() {
   uint8_t num;
   // Plays a random sound from the first 5 banks only
@@ -960,17 +803,274 @@ void mp3_random() {
   }
 }
 
-void mp3_volumeoff() {
-  mp3_volume = MP3_VOLUME_OFF;
+//The mp3_resume_random() resumes the random sounds after a call to mp3_suspend_random()
+void mp3_resume_random() {
+  mp3_random_mode_flag = saveflag;
+}
+
+// Sends the hardware command, assumes MP3 is connected to suart2 on the MarcDuino
+void mp3_send_command_byte(char command) {
+  // sends a single byte at a time
+  Serial1.write(command);
+}
+
+
+//Set volume for the MP3 Trigger
+void mp3_setvolume(uint8_t vol) {
+  mp3_send_command_byte(MP3_VOLUME_CMD);
+  mp3_send_command_byte(vol);
+}
+
+// play sound from bank. If sound=0, plays next sound in bank
+// for bank 1 to 4, and first sound in bank for bank 5-9
+// Bank 0 can access any sound
+void mp3_sound(uint8_t bank, uint8_t sound) {
+  uint8_t filenum;
+
+  if (bank > MP3_MAX_BANKS) return;
+  if (bank != 0 && sound > MP3_MAX_SOUNDS_PER_BANK) return;
+
+  // if bank=0 play the sound number provided
+  if (bank == 0) filenum = sound;
+
+  else if (sound != 0) {
+    // calculate actual file number on the MP3 memory card
+    filenum = (bank - 1) * MP3_MAX_SOUNDS_PER_BANK + sound;
+    // also adjust last sound played index for the next sound command
+    // make sure not to go past max sounds
+    if (sound > mp3_max_sounds[bank])
+      mp3_bank_indexes[bank] = mp3_max_sounds[bank];
+    else
+      mp3_bank_indexes[bank] = sound;
+  }
+  // sound "0", play first or next sound depending on bank
+  else {
+    if (bank <= MP3_BANK_CUTOFF) {
+      // advance index, rewind to first sound if at end
+      if ((++mp3_bank_indexes[bank]) > mp3_max_sounds[bank])
+        mp3_bank_indexes[bank] = 1;
+      // we'll play the new indexed sound
+      sound = mp3_bank_indexes[bank];
+    } else {
+      // for banks that always play the first sound
+      sound = 1;
+    }
+    filenum = (bank - 1) * MP3_MAX_SOUNDS_PER_BANK + sound;
+  }
+
+  // send a 't'nnn number where nnn=file number
+  mp3_send_command_byte(MP3_PLAY_CMD);
+  mp3_send_command_byte(filenum);
+}
+
+
+//helper function to start the random sounds
+void mp3_start_random() {
+  mp3_random_timer = 0;
+  mp3_random_mode_flag = 1;
+}
+
+//Stops the MP3 Trigger
+void mp3_stop() {
+  // this doesn't work as this is a start/stop combined
+  //mp3_send_command_byte(MP3_STOP_CMD);
+  // instead go to an empty sound
+  mp3_sound(0, MP3_EMPTY_SOUND);
+  //#ifdef _MP3_DEBUG_MESSAGES_
+  //	printstr("MP3 stop: ");
+  //	printlnchar(MP3_STOP_CMD);
+  //#endif
+}
+
+// Stops the random sounds 
+void mp3_stop_random() {
+  mp3_random_mode_flag = 0;
+  mp3_random_timer = 0;
+}
+
+
+//Suspends random sounds
+void mp3_suspend_random() {
+  mp3_random_timer = MP3_MAX_PAUSE_ON_RESUME;
+  saveflag = mp3_random_mode_flag;
+  mp3_random_mode_flag = 0;
+}
+
+
+//Turns the volume down
+void mp3_volumedown() {
+  uint8_t step = (MP3_VOLUME_MIN - MP3_VOLUME_MAX) / MP3_VOLUME_STEPS;
+  // volume was set to off, or ended up too low
+  if (mp3_volume > MP3_VOLUME_MIN) mp3_volume = MP3_VOLUME_MIN;
+  else {
+    // the step would be too bit, peg to minimum
+    if (MP3_VOLUME_MIN - mp3_volume < step)
+      mp3_volume = MP3_VOLUME_MIN;
+    // go up one step (volume goes inverse with value)
+    else
+      mp3_volume += step;
+  }
   mp3_setvolume(mp3_volume);
 }
 
+//Sets the volume to Max
 void mp3_volumemax() {
   mp3_volume = MP3_VOLUME_MAX;
   mp3_setvolume(mp3_volume);
 }
 
+//Sets the volume to mid-level
+void mp3_volumemid() {
+  mp3_volume = MP3_VOLUME_MID;
+  mp3_setvolume(mp3_volume);
+}
+
+//Sets volume to minimum audible 
 void mp3_volumemin() {
   mp3_volume = MP3_VOLUME_MIN;
   mp3_setvolume(mp3_volume);
+}
+
+//Turns the volume off
+void mp3_volumeoff() {
+  mp3_volume = MP3_VOLUME_OFF;
+  mp3_setvolume(mp3_volume);
+}
+
+
+//Turns the volume up
+void mp3_volumeup() {
+  uint8_t step = (MP3_VOLUME_MIN - MP3_VOLUME_MAX) / MP3_VOLUME_STEPS;
+  // volume was at max or too high
+  if (mp3_volume <= MP3_VOLUME_MAX) mp3_volume = MP3_VOLUME_MAX;
+  else {
+    // the step would be too big, peg to maximum
+    if (mp3_volume - MP3_VOLUME_MAX < step)
+      mp3_volume = MP3_VOLUME_MAX;
+    // go up down step (volume goes inverse with value)
+    else
+      mp3_volume -= step;
+  }
+  mp3_setvolume(mp3_volume);
+}
+
+
+//Parses serial command and routes it on its way
+byte parseCommand(char* input_str) {
+  byte hasArgument = false;
+  int argument;
+  int address;
+  byte pos = 0;
+  byte length = strlen(input_str);
+  if (length < 2) goto deadCmd;  //not enough characters
+  int mpu = input_str[pos];
+  if (MPU != mpu) {  //if command is not for this MPU - send it on its way
+    switch (mpu) {
+      case '$':
+        mp3_parse_command(input_str);
+        break;
+      case 'B':
+        for (int i = 0; i < length; i++) Serial2.write(input_str[i]);
+        Serial2.write(13);
+        break;
+      case 'C':
+        for (int i = 0; i < length; i++) Serial3.write(input_str[i]);
+        Serial3.write(13);
+        break;
+      case 'D':
+      case 'E':
+      case 'F':
+      case 'G':
+        for (int i = 0; i < length; i++) Serial.write(input_str[i]);
+        Serial.write(13);
+        break;
+      case 'H':
+      case 'I':
+        for (int i = 0; i < length; i++) Serial2.write(input_str[i]);
+        Serial2.write(13);
+        break;
+    }
+    return;
+  }
+  pos++;
+  if (mpu > 64 && mpu < 73) dev_MPU = mpu;
+  else goto deadCmd;  //Not a valid MPU - end command
+  char addrStr[3];
+  //next we need to get the device address which could be 1 or two characters
+  if (!isdigit(input_str[pos])) goto deadCmd;  //Invalid as first char not a digit
+  addrStr[pos - 1] = input_str[pos];
+  pos++;
+  if (isdigit(input_str[pos])) {
+    addrStr[pos - 1] = input_str[pos];
+    pos++;
+  }
+  addrStr[pos - 1] = '\0';
+  dev_address = atoi(addrStr);
+  if (!length > pos) goto deadCmd;  //invalid, no command after address
+                                    //check for the special case message command 'M'
+  dev_command = input_str[pos];
+  pos++;                                   // need to increment in order to peek ahead of command char
+  if (!length > pos) hasArgument = false;  // end of string reached, no arguments
+  else {
+    for (byte i = pos; i < length; i++) {
+      if (!isdigit(input_str[i])) goto deadCmd;  // invalid, end of string contains non-numerial arguments
+    }
+    dev_option = atoi(input_str + pos);  // that's the numerical argument after the command character
+    hasArgument = true;
+  }
+  // switch on command character
+  switch (dev_command)  // 2nd or third char, should be the command char
+  {
+    case 'T':
+      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
+      doTcommand(dev_address, dev_option);
+      break;
+    case 'S':
+      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
+      doScommand(dev_address, dev_option);
+      break;
+    default:
+      goto deadCmd;  // unknown command
+      break;
+  }
+
+  return;
+
+
+deadCmd:
+
+  return;
+}
+
+//Safely reset all body devices to their starting configuration.
+void safeReset(){
+  servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
+  servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
+  servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
+  servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
+  delay(2000);
+  servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
+  servoControl.setPWM(GA_LFT, 0, GA_LFT_MIN);
+  delay(2000);
+  servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
+  servoControl.setPWM(GA_DOR, 0, GA_DOR_MIN);
+}
+
+
+//Handles all interactions with the utility arms
+void utilityArms(int option) {
+  switch (option) {
+    case 0:
+      return;
+    case 1:
+      servoControl.setPWM(UA_TOP, 0, UA_TOP_MAX);
+      servoControl.setPWM(UA_BOT, 0, UA_BOT_MAX);
+      ua_State=0;
+      break;
+    case 2:
+      servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
+      servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
+      ua_State=0;
+      break;
+  }
 }
