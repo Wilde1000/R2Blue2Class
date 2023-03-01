@@ -16,9 +16,9 @@
 #define LEFT_PWM 3            //Set the left motor controller to pin 3 - do not use 5 & 6 
 #define RIGHT_PWM 9           //Set the right motor controller to pin 9  (3 & 9 are 490 Hz, 5 & 6 are 980 Hz)
 #define CMD_MAX_LENGTH 12     //Set the max command length for this program 
-#define DOME_ENABLE 2         //Set the Enable pin for the Dome motor
-#define IN1_DOME_MOTOR 4      //Set the INPUT1 pin for the Dome motor
-#define IN2_DOME_MOTOR 6      //Set the INPUT2 pin for the Dome motor
+#define DOME_ENABLE 4         //Set the Enable pin for the Dome motor
+#define IN1_DOME_MOTOR 2      //Set the INPUT1 pin for the Dome motor
+#define IN2_DOME_MOTOR 5      //Set the INPUT2 pin for the Dome motor
 
 #define UA_ON "A10T1"         //Utility Arm on command
 #define UA_OFF "A10T2"        //Utility arm off command
@@ -164,24 +164,17 @@ void loop() {
 
       //Check the Left and Right triggers
       if (Xbox.getButtonPress(L2) > TRIGGER_DEAD_ZONE) {
-        if (Xbox.getButtonPress(R2) > TRIGGER_DEAD_ZONE) {
-          digitalWrite(IN1_DOME_MOTOR, LOW);
-          digitalWrite(IN2_DOME_MOTOR, LOW);
-        } else {
+        
           analogWrite(DOME_ENABLE, Xbox.getButtonPress(L2));
           digitalWrite(IN1_DOME_MOTOR, HIGH);
           digitalWrite(IN2_DOME_MOTOR, LOW);
-        }
+        
       }
       if (Xbox.getButtonPress(R2) > TRIGGER_DEAD_ZONE) {
-        if (Xbox.getButtonPress(L2) > TRIGGER_DEAD_ZONE) {
-          digitalWrite(IN1_DOME_MOTOR, LOW);
-          digitalWrite(IN2_DOME_MOTOR, LOW);
-        } else {
           analogWrite(DOME_ENABLE, Xbox.getButtonPress(R2));
           digitalWrite(IN1_DOME_MOTOR, LOW);
           digitalWrite(IN2_DOME_MOTOR, HIGH);
-        }
+        
       }
 
 
@@ -277,5 +270,4 @@ Command runCommand(Command* command) {
   command->isOn = !command->isOn;
   return;
 }
-
 
