@@ -1,37 +1,55 @@
-#include <XBOXRECV.h>
-#include <Servo.h>
-#include <SPI.h>
+/*************************************************************************
+ * ********************** INCLUDED LIBRARIES *****************************
+ * ***********************************************************************/
 
+#include <XBOXRECV.h>  //Needed for XBox Tranceiver
+#include <Servo.h>     //Needed for controlling Spark MAX motor controller
+#include <SPI.h>       //Needed for XBOXRECV.h
 
-#define CONTROLLER 0
-#define DEAD_ZONE 8000
-#define TRIGGER_DEAD_ZONE 50
+/*************************************************************************
+ * ********************** MACRO DEFINITIONS ******************************
+ * ***********************************************************************/
 
+#define CONTROLLER 0          //Set the XBox Controller number to 0 
+#define DEAD_ZONE 8000        //Set the Dead zone for the Joysticks on Xbox controller
+#define TRIGGER_DEAD_ZONE 50  //Set the Trigger dead zone 
+#define LEFT_PWM 3            //Set the left motor controller to pin 3 - do not use 5 & 6 
+#define RIGHT_PWM 9           //Set the right motor controller to pin 9  (3 & 9 are 490 Hz, 5 & 6 are 980 Hz)
+#define CMD_MAX_LENGTH 12     //Set the max command length for this program 
+#define DOME_ENABLE 2         //Set the Enable pin for the Dome motor
+#define IN1_DOME_MOTOR 4      //Set the INPUT1 pin for the Dome motor
+#define IN2_DOME_MOTOR 6      //Set the INPUT2 pin for the Dome motor
 
-#define LEFT_PWM 3
-#define RIGHT_PWM 9
-#define CMD_MAX_LENGTH 12
+#define UA_ON "A10T1"         //Utility Arm on command
+#define UA_OFF "A10T2"        //Utility arm off command
+#define IA_ON "A11T1"         //Interface Arm on command
+#define IA_OFF "A11T2"        //Interface arm off command
+#define GA_ON "A12T1"         //Gripper Arm on command
+#define GA_OFF "A12T2"        //Gripper arm off command
+#define DP_ON "B24T1"         //Dataport on command
+#define DP_OFF "B24T2"        //Dataport off command
+#define ZP_ON  "E51T8"        //Zapper on command
+#define ZP_OFF "E51T8"        //Zapper off command
+#define LS_ON  "E52T1"        //Light Saber on command
+#define LS_OFF "E52T2"        //Light Saber off command
+#define PS_ON  "E53T1"        //Periscope on command
+#define PS_OFF "E53T2"        //Periscope off command
+#define BM_ON  "E54T1"        //Bad Motivator on command
+#define BM_OFF "E54T2"        //Bad Motivator off command
+#define LF_ON  "E55T1"        //Life Form on command
+#define LF_OFF "E55T2"        //Life Form off command
+#define SF_ON  "$S"           //Scream command
+#define SF_OFF "$F"           //Faint command                              
+#define LW_ON  "$L"           //Leia command
+#define LW_OFF "$W"           //Star Wars Music
+#define MU_ON  "$D"           //Disco Music
+#define MU_OFF "$C"            //Cantina music
 
-#define DOME_ENABLE 2
-#define IN1_DOME_MOTOR 4
-#define IN2_DOME_MOTOR 6
+/*************************************************************************
+ * ******************************* STRUCTS *******************************
+ * ***********************************************************************/
 
-
-/*
-3, 5 - left/right pwm
-2, 4, 6 - enable for dome, input 1 for dome motor, input 2 for dome motor
-*/
-
-
-bool domeEnabled = false;
-
-
-USB Usb;
-XBOXRECV Xbox(&Usb);
-Servo LFoot;
-Servo RFoot;
-
-
+//Create a Command struct containing two char arrays and one bool value
 typedef struct {
   /// The command to run if it needs to turn on.
   char onCommand[CMD_MAX_LENGTH];
@@ -41,44 +59,41 @@ typedef struct {
   bool isOn;
 } Command;
 
+/*************************************************************************
+ ************************** FUNCTION DEFINITIONS *************************
+ *************************************************************************/
+Command createCommand(const char* onCommand, const char* offCommand);
+Command runCommand(Command* command);
 
-/// Creates a command struct.
-Command createCommand(const char* onCommand, const char* offCommand) {
-  Command newCommand;
-  newCommand.isOn = false;
-  strcpy(newCommand.onCommand, onCommand);
-  strcpy(newCommand.offCommand, offCommand);
-  return newCommand;
-}
+/*************************************************************************
+ * ********************** GLOBAL VARIABLES *******************************
+ * ***********************************************************************/
 
 
-/// Runs the correct command in a `Command` struct.
-Command runCommand(Command* command) {
-  auto commandString = !command->isOn ? command->onCommand : command->offCommand;
-  byte length = strlen(commandString);
-  for (int x = 0; x < length; x++) Serial.write(commandString[x]);
-  Serial.write(13);
-  command->isOn = !command->isOn;
-  return;
-}
-Command utility = createCommand("A10T1", "A10T2");
-Command interface = createCommand("A11T1", "A11T2");
-Command gripper = createCommand("A12T1", "A12T2");
-Command dataport = createCommand("B24T1", "B24T2");
-Command coinslot = createCommand("B21T16", "B21T0");
-Command ldpl = createCommand("B22T16", "B22T0");
-Command zapper = createCommand("E51T8", "E51T2");
-Command lightSaber = createCommand("E52T1", "E52T2");
-Command periscope = createCommand("E53T1", "E53T2");
-Command motivator = createCommand("E54T1", "E54T2");
-Command lifeForm = createCommand("E55T1", "E55T2");
-Command holos = createCommand("D90T1", "D90T2");
-Command magic = createCommand("D95T1", "D95T2");
-Command scream = createCommand("$S", "$F");
-Command leia = createCommand("$L", "$W");
-Command music = createCommand("$C", "$D");
+//determines whether drive wheels are enabled
+bool driveEnabled = false;   
+USB Usb;     //Creates a USB object
+XBOXRECV Xbox(&Usb);  //Creates a XBOXRECV object called Xbox and attached to the USB object
+Servo LFoot;   //Create a servo object for left foot
+Servo RFoot;   //Create a servo object for right foot
+Command utility = createCommand(UA_ON, UA_OFF);
+Command interface = createCommand(IA_ON, IA_OFF);
+Command gripper = createCommand(GA_ON, GA_OFF);
+Command dataport = createCommand(DP_ON, DP_OFF);
+Command zapper = createCommand(ZP_ON, ZP_OFF);
+Command lightSaber = createCommand(LS_ON, LS_OFF);
+Command periscope = createCommand(PS_ON, PS_OFF);
+Command motivator = createCommand(BM_ON, BM_OFF);
+Command lifeForm = createCommand(LF_ON, LF_OFF);
+Command scream = createCommand(SF_ON, SF_OFF);
+Command leia = createCommand(LW_ON, LW_OFF);
+Command music = createCommand(MU_ON, MU_OFF);
 bool mtrsEnable = 0;
 
+
+/*************************************************************************
+ ***************************** SETUP FUNCTION ****************************
+ *************************************************************************/
 void setup() {
   Serial.begin(9600);  //Connection with MPU A - Body Master
 
@@ -99,6 +114,12 @@ void setup() {
   pinMode(IN2_DOME_MOTOR, OUTPUT);
 }
 
+
+
+
+/*************************************************************************
+ ***************************** LOOP FUNCTION *****************************
+ *************************************************************************/
 void loop() {
   Usb.Task();
   if (Xbox.XboxReceiverConnected) {
@@ -175,7 +196,7 @@ void loop() {
         runCommand(&music);
       }
       if (Xbox.getButtonClick(RIGHT)) {
-        runCommand(&holos);
+        runCommand(&zapper);
       }
 
 
@@ -188,7 +209,7 @@ void loop() {
         runCommand(&gripper);
       }
       if (Xbox.getButtonClick(L1))
-        runCommand(&zapper);
+      //runCommand(&zapper);
       //if (Xbox.getButtonClick(R1)) runCommand(&utility);
 
       if (Xbox.getButtonClick(L3))
@@ -230,3 +251,31 @@ void loop() {
     }
   }
 }
+
+
+
+
+/*************************************************************************
+ ******************************* FUNCTIONS *******************************
+ *************************************************************************/
+
+/// Creates a command struct.
+Command createCommand(const char* onCommand, const char* offCommand) {
+  Command newCommand;
+  newCommand.isOn = false;
+  strcpy(newCommand.onCommand, onCommand);
+  strcpy(newCommand.offCommand, offCommand);
+  return newCommand;
+}
+
+/// Runs the correct command in a `Command` struct.
+Command runCommand(Command* command) {
+  auto commandString = !command->isOn ? command->onCommand : command->offCommand;
+  byte length = strlen(commandString);
+  for (int x = 0; x < length; x++) Serial.write(commandString[x]);
+  Serial.write(13);
+  command->isOn = !command->isOn;
+  return;
+}
+
+
