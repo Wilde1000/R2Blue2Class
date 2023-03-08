@@ -51,7 +51,7 @@ The command structure is as follows:
 */
 
 
-//We have used (with slight modifications for our droid) most of the MP3sound.h and MP3sound.c 
+//We have used (with slight modifications for our droid) most of the MP3sound.h and MP3sound.c
 //functions with credit given below:
 
 
@@ -126,39 +126,40 @@ The command structure is as follows:
 /*>>>>>>>>>>>>>>>>>>> Servo Macros <<<<<<<<<<<<<<<<<<<<*/
 
 // Utility Arms
-#define UA_TOP 0            //Utility Arm Top Servo PCA9685 pin
-#define UA_TOP_MAX 200      //Utility Arm Top Servo (open position)
-#define UA_TOP_MIN 500      //Utility Arm Top Servo (close position)
-#define UA_BOT 1            //Utility Arm Bottom Servo PCA9685 pin
-#define UA_BOT_MAX 200      //Utility Arm Bottom Servo (open position)
-#define UA_BOT_MIN 450      //Utility Arm Bottom Servo (close position)
-// Interface Arm            
-#define IA_DOR 2            //Interface Arm Door Servo PCA9685 pin  
-#define IA_DOR_MAX 275      //Interface Arm Door Servo (open position)
-#define IA_DOR_MIN 375      //Interface Arm Door Servo (close position)
-#define IA_LFT 3            //Interface Arm Lift Servo PCA9685 pin  
-#define IA_LFT_MAX 475      //Interface Arm Lift Servo (up position)
-#define IA_LFT_MIN 150      //Interface Arm Lift Servo (down position)
-#define IA_EXT 6            //Interface Arm Extension Servo PCA9685 pin 
-#define IA_EXT_MAX 375      //Interface Arm Extension (out position)
-#define IA_EXT_MIN 200      //Interface Arm Extension (in position)
-//Gripper Arm
-#define GA_DOR 4            //Gripper Arm Door Servo PCA9685 pin 
-#define GA_DOR_MAX 375      //Gripper Arm Door Servo (open position)
-#define GA_DOR_MIN 200      //Gripper Arm Door Servo (close position)
-#define GA_LFT 5            //Gripper Arm Lift Servo PCA9685 pin 
-#define GA_LFT_MAX 150      //Gripper Arm Lift Servo (up position) 
-#define GA_LFT_MIN 450      //Gripper Arm Lift Servo (down position) 
-#define GA_EXT 7            //Gripper Arm Extension Servo PCA9685 pin 
-#define GA_EXT_MAX 200      //Gripper Arm Extension Servo (open gripper) 
-#define GA_EXT_MIN 375      //Gripper Arm Extension Servo (close gripper)
-//Data Panel Door
-#define DP_DOR 8            //Data Panel Door Servo PCA9685 pin 
-#define DP_DOR_MAX 425      //Data Panel Door Servo (open position)
-#define DP_DOR_MIN 200      //Data Panel Door Servo (close position)
 
-#define OE_PIN 8            //Set low to enable servos - low to disable servos
-#define SERVO_FREQ 50       //Standard servo frequency is 50Kz
+#define UA_TOP 0        //Utility Arm Top Servo PCA9685 pin
+#define UA_TOP_MAX 200  //Utility Arm Top Servo (open position)
+#define UA_TOP_MIN 500  //Utility Arm Top Servo (close position)
+#define UA_BOT 1        //Utility Arm Bottom Servo PCA9685 pin
+#define UA_BOT_MAX 200  //Utility Arm Bottom Servo (open position)
+#define UA_BOT_MIN 450  //Utility Arm Bottom Servo (close position)
+// Interface Arm
+#define IA_DOR 2        //Interface Arm Door Servo PCA9685 pin
+#define IA_DOR_MAX 275  //Interface Arm Door Servo (open position)
+#define IA_DOR_MIN 375  //Interface Arm Door Servo (close position)
+#define IA_LFT 3        //Interface Arm Lift Servo PCA9685 pin
+#define IA_LFT_MAX 475  //Interface Arm Lift Servo (up position)
+#define IA_LFT_MIN 150  //Interface Arm Lift Servo (down position)
+#define IA_EXT 6        //Interface Arm Extension Servo PCA9685 pin
+#define IA_EXT_MAX 375  //Interface Arm Extension (out position)
+#define IA_EXT_MIN 200  //Interface Arm Extension (in position)
+//Gripper Arm
+#define GA_DOR 4        //Gripper Arm Door Servo PCA9685 pin
+#define GA_DOR_MAX 375  //Gripper Arm Door Servo (open position)
+#define GA_DOR_MIN 200  //Gripper Arm Door Servo (close position)
+#define GA_LFT 5        //Gripper Arm Lift Servo PCA9685 pin
+#define GA_LFT_MAX 150  //Gripper Arm Lift Servo (up position)
+#define GA_LFT_MIN 450  //Gripper Arm Lift Servo (down position)
+#define GA_EXT 7        //Gripper Arm Extension Servo PCA9685 pin
+#define GA_EXT_MAX 200  //Gripper Arm Extension Servo (open gripper)
+#define GA_EXT_MIN 375  //Gripper Arm Extension Servo (close gripper)
+//Data Panel Door
+#define DP_DOR 8        //Data Panel Door Servo PCA9685 pin
+#define DP_DOR_MAX 425  //Data Panel Door Servo (open position)
+#define DP_DOR_MIN 200  //Data Panel Door Servo (close position)
+
+#define OE_PIN 8       //Set low to enable servos - low to disable servos
+#define SERVO_FREQ 50  //Standard servo frequency is 50Kz
 
 
 
@@ -191,14 +192,14 @@ The command structure is as follows:
 #define MP3_VOLUME_STEPS 20   // R2 Touch app has 20 steps from min to max
 #define MP3_VOLUME_OFF 254    // to turn it off... 255 gets a buzz.
 
-#define MP3_PLAY_CMD 't'              // command to play sound file on the MP3 trigger
-#define MP3_VOLUME_CMD 'v'            // command to play sound file on the MP3 trigger
-#define MP3_STOP_CMD 'O'              // command to stop/play  - not used
-#define MP3_MIN_RANDOM_PAUSE 10000      // min wait on random sounds
+#define MP3_PLAY_CMD 't'               // command to play sound file on the MP3 trigger
+#define MP3_VOLUME_CMD 'v'             // command to play sound file on the MP3 trigger
+#define MP3_STOP_CMD 'O'               // command to stop/play  - not used
+#define MP3_MIN_RANDOM_PAUSE 10000     // min wait on random sounds
 #define MP3_MAX_RANDOM_PAUSE 20000     // max wait on random sounds
 #define MP3_MAX_PAUSE_ON_RESUME 30000  // default wait to resume random. Works for short sound. Set mp3_random_timer manually for long ones.
-#define CMD_MAX_LENGTH 64             //Defines max command Length - same as serial buffer
-#define MPU 'A'                       //Defines the MPU code for the program
+#define CMD_MAX_LENGTH 64              //Defines max command Length - same as serial buffer
+#define MPU 'A'                        //Defines the MPU code for the program
 
 /*************************************************************************
  *************************  GLOBAL VARIABLES  ****************************
@@ -248,7 +249,7 @@ byte dp_State = 0;
 /*************************************************************************
  ***********************  FUNCTION DEFINITIONS  **************************
  *************************************************************************/
-
+/*
 
 
 //The buildCommand takes the output from the checkSerial functions and builds a command
@@ -294,42 +295,7 @@ void mp3_resume_random();                    //resumes random noises
 void mp3_stop_random();                      //stops random noises
 void mp3_start_random();                     //starts random noises
 void mp3_check_timer();                      //helper function to check timeouts
-
-
-/*************************************************************************
- **************************  SETUP FUNCTION  *****************************
- *************************************************************************/
-
-void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(9600);   //Serial Connection with Dome Lift Mega
-  Serial1.begin(9600);  //Serial Connection with MP3 Trigger
-  Serial2.begin(9600);  //Serial Connection with Lights Mega
-  Serial3.begin(9600);  //Serial Connection with Xbox Uno
-  //Wait 3 seconds before playing startup sound
-  servoControl.begin();
-  servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
-  pinMode(OE_PIN, OUTPUT);
-  digitalWrite(OE_PIN, LOW);
-  safeReset();
-  mp3_init();
-}
-
-/*************************************************************************
- ***************************  LOOP FUNCTION  *****************************
- *************************************************************************/
-void loop() {
-  mp3_do_random();
-  // put your main code here, to run repeatedly:
-  if (checkSerial()) parseCommand(cmdStr0);
-  if (checkSerial1()) parseCommand(cmdStr1);
-  if (checkSerial2()) parseCommand(cmdStr2);
-  if (checkSerial3()) parseCommand(cmdStr3);
-  utilityArms(ua_State);
-  interfaceArm(ia_State);
-  gripper(ga_State);
-}
-
+*/
 
 
 /*************************************************************************
@@ -357,7 +323,7 @@ byte buildCommand(char ch, char* output_str) {
 }
 
 
-//The checkSerial() function takes the serial data from Serial0 and sends it to the 
+//The checkSerial() function takes the serial data from Serial0 and sends it to the
 //buildCommand function for further processing.
 byte checkSerial() {
   if (Serial.available()) {
@@ -372,7 +338,7 @@ byte checkSerial() {
   return 0;
 }
 
-//The checkSerial1() function takes the serial data from Serial1 and sends it to the 
+//The checkSerial1() function takes the serial data from Serial1 and sends it to the
 //buildCommand function for further processing.
 byte checkSerial1() {
   if (Serial1.available()) {
@@ -388,7 +354,7 @@ byte checkSerial1() {
 }
 
 
-//The checkSerial2() function takes the serial data from Serial2 and sends it to the 
+//The checkSerial2() function takes the serial data from Serial2 and sends it to the
 //buildCommand function for further processing.
 byte checkSerial2() {
   if (Serial2.available()) {
@@ -404,7 +370,7 @@ byte checkSerial2() {
 }
 
 
-//The checkSerial3() function takes the serial data from Serial3 and sends it to the 
+//The checkSerial3() function takes the serial data from Serial3 and sends it to the
 //buildCommand function for further processing.
 byte checkSerial3() {
   if (Serial3.available()) {
@@ -433,7 +399,6 @@ void doTcommand(int address, int argument) {
     case 12:
       ga_State = argument;
       break;
-    
   }
 }
 
@@ -882,7 +847,7 @@ void mp3_stop() {
   //#endif
 }
 
-// Stops the random sounds 
+// Stops the random sounds
 void mp3_stop_random() {
   mp3_random_mode_flag = 0;
   mp3_random_timer = 0;
@@ -925,7 +890,7 @@ void mp3_volumemid() {
   mp3_setvolume(mp3_volume);
 }
 
-//Sets volume to minimum audible 
+//Sets volume to minimum audible
 void mp3_volumemin() {
   mp3_volume = MP3_VOLUME_MIN;
   mp3_setvolume(mp3_volume);
@@ -957,23 +922,25 @@ void mp3_volumeup() {
 
 //Parses serial command and routes it on its way
 byte parseCommand(char* input_str) {
-  byte hasArgument = false;
-  int argument;
-  int address;
+  bool hasArgument = false;
+  //At this point we have a command from one of the serial interfaces
+  //The first step is to determine if it is for this MPU or needs to sent to another MPU
   byte pos = 0;
   byte length = strlen(input_str);
   if (length < 2) goto deadCmd;  //not enough characters
-  int mpu = input_str[pos];
+  char mpu = input_str[pos];
   if (MPU != mpu) {  //if command is not for this MPU - send it on its way
     switch (mpu) {
       case '$':
         mp3_parse_command(input_str);
         break;
       case 'B':
+        Serial2.flush();
         for (int i = 0; i < length; i++) Serial2.write(input_str[i]);
         Serial2.write(13);
         break;
       case 'C':
+        Serial3.flush();
         for (int i = 0; i < length; i++) Serial3.write(input_str[i]);
         Serial3.write(13);
         break;
@@ -981,41 +948,49 @@ byte parseCommand(char* input_str) {
       case 'E':
       case 'F':
       case 'G':
+        Serial.flush();
         for (int i = 0; i < length; i++) Serial.write(input_str[i]);
         Serial.write(13);
         break;
       case 'H':
       case 'I':
+        Serial2.flush();
         for (int i = 0; i < length; i++) Serial2.write(input_str[i]);
         Serial2.write(13);
         break;
     }
     return;
   }
+  //At this stage, the command is for this MPU
   pos++;
-  if (mpu > 64 && mpu < 73) dev_MPU = mpu;
-  else goto deadCmd;  //Not a valid MPU - end command
+  dev_MPU = mpu;
+
   char addrStr[3];
-  //next we need to get the device address which could be 1 or two characters
-  if (!isdigit(input_str[pos])) goto deadCmd;  //Invalid as first char not a digit
-  addrStr[pos - 1] = input_str[pos];
+  //next we need to get the device address which should two characters
+  addrStr[0] = input_str[pos];
   pos++;
-  if (isdigit(input_str[pos])) {
-    addrStr[pos - 1] = input_str[pos];
-    pos++;
-  }
-  addrStr[pos - 1] = '\0';
+  addrStr[1] = input_str[pos];
+  pos++;
+  addrStr[2] = '\0';
+
   dev_address = atoi(addrStr);
-  if (!length > pos) goto deadCmd;  //invalid, no command after address
-                                    //check for the special case message command 'M'
+  if (dev_address < 9 && dev_address > 19) goto deadCmd;  //invalid address
+  if (!(length > pos)) goto deadCmd;                      //invalid, no command after address
   dev_command = input_str[pos];
-  pos++;                                   // need to increment in order to peek ahead of command char
-  if (!length > pos) hasArgument = false;  // end of string reached, no arguments
+  pos++;
+  char optStr[3];
+  int count = 0;
+  if (!(length > pos)) hasArgument = false;  // end of string reached, no arguments
   else {
     for (byte i = pos; i < length; i++) {
       if (!isdigit(input_str[i])) goto deadCmd;  // invalid, end of string contains non-numerial arguments
+      else {
+        optStr[count] = input_str[i];
+        count++;
+      }
     }
-    dev_option = atoi(input_str + pos);  // that's the numerical argument after the command character
+    optStr[count] = '/0';
+    dev_option = atoi(optStr);  // that's the numerical argument after the command character
     hasArgument = true;
   }
   // switch on command character
@@ -1043,7 +1018,7 @@ deadCmd:
 }
 
 //Safely reset all body devices to their starting configuration.
-void safeReset(){
+void safeReset() {
   servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
   servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
   servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
@@ -1065,12 +1040,50 @@ void utilityArms(int option) {
     case 1:
       servoControl.setPWM(UA_TOP, 0, UA_TOP_MAX);
       servoControl.setPWM(UA_BOT, 0, UA_BOT_MAX);
-      ua_State=0;
+      ua_State = 0;
       break;
     case 2:
       servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
       servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
-      ua_State=0;
+      ua_State = 0;
       break;
   }
 }
+
+
+/*************************************************************************
+ **************************  SETUP FUNCTION  *****************************
+ *************************************************************************/
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);   //Serial Connection with Dome Lift Mega
+  Serial1.begin(9600);  //Serial Connection with MP3 Trigger
+  Serial2.begin(9600);  //Serial Connection with Lights Mega
+  Serial3.begin(9600);  //Serial Connection with Xbox Uno
+  //Wait 3 seconds before playing startup sound
+  servoControl.begin();
+  servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
+  pinMode(OE_PIN, OUTPUT);
+  digitalWrite(OE_PIN, LOW);
+  safeReset();
+  mp3_init();
+}
+
+/*************************************************************************
+ ***************************  LOOP FUNCTION  *****************************
+ *************************************************************************/
+void loop() {
+  mp3_do_random();
+  // put your main code here, to run repeatedly:
+  if (checkSerial()) parseCommand(cmdStr0);
+  if (checkSerial1()) parseCommand(cmdStr1);
+  if (checkSerial2()) parseCommand(cmdStr2);
+  if (checkSerial3()) parseCommand(cmdStr3);
+  utilityArms(ua_State);
+  interfaceArm(ia_State);
+  gripper(ga_State);
+}
+
+
+
