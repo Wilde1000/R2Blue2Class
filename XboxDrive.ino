@@ -1,4 +1,16 @@
 /*************************************************************************
+ ************************** XBOX DRIVE UNO *******************************
+ *************************************************************************/
+
+/* The Xbox Drive Uno controls the right and left drive wheels and the Dome Rotation Motor.  All 
+other commands are sent to the Body Master Mega for routing.   R2 is powered by two 12V Neo Brushless 
+Motors attached to Spark Max motor controllers.  We will be controlling the Spark Max using PWM.  DO 
+NOT use pins 5 and 6 with the Spark Max controller as 5 and 6 are 980 Hz PWM pin and will burn out the
+Spark Max (Ask me how I know this!!!).
+
+
+
+/*************************************************************************
  * ********************** INCLUDED LIBRARIES *****************************
  * ***********************************************************************/
 
@@ -89,6 +101,32 @@ Command scream = createCommand(SF_ON, SF_OFF);
 Command leia = createCommand(LW_ON, LW_OFF);
 Command music = createCommand(MU_ON, MU_OFF);
 bool mtrsEnable = 0;
+
+
+
+
+/*************************************************************************
+ ******************************* FUNCTIONS *******************************
+ *************************************************************************/
+
+/// Creates a command struct.
+Command createCommand(const char* onCommand, const char* offCommand) {
+  Command newCommand;
+  newCommand.isOn = false;
+  strcpy(newCommand.onCommand, onCommand);
+  strcpy(newCommand.offCommand, offCommand);
+  return newCommand;
+}
+
+/// Runs the correct command in a `Command` struct.
+Command runCommand(Command* command) {
+  auto commandString = !command->isOn ? command->onCommand : command->offCommand;
+  byte length = strlen(commandString);
+  for (int x = 0; x < length; x++) Serial.write(commandString[x]);
+  Serial.write(13);
+  command->isOn = !command->isOn;
+  return;
+}
 
 
 /*************************************************************************
@@ -246,28 +284,4 @@ void loop() {
 }
 
 
-
-
-/*************************************************************************
- ******************************* FUNCTIONS *******************************
- *************************************************************************/
-
-/// Creates a command struct.
-Command createCommand(const char* onCommand, const char* offCommand) {
-  Command newCommand;
-  newCommand.isOn = false;
-  strcpy(newCommand.onCommand, onCommand);
-  strcpy(newCommand.offCommand, offCommand);
-  return newCommand;
-}
-
-/// Runs the correct command in a `Command` struct.
-Command runCommand(Command* command) {
-  auto commandString = !command->isOn ? command->onCommand : command->offCommand;
-  byte length = strlen(commandString);
-  for (int x = 0; x < length; x++) Serial.write(commandString[x]);
-  Serial.write(13);
-  command->isOn = !command->isOn;
-  return;
-}
 
