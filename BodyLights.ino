@@ -1,4 +1,16 @@
-/*
+/*************************************************************************
+ * ************************ BODY LIGHTS MEGA *****************************
+ * ***********************************************************************/
+
+/* This is the Lighting control program for the body of Blue Crew's mascot R2-Blue2.  This program is based on the original 
+ *  Dataport/CBI program by Michael Erwin with additions from CuriousMarc, VAShadow, and S. Sloan. 
+ * 
+ * R2-Blue2  uses Michael Erwin's CBI and Dataport boards which utilize the MAX7219 chip to control LEDs.  In addition, R2 has three
+ * team created light features using NeoPixels, the Large Dataport, the Coin Slots, and the Lightbar (on the DPL). These will be accessed
+ * by using the FastLED.h and pixeltypes.h, its helper library
+ * 
+ *
+*
 We will be using a Jawa-Lite inspired technique to control all the MPU's in 
 R2-Blue2.
 The command structure is as follows:
@@ -36,14 +48,7 @@ The command structure is as follows:
   Option - 102
 */
 
-/* This is the Lighting control program for the body of Blue Crew's mascot R2-Blue2.  This program is based on the original 
- *  Dataport/CBI program by Michael Erwin with additions from CuriousMarc, VAShadow, and S. Sloan. 
- * 
- * R2-Blue2  uses Michael Erwin's CBI and Dataport boards which utilize the MAX7219 chip to control LEDs.  In addition, R2 has three
- * team created light features using NeoPixels, the Large Dataport, the Coin Slots, and the Lightbar (on the DPL). These will be accessed
- * by using the FastLED.h and pixeltypes.h, its helper library
- * 
- */
+
 
 /*************************************************************************
  * ********************** INCLUDED LIBRARIES *****************************
@@ -92,7 +97,7 @@ The command structure is as follows:
 
 //Set this to which Analog Pin you use for the voltage in.
 #define analoginput A0  //
-#define greenVCC 12.5   // Green LED on if above this voltage
+#define greenVCC 13.0   // Green LED on if above this voltage
 #define yellowVCC 12.0  // Yellow LED on if above this voltage
 #define redVCC 11.5     // Red LED on if above this voltage
 
@@ -147,7 +152,7 @@ Servo dp_door;  //Create servo object for Dataport Door
 
 /*************************************************************************
  * ********************** FUNCTION DECLARATIONS **************************
- * ***********************************************************************/
+ * ***********************************************************************
 
 
 //Updates the blocks on the right of the DPL
@@ -180,48 +185,7 @@ void updateRedLEDs();                          //Updates the two red LEDs on the
 void updateTopBlocks();                        //Updates the Top Green and Yellow Blocks on the DPL
 
 //========================End Function Declarations ====================================================
-
-/*************************************************************************
- * ************************* SETUP FUNCTION ******************************
- * ***********************************************************************/
-
-
-void setup() {
-  Serial.begin(9600);  //Serial connection to Body Master
-  //Serial1.begin(9600);           //Connected to Dome 25-pin Serial 2 - Not currently used
-  //Serial2.begin(9600);           //Connected to CBI Nano - Not currently used
-  //Serial3.begin(9600);           //Connected to EXP Nano - Not currently used
-  FastLED.addLeds<WS2811, LB_PIN, GRB>(lb, LB_LEDS);        //Adds Data Panel Light Bar LEDs to FastLED array
-  FastLED.addLeds<WS2811, CS_PIN, GRB>(cs, CS_LEDS);        //Adds Coin Slot LEDs to FastLED array
-  FastLED.addLeds<WS2811, LDPL_PIN, GRB>(ldpl, LDPL_LEDS);  //Adds Large Data Panel LEDs to FastLED array
-  // initialize Maxim driver chips
-  dc.shutdown(DATAPORT, false);                  // take Data Port out of shutdown
-  dc.clearDisplay(DATAPORT);                     // clear Data Port LEDs
-  dc.setIntensity(DATAPORT, DATAPORTINTENSITY);  // set intensity of Data Port LEDs
-  cc.shutdown(CBI, false);                       // take Charging Bay Indicator out of shutdown
-  cc.clearDisplay(CBI);                          // clear CBI LEDs
-  cc.setIntensity(CBI, CBIINTENSITY);            // set intensity of CBI LEDs
-                                                 // test LEDs
-  singleTest();                                  //Tests all Maxim connected leds in turn
-  delay(2000);
-  //pinMode(DPLDoorPin, INPUT_PULLUP);  //Pin on the Arduino Mini Breakout Board connected to left door switch HIGH=Door closed (NC when door closed) - S.Sloan
-  pinMode(analoginput, INPUT);
-  dp_door.attach(DP_DOOR);
-  dp_door.writeMicroseconds(DP_DOOR_MIN);
-  dp_door.detach();
-}
-/*************************************************************************
- * ************************** LOOP FUNCTION ******************************
- * ***********************************************************************/
-
-void loop() {
-  checkSerial();
-  coinslot(cs_State);
-  updateLDPL(ldpl_State);
-  dpl(dpl_State);
-  cbi();
-}
-
+*/
 
 /*************************************************************************
  * *****************************  FUNCTIONS ******************************
@@ -388,7 +352,7 @@ void cs_singleUpDown(int num) {
   return num;
 }
 
-//  cs_updown displays the passed color one coin slot at a time starting with the top coin slot. 
+//  cs_updown displays the passed color one coin slot at a time starting with the top coin slot.
 //  Once all are filled, they are cleared from the bottom up.
 void cs_updown(int num) {
   static int turn = 0;  //tracks which coinslot is being addressed
@@ -626,58 +590,47 @@ void ldpl_single(int num) {
 
 //The parseCommand takes the command from the buildCommand function and parses into its component parts - MPU, Address, Command and Option
 int parseCommand(char* input_str) {
-  byte hasArgument = false;
   byte pos = 0;
   byte length = strlen(input_str);
   if (length < 2) goto deadCmd;  //not enough characters
   int mpu = input_str[pos];      //MPU is the first character
   if (MPU != mpu) {              //if command is not for this MPU - send it on its way
-    switch (mpu) {
-      case '$':
-      case 'A':
-      case 'C':
-      case 'D':
-      case 'E':
-      case 'F':
-      case 'G':
-
-        for (int x = 0; x < length; x++) {
-          Serial.write(input_str[x]);
-        }
-        Serial.write(13);
-        break;
+    Serial.flush();
+    for (int x = 0; x < length; x++) {
+      Serial.write(input_str[x]);
     }
-    // Serial.println("HERE");
-    //Serial.flush();
-
-    // Serial.println("DONE");
-
+    Serial.write(13);
     return;
   }
-  if ((mpu > 64 && mpu < 73) || mpu == '$') dev_MPU = mpu;
-  else goto deadCmd;  //Not a valid MPU - end command
+  dev_MPU = mpu;
   // Now the address which should be the next two characters
+  pos++;
   char addrStr[3];  //set up a char array to hold them (plus the EOS (end of String) character)
-  addrStr[0] = input_str[1];
-  addrStr[1] = input_str[2];
+  addrStr[0] = input_str[pos];
+  pos++;
+  addrStr[1] = input_str[pos];
+  pos++;
   addrStr[2] = '\0';
   dev_addr = atoi(addrStr);
-  if (!length > 3) goto deadCmd;  //invalid, no command after address
-  dev_cmd = input_str[3];
+  if (dev_addr < 20 || dev_addr > 29) goto deadCmd;
+  if (!(length > pos)) goto deadCmd;  //invalid, no command after address
+  dev_cmd = input_str[pos];
+  pos++;
   char optStr[4];
-  for (int x = 0; x <= 2; x++) optStr[x] = input_str[x + 4];
-  optStr[3] = '\0';
+  int count = 0;
+  for (int x = pos; x < length; x++) {
+    optStr[count] = input_str[x];
+    count++;
+  }
+  optStr[count] = '\0';
   dev_opt = atoi(optStr);  // that's the numerical argument after the command character
-  hasArgument = true;
   // switch on command character
   switch (dev_cmd)  // 2nd or third char, should be the command char
   {
     case 'T':
-      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
       doTcommand(dev_addr, dev_opt);
       break;
     case 'S':
-      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
       doScommand(dev_addr, dev_opt);
       break;
     default:
@@ -904,9 +857,6 @@ int updateLDPL(int num) {
     FastLED.show();
     return num - 20;
   }
-
-
-
   return 0;
 }
 
@@ -967,4 +917,44 @@ void updateTopBlocks() {
   dc.setRow(DATAPORT, 4, randomRow(4));  // top yellow blocks
   dc.setRow(DATAPORT, 5, randomRow(4));  // top green blocks
   return;
+}
+
+/*************************************************************************
+ * ************************* SETUP FUNCTION ******************************
+ * ***********************************************************************/
+
+
+void setup() {
+  Serial.begin(9600);  //Serial connection to Body Master
+  //Serial1.begin(9600);           //Connected to Dome 25-pin Serial 2 - Not currently used
+  //Serial2.begin(9600);           //Connected to CBI Nano - Not currently used
+  //Serial3.begin(9600);           //Connected to EXP Nano - Not currently used
+  FastLED.addLeds<WS2811, LB_PIN, GRB>(lb, LB_LEDS);        //Adds Data Panel Light Bar LEDs to FastLED array
+  FastLED.addLeds<WS2811, CS_PIN, GRB>(cs, CS_LEDS);        //Adds Coin Slot LEDs to FastLED array
+  FastLED.addLeds<WS2811, LDPL_PIN, GRB>(ldpl, LDPL_LEDS);  //Adds Large Data Panel LEDs to FastLED array
+  // initialize Maxim driver chips
+  dc.shutdown(DATAPORT, false);                  // take Data Port out of shutdown
+  dc.clearDisplay(DATAPORT);                     // clear Data Port LEDs
+  dc.setIntensity(DATAPORT, DATAPORTINTENSITY);  // set intensity of Data Port LEDs
+  cc.shutdown(CBI, false);                       // take Charging Bay Indicator out of shutdown
+  cc.clearDisplay(CBI);                          // clear CBI LEDs
+  cc.setIntensity(CBI, CBIINTENSITY);            // set intensity of CBI LEDs
+  singleTest();                                  //Tests all Maxim connected leds in turn
+  delay(2000);
+  //pinMode(DPLDoorPin, INPUT_PULLUP);  //Pin on the Arduino Mini Breakout Board connected to left door switch HIGH=Door closed (NC when door closed) - S.Sloan
+  pinMode(analoginput, INPUT);
+  dp_door.attach(DP_DOOR);
+  dp_door.writeMicroseconds(DP_DOOR_MIN);
+  dp_door.detach();
+}
+/*************************************************************************
+ * ************************** LOOP FUNCTION ******************************
+ * ***********************************************************************/
+
+void loop() {
+  checkSerial();
+  coinslot(cs_State);
+  updateLDPL(ldpl_State);
+  dpl(dpl_State);
+  cbi();
 }
