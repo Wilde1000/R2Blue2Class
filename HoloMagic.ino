@@ -1,65 +1,112 @@
+/*************************************************************************
+ ************************** HOLO MAGIC MEGA ******************************
+ *************************************************************************/
+
+/* The Holo Magic Mega control the Holoprojectors and the Magic Panel.  In addition, it is connected to 
+a MFRC 522 RFID Reader under R2's Radar Eye.  Commands from the RFID Reader not associated with the Holoprojectors or 
+the Magic Panel are sent to the Dome Lift Mega for further processing.
+ * 
+ *
+*
+We will be using a Jawa-Lite inspired technique to control all the MPU's in 
+R2-Blue2.
+The command structure is as follows:
+    Element 0 - MPU Code - Single Character indicating the Microprocessor Unit
+    Element 1, 2 - two digit Integer representing the device attached to the MPU
+    Element 3 - one character command code
+    Element 4 - the command option
+    MPU Codes:
+      
+      A - Body Master Mega
+      B - Lights Mega
+      C - Drive Uno
+      D - RFID Uno
+      E - Lifts Mega
+      F - Periscope Nano
+      G - Teeces Micro
+      H - CBI Nano
+      I - Exp. Nano
+    Device Codes:
+      0-9 - Teeces
+      10-19 - Body Master
+      20-29 - Lights Mega
+      30-39 - Drive Mega
+      40-49 - RFID Nano
+      50-59 - Lift Mega
+      60-69 - Periscope Nano
+      70-79 - CBI Nano
+      80-99 - Exp. Nano
+  A valid command would look like this:
+    E51T102
+  And would consist of the following:
+  MPU code - E
+  Device Address - 51
+  Command - T
+  Option - 102
+*/
+/*************************************************************************
+ ************************* INCLUDED LIBRARIES ****************************
+ *************************************************************************/
+#include <Servo.h>  //Needed for the Holoprojector servos
+#include <Adafruit_NeoPixel.h>  //Needed for Holoprojector and Magic Panel neopixels
+#include <SPI.h>   //Needed for communication with the MFRC 522
+#include <MFRC522.h>  //Needed to use the MFRC 522 RFID Reader
+
+/*************************************************************************
+ ************************* MACRO DEFINITIONS *****************************
+ *************************************************************************/
+#define SS_PIN 10  //SDA pin on the MFRC522
+#define RST_PIN 6  //Reset pin on the MFRC522
+
+#define MAX_RF_CMD 47  //Defines Maximum number of RF Commands
+
+#define MPU 'D'    //Define the current Microprocessor    
+#define CMD_MAX_LENGTH 63  //Define the maximum serial command length
+#define HOLO_LED 1  //Define the Number of neopixel in the holoprojectors
+#define MAGIC_PANEL_LED 24  //define the Number of neopixel in the Magic Panel
+#define MAGIC_PANEL 2  //Define the pin the Magic Panel is attached to
+#define TOP_HOLO1 A2   //Define the pin for the Top Holo Servo 1
+#define TOP_HOLO_LGT 4 //Define the pin for the Top Holo light
+#define TOP_HOLO2 A1   //Define the pin for the Top Holo Servo 2
+#define FRT_HOLO1 3    //Define the pin for the Front Holo Servo 1
+#define FRT_HOLO_LGT 7 //Define the pin for the Front Holo light
+#define BCK_HOLO_LGT 8 //Define the pin for the Back Holo light
+#define FRT_HOLO2 5    //Define the pin for the Front Holo Servo 2
+#define BCK_HOLO1 A3   //Define the pin for the Back Holo Servo 1
+#define BCK_HOLO2 9    //Define the pin for the Back Holo Servo 2
+
+#define BH1_MAX 100    //Define the Max position for the Back Holo Servo 1
+#define BH1_MID 60     //Define the Mid position for the Back Holo Servo 1
+#define BH1_MIN 20     //Define the Min position for the Back Holo Servo 1
+#define BH2_MAX 100    //Define the Max position for the Back Holo Servo 2
+#define BH2_MID 70     //Define the Mid position for the Back Holo Servo 2
+#define BH2_MIN 40     //Define the Min position for the Back Holo Servo 2
+
+#define FH1_MAX 100    //Define the Max position for the Front Holo Servo 1
+#define FH1_MID 70     //Define the Mid position for the Front Holo Servo 1
+#define FH1_MIN 40     //Define the Min position for the Front Holo Servo 1
+#define FH2_MAX 90     //Define the Max position for the Front Holo Servo 2
+#define FH2_MID 70     //Define the Mid position for the Front Holo Servo 2
+#define FH2_MIN 40     //Define the Min position for the Front Holo Servo 2
+
+#define TH1_MAX 100    //Define the Max position for the Top Holo Servo 1
+#define TH1_MID 70     //Define the Mid position for the Top Holo Servo 1
+#define TH1_MIN 40     //Define the Min position for the Top Holo Servo 1
+#define TH2_MAX 90     //Define the Max position for the Top Holo Servo 2
+#define TH2_MID 70     //Define the Mid position for the Top Holo Servo 2
+#define TH2_MIN 40     //Define the Min position for the Top Holo Servo 2
 
 
-
-#include <Servo.h>
-#include <Adafruit_NeoPixel.h>
-#include <time.h>
-#include <stdlib.h>
-#include <SPI.h>
-#include <MFRC522.h>
-
-#define SS_PIN 10
-#define RST_PIN 6
-
-#define MAX_RF_CMD 25
-
-#define MPU 'D'
-#define CMD_MAX_LENGTH 63
-#define HOLO_LED 1
-#define MAGIC_PANEL_LED 24
-#define MAGIC_PANEL 2
-#define TOP_HOLO1 A2
-#define TOP_HOLO_LGT 4
-#define TOP_HOLO2 A1
-#define FRT_HOLO1 3
-#define FRT_HOLO_LGT 7
-#define BCK_HOLO_LGT 8
-#define FRT_HOLO2 5
-#define BCK_HOLO1 A3
-#define BCK_HOLO2 9
-
-#define BH1_MAX 100
-#define BH1_MID 60
-#define BH1_MIN 20
-#define BH2_MAX 100
-#define BH2_MID 70
-#define BH2_MIN 40
-
-#define FH1_MAX 100
-#define FH1_MID 70
-#define FH1_MIN 40
-#define FH2_MAX 90
-#define FH2_MID 70
-#define FH2_MIN 40
-
-#define TH1_MAX 100
-#define TH1_MID 70
-#define TH1_MIN 40
-#define TH2_MAX 90
-#define TH2_MID 70
-#define TH2_MIN 40
-
-
-/************************************************
-*                Global Variables               *
-*************************************************/
+/*************************************************************************
+ ************************** GLOBAL VARIABLES *****************************
+ *************************************************************************/
 //Neo-Pixel Objects
 Adafruit_NeoPixel bHolo(HOLO_LED, BCK_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Back Holo Light
 Adafruit_NeoPixel fHolo(HOLO_LED, FRT_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Front Holo Light
 Adafruit_NeoPixel tHolo(HOLO_LED, TOP_HOLO_LGT, NEO_GRB + NEO_KHZ800);  //Top Holo Light
-Adafruit_NeoPixel mPanel(MAGIC_PANEL_LED, MAGIC_PANEL, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel mPanel(MAGIC_PANEL_LED, MAGIC_PANEL, NEO_GRB + NEO_KHZ800);  //Magic Panel
 
-byte nuidPICC[4];
+byte nuidPICC[4];  //Holds the UID 
 byte bufferLen = 18;
 byte readBlockData[18];
 
