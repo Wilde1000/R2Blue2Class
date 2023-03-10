@@ -261,10 +261,10 @@ void colorWipe(uint32_t color, int wait) {
 int doScommand(int addr, int opt) {
   //Serial.println("S command");
   switch (addr) {
-    case 90:  //Holoprojectors
+    case 40:  //Holoprojectors
       if (opt < 14) curr_holo_color = opt;
       break;
-    case 95:
+    case 45:
       if (opt < 14) current_mp_color = opt;
       break;
   }
@@ -275,10 +275,10 @@ int doScommand(int addr, int opt) {
 int doTcommand(int addr, int opt) {
   //Serial.println("T command");
   switch (addr) {
-    case 90:
+    case 40:
       holo_state = opt;
       break;
-    case 95:
+    case 45:
       mPanel_state = opt;
       break;
   }
@@ -351,15 +351,15 @@ void Holos(int opt) {
     case 7:
       servoPOS += 10;
       th1.write(servoPOS);
-      Serial.print("Position is ");
-      Serial.println(servoPOS);
+      //Serial.print("Position is ");
+      //Serial.println(servoPOS);
       holo_state = 0;
       break;
     case 8:
       servoPOS -= 10;
       th1.write(servoPOS);
-      Serial.print("Position is ");
-      Serial.println(servoPOS);
+      //Serial.print("Position is ");
+      //Serial.println(servoPOS);
       holo_state = 0;
       break;
   }
