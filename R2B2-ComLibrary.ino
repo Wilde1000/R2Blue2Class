@@ -29,6 +29,7 @@ The command structure is as follows:
       G - Teeces Micro
       H - CBI Nano
       I - Exp. Nano
+      J - MP3 Trigger - Not an Microprocessor, but treated as such for serial communications
 
     Device Codes:
       0-9 - Teeces
@@ -185,7 +186,7 @@ The command structure is as follows:
 // this defines where the startup sound is
 #define MP3_EMPTY_SOUND 254   // workaround, used to stop sounds
 #define MP3_START_SOUND 255   // startup sound is number 255
-#define SOUND_START_CHAR '$'  //Lead character for sound commands
+#define SOUND_START_CHAR 'J'  //Lead character for sound commands
 #define MP3_VOLUME_MID 50     // guessing mid volume 32 is right in-between...
 #define MP3_VOLUME_MIN 100    // doc says anything below 64 is inaudible, not true, 100 is. 82 is another good value
 #define MP3_VOLUME_MAX 0      // doc says max is 0
@@ -594,12 +595,12 @@ void mp3_init() {
 void mp3_parse_command(char* commandstr) {
   ////////////////////////////////////////////////
   // Play sound command by bank/sound numbers
-  // $xyy
+  // Jxyy
   // x=bank number
   // yy=sound number. If none, next sound is played in the bank
   //
   // Other commands
-  // $c
+  // Jc
   // where c is a command character
   // R - random from 4 first banks
   // O - sound off
@@ -931,9 +932,7 @@ byte parseCommand(char* input_str) {
   char mpu = input_str[pos];
   if (MPU != mpu) {  //if command is not for this MPU - send it on its way
     switch (mpu) {
-      case '$':
-        mp3_parse_command(input_str);
-        break;
+      
       case 'B':
         Serial2.flush();
         for (int i = 0; i < length; i++) Serial2.write(input_str[i]);
@@ -957,6 +956,9 @@ byte parseCommand(char* input_str) {
         Serial2.flush();
         for (int i = 0; i < length; i++) Serial2.write(input_str[i]);
         Serial2.write(13);
+        break;
+      case 'J':
+        mp3_parse_command(input_str);
         break;
     }
     return;
