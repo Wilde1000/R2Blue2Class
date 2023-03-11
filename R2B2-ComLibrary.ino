@@ -86,12 +86,12 @@ The command structure is as follows:
 
 /////////////COMMAND VOCABULARY///////////
 // Play sound command by bank/sound numbers
-// $xyy
+// Jxyy
 // x=bank number
 // yy=sound number. If none, next sound is played in the bank
 //
 // Other commands
-// $c
+// Jc
 // where c is a command character
 // R - random from 4 first banks
 // O - sound off
@@ -963,47 +963,42 @@ byte parseCommand(char* input_str) {
     }
     return;
   }
-  //At this stage, the command is for this MPU
-  pos++;
-  dev_MPU = mpu;
-
-  char addrStr[3];
-  //next we need to get the device address which should two characters
-  addrStr[0] = input_str[pos];
-  pos++;
-  addrStr[1] = input_str[pos];
-  pos++;
+  //At this stage, the command is for this MPU which means that if it as valid
+  //command then it should have a minimum length of 5 and a maximum length of 7.
+  //It should start with an 'A'; followed by a number between 10 and 19, an 'T' or an 'S',
+  //and a 1 to 3 digit option.
+  dev_MPU = mpu;  //Should be an 'A'
+  char addrStr[3];  //char array to hold address
+  addrStr[0] = input_str[1];
+  addrStr[1] = input_str[2];
   addrStr[2] = '\0';
-
   dev_address = atoi(addrStr);
-  if (dev_address < 9 && dev_address > 19) goto deadCmd;  //invalid address
-  if (!(length > pos)) goto deadCmd;                      //invalid, no command after address
-  dev_command = input_str[pos];
-  pos++;
-  char optStr[3];
-  int count = 0;
-  if (!(length > pos)) hasArgument = false;  // end of string reached, no arguments
-  else {
-    for (byte i = pos; i < length; i++) {
-      if (!isdigit(input_str[i])) goto deadCmd;  // invalid, end of string contains non-numerial arguments
-      else {
-        optStr[count] = input_str[i];
-        count++;
-      }
+  if (dev_address < 9 || dev_address > 19) goto deadCmd;  //invalid address
+  if (!(length > 4)) goto deadCmd;                      //invalid, no command after address
+  dev_command = input_str[3];
+  char optStr[4];
+  optStr[0] = input_str[4];
+  if(input_str[5] == 13){
+    optStr[1]='\0';
+    dev_option = atoi(optStr);
+  }else {
+    optStr[1]=input_str[5];
+    if(input_str[6] == 13){
+      optStr[2]='\0';
+      dev_option = atoi(optStr);  
+    }else{
+      optStr[3]=input_str[6];
+      optStr[4]='\0';
+      dev_option = atoi(optStr);
     }
-    optStr[count] = '/0';
-    dev_option = atoi(optStr);  // that's the numerical argument after the command character
-    hasArgument = true;
   }
   // switch on command character
-  switch (dev_command)  // 2nd or third char, should be the command char
+  switch (dev_command)  // 2nd char, should be the command char
   {
     case 'T':
-      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
       doTcommand(dev_address, dev_option);
       break;
     case 'S':
-      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
       doScommand(dev_address, dev_option);
       break;
     default:
