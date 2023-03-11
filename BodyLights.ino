@@ -94,8 +94,8 @@ The command structure is as follows:
 #define CBIINTENSITY 15        // 15 is max
 #define MAX_COMMAND_LENGTH 64  // Max size for a serial command
 #define DP_DOOR 45             //Set the pin for the Dataport Door
-#define DP_DOOR_MAX 1500       //Set the door open position
-#define DP_DOOR_MIN 1500       //Set the door close position
+#define DP_DOOR_MAX 1600       //Set the door open position
+#define DP_DOOR_MIN 900      //Set the door close position
 
 //Set this to which Analog Pin you use for the voltage in.
 #define analoginput A0  //
@@ -445,22 +445,15 @@ void dpl(int option) {
       updateRedLEDs();
       updateLightBar();
       if (!door_open) {
-        dp_door.attach(DP_DOOR);
-        delay(5);
         dp_door.writeMicroseconds(DP_DOOR_MAX);
         door_open = true;
-        delay(5);
-        dp_door.detach();
       }    
       break;
     case 2:
       if (door_open) {
-        dp_door.attach(DP_DOOR);
-        delay(5);
         dp_door.writeMicroseconds(DP_DOOR_MIN);
         door_open = false;
-        delay(5);
-        dp_door.detach();
+        
       }
       dc.setRow(DATAPORT, 1, 0);  // top yellow blocks
       dc.setRow(DATAPORT, 2, 0);  // top yellow blocks
@@ -952,7 +945,7 @@ void setup() {
   pinMode(analoginput, INPUT);
   dp_door.attach(DP_DOOR);
   dp_door.writeMicroseconds(DP_DOOR_MIN);
-  dp_door.detach();
+  
 }
 /*************************************************************************
  * ************************** LOOP FUNCTION ******************************
