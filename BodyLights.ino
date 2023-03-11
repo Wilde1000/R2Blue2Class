@@ -29,6 +29,8 @@ The command structure is as follows:
       G - Teeces Micro
       H - CBI Nano
       I - Exp. Nano
+      J - MP3 Trigger - Not a Microprocessor but treated as such for serial communication
+
     Device Codes:
       0-9 - Teeces
       10-19 - Body Master
@@ -97,9 +99,9 @@ The command structure is as follows:
 
 //Set this to which Analog Pin you use for the voltage in.
 #define analoginput A0  //
-#define greenVCC 13.0   // Green LED on if above this voltage
-#define yellowVCC 12.0  // Yellow LED on if above this voltage
-#define redVCC 11.5     // Red LED on if above this voltage
+#define greenVCC 12.8   // Green LED on if above this voltage
+#define yellowVCC 12.4  // Yellow LED on if above this voltage
+#define redVCC 12.0     // Red LED on if above this voltage
 
 // For 12volts: R1=47k, R2=33k
 // For 15volts: R1=47k, R2=24k
