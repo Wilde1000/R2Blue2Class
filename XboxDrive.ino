@@ -50,12 +50,12 @@ Spark Max (Ask me how I know this!!!).
 #define BM_OFF "E54T2"        //Bad Motivator off command
 #define LF_ON  "E55T1"        //Life Form on command
 #define LF_OFF "E55T2"        //Life Form off command
-#define SF_ON  "$S"           //Scream command
-#define SF_OFF "$F"           //Faint command                              
-#define LW_ON  "$L"           //Leia command
-#define LW_OFF "$W"           //Star Wars Music
-#define MU_ON  "$D"           //Disco Music
-#define MU_OFF "$C"            //Cantina music
+#define SF_ON  "JS"           //Scream command
+#define SF_OFF "JF"           //Faint command                              
+#define LW_ON  "JL"           //Leia command
+#define LW_OFF "JW"           //Star Wars Music
+#define MU_ON  "JD"           //Disco Music
+#define MU_OFF "JC"            //Cantina music
 
 /*************************************************************************
  * ******************************* STRUCTS *******************************
@@ -204,14 +204,14 @@ void loop() {
       if (Xbox.getButtonPress(L2) > TRIGGER_DEAD_ZONE) {
         
           analogWrite(DOME_ENABLE, Xbox.getButtonPress(L2));
-          digitalWrite(IN1_DOME_MOTOR, HIGH);
-          digitalWrite(IN2_DOME_MOTOR, LOW);
+          digitalWrite(IN1_DOME_MOTOR, LOW);
+          digitalWrite(IN2_DOME_MOTOR, HIGH);
         
       }
       if (Xbox.getButtonPress(R2) > TRIGGER_DEAD_ZONE) {
           analogWrite(DOME_ENABLE, Xbox.getButtonPress(R2));
-          digitalWrite(IN1_DOME_MOTOR, LOW);
-          digitalWrite(IN2_DOME_MOTOR, HIGH);
+          digitalWrite(IN1_DOME_MOTOR, HIGH);
+          digitalWrite(IN2_DOME_MOTOR, LOW);
         
       }
 
@@ -282,6 +282,5 @@ void loop() {
     }
   }
 }
-
 
 
