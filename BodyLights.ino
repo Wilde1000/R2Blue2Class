@@ -438,23 +438,28 @@ void dpl(int option) {
     case 0:
       return;
     case 1:
-      if (!door_open) {
-        dp_door.attach(DP_DOOR);
-        dp_door.writeMicroseconds(DP_DOOR_MAX);
-        door_open = true;
-        dp_door.detach();
-      }
+      
       updateTopBlocks();
       bargraphDisplay(0);
       updatebottomLEDs();
       updateRedLEDs();
       updateLightBar();
+      if (!door_open) {
+        dp_door.attach(DP_DOOR);
+        delay(5);
+        dp_door.writeMicroseconds(DP_DOOR_MAX);
+        door_open = true;
+        delay(5);
+        dp_door.detach();
+      }    
       break;
     case 2:
       if (door_open) {
         dp_door.attach(DP_DOOR);
+        delay(5);
         dp_door.writeMicroseconds(DP_DOOR_MIN);
         door_open = false;
+        delay(5);
         dp_door.detach();
       }
       dc.setRow(DATAPORT, 1, 0);  // top yellow blocks
