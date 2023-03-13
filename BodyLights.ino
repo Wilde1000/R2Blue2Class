@@ -29,8 +29,6 @@ The command structure is as follows:
       G - Teeces Micro
       H - CBI Nano
       I - Exp. Nano
-      J - MP3 Trigger - Not a Microprocessor but treated as such for serial communication
-
     Device Codes:
       0-9 - Teeces
       10-19 - Body Master
@@ -94,14 +92,14 @@ The command structure is as follows:
 #define CBIINTENSITY 15        // 15 is max
 #define MAX_COMMAND_LENGTH 64  // Max size for a serial command
 #define DP_DOOR 45             //Set the pin for the Dataport Door
-#define DP_DOOR_MAX 1600       //Set the door open position
-#define DP_DOOR_MIN 900      //Set the door close position
+#define DP_DOOR_MAX 1500       //Set the door open position
+#define DP_DOOR_MIN 1500       //Set the door close position
 
 //Set this to which Analog Pin you use for the voltage in.
 #define analoginput A0  //
-#define greenVCC 12.8   // Green LED on if above this voltage
-#define yellowVCC 12.4  // Yellow LED on if above this voltage
-#define redVCC 12.0     // Red LED on if above this voltage
+#define greenVCC 13.0   // Green LED on if above this voltage
+#define yellowVCC 12.0  // Yellow LED on if above this voltage
+#define redVCC 11.5     // Red LED on if above this voltage
 
 // For 12volts: R1=47k, R2=33k
 // For 15volts: R1=47k, R2=24k
@@ -438,22 +436,24 @@ void dpl(int option) {
     case 0:
       return;
     case 1:
-      
+      if (!door_open) {
+        dp_door.attach(DP_DOOR);
+        dp_door.writeMicroseconds(DP_DOOR_MAX);
+        door_open = true;
+        dp_door.detach();
+      }
       updateTopBlocks();
       bargraphDisplay(0);
       updatebottomLEDs();
       updateRedLEDs();
       updateLightBar();
-      if (!door_open) {
-        dp_door.writeMicroseconds(DP_DOOR_MAX);
-        door_open = true;
-      }    
       break;
     case 2:
       if (door_open) {
+        dp_door.attach(DP_DOOR);
         dp_door.writeMicroseconds(DP_DOOR_MIN);
         door_open = false;
-        
+        dp_door.detach();
       }
       dc.setRow(DATAPORT, 1, 0);  // top yellow blocks
       dc.setRow(DATAPORT, 2, 0);  // top yellow blocks
@@ -945,7 +945,7 @@ void setup() {
   pinMode(analoginput, INPUT);
   dp_door.attach(DP_DOOR);
   dp_door.writeMicroseconds(DP_DOOR_MIN);
-  
+  dp_door.detach();
 }
 /*************************************************************************
  * ************************** LOOP FUNCTION ******************************
