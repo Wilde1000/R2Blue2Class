@@ -92,8 +92,8 @@ The command structure is as follows:
 #define CBIINTENSITY 15        // 15 is max
 #define MAX_COMMAND_LENGTH 64  // Max size for a serial command
 #define DP_DOOR 45             //Set the pin for the Dataport Door
-#define DP_DOOR_MAX 1500       //Set the door open position
-#define DP_DOOR_MIN 1500       //Set the door close position
+#define DP_DOOR_MAX 1600       //Set the door open position
+#define DP_DOOR_MIN 900       //Set the door close position
 
 //Set this to which Analog Pin you use for the voltage in.
 #define analoginput A0  //
@@ -116,7 +116,7 @@ The command structure is as follows:
 
 // Uncomment this if you want an alternate effect for the blue LEDs, where it moves
 // in sync with the bar graph
-//#define BLUELEDTRACKGRAPH
+#define BLUELEDTRACKGRAPH
 
 //========================End Macro Definitions ====================================================
 
@@ -432,28 +432,28 @@ int doScommand(int addr, int option) {
 //if the option is 1 - Door is opened and lights are on, if 2 door is closed and lights go off.
 void dpl(int option) {
   static bool door_open = false;
+  dp_door.attach(DP_DOOR);
+  delay(50);
   switch (option) {
     case 0:
+      dp_door.detach();    
       return;
     case 1:
       if (!door_open) {
-        dp_door.attach(DP_DOOR);
         dp_door.writeMicroseconds(DP_DOOR_MAX);
         door_open = true;
-        dp_door.detach();
       }
       updateTopBlocks();
       bargraphDisplay(0);
       updatebottomLEDs();
       updateRedLEDs();
       updateLightBar();
+      dp_door.detach();
       break;
     case 2:
       if (door_open) {
-        dp_door.attach(DP_DOOR);
         dp_door.writeMicroseconds(DP_DOOR_MIN);
         door_open = false;
-        dp_door.detach();
       }
       dc.setRow(DATAPORT, 1, 0);  // top yellow blocks
       dc.setRow(DATAPORT, 2, 0);  // top yellow blocks
@@ -466,6 +466,7 @@ void dpl(int option) {
       dpl_State = 0;
       break;
   }
+  
 }
 
 
@@ -590,10 +591,9 @@ void ldpl_single(int num) {
 
 //The parseCommand takes the command from the buildCommand function and parses into its component parts - MPU, Address, Command and Option
 int parseCommand(char* input_str) {
-  byte pos = 0;
   byte length = strlen(input_str);
-  if (length < 2) goto deadCmd;  //not enough characters
-  int mpu = input_str[pos];      //MPU is the first character
+  if (length < 5) goto deadCmd;  //not enough characters
+  int mpu = input_str[0];      //MPU is the first character
   if (MPU != mpu) {              //if command is not for this MPU - send it on its way
     Serial.flush();
     for (int x = 0; x < length; x++) {
@@ -604,25 +604,30 @@ int parseCommand(char* input_str) {
   }
   dev_MPU = mpu;
   // Now the address which should be the next two characters
-  pos++;
+  
   char addrStr[3];  //set up a char array to hold them (plus the EOS (end of String) character)
-  addrStr[0] = input_str[pos];
-  pos++;
-  addrStr[1] = input_str[pos];
-  pos++;
+  addrStr[0] = input_str[1];
+  addrStr[1] = input_str[2];
   addrStr[2] = '\0';
   dev_addr = atoi(addrStr);
   if (dev_addr < 20 || dev_addr > 29) goto deadCmd;
-  if (!(length > pos)) goto deadCmd;  //invalid, no command after address
-  dev_cmd = input_str[pos];
-  pos++;
+  dev_cmd = input_str[3];
   char optStr[4];
-  int count = 0;
-  for (int x = pos; x < length; x++) {
-    optStr[count] = input_str[x];
-    count++;
+  optStr[0]=input_str[4];
+  if(input_str[5] == 13){
+    optStr[1]='\0';
+  }else {
+    optStr[1]=input_str[5];
+    if(input_str[6] == 13){
+      optStr[2]='\0';
+  
+    }else{
+      optStr[3]=input_str[6];
+      optStr[4]='\0';
+    }
   }
-  optStr[count] = '\0';
+  
+  
   dev_opt = atoi(optStr);  // that's the numerical argument after the command character
   // switch on command character
   switch (dev_cmd)  // 2nd or third char, should be the command char
@@ -944,6 +949,7 @@ void setup() {
   //pinMode(DPLDoorPin, INPUT_PULLUP);  //Pin on the Arduino Mini Breakout Board connected to left door switch HIGH=Door closed (NC when door closed) - S.Sloan
   pinMode(analoginput, INPUT);
   dp_door.attach(DP_DOOR);
+    
   dp_door.writeMicroseconds(DP_DOOR_MIN);
   dp_door.detach();
 }
