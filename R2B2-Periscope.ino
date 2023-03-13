@@ -1,11 +1,13 @@
+/*************************************************************************
+ ************************** Periscope Nano  ******************************
+ *************************************************************************/
+
+
 /*  This program controls the periscope lights for the R2-Blue2 Dome Lift System.  It is designed to run
-on an Arduino Nano.
+on an Arduino Nano.  The Periscope lights consist of 7 White LED's and twelve neo-pixels.  
 
-The Periscope lights consist of 7 White LED's and eight neo-pixels.  
-
-The 7 small white LEDs will be referred to as "Display" Lights 
-
-Neo-pixels 0 and 2 are the right and left "Eyes"
+The 7 small white LEDs will be referred to as "Display" Lights.  Neo-pixels 0 and 2 are the right 
+and left "Eyes"
 
 Neo-pixel 1 is the "Status" Light
 
@@ -18,10 +20,11 @@ The program will have the following threads:
     runStatus() - Runs any commands for the Status Light
     runMain() - Runs any command for the Main Display
 
-Display - device 56
-Eyes    - device 57
-Main    - device 58
-Status  - device 59
+All     - device 60
+Display - device 61
+Eyes    - device 62
+Main    - device 63
+Status  - device 64
 
 Main states:
   000 - Disabled
@@ -47,32 +50,33 @@ Display states:
   002 - Random
   003 - Alternate odds and evens
 
-Example: F53T002 - Set the display's state to random.
+Example: F61T2 - Set the display's state to random.
 */
+/*************************************************************************
+ ************************** INCLUDED LIBRARIES  **************************
+ *************************************************************************/
+#include <Adafruit_NeoPixel.h>  //needed for Neopixels
+#include <time.h>  //Needed for Random Seed
 
-#include <Adafruit_NeoPixel.h>
-#include <time.h>
-#include <stdlib.h>
+/*************************************************************************
+ ************************** MACRO DEFINITIONS  ***************************
+ *************************************************************************/
+#define MPU 'F'    //Defines the current MPU 
+#define LEDPIN 10  //Defines the pin used for the NeoPixel strip
+#define NOOFLED 12  // Defines the number of LED's in NeoPixel strip
+#define CMD_MAX_LENGTH 63  //Defines the maximum command length
+#define LEFT_EYE 0  //Identifies the Left Eye on the NeoPixel strip
+#define RIGHT_EYE 2  //Identifies the Rightt Eye on the NeoPixel strip
 
-#define LEDPIN 10
-#define NOOFLED 12
-Adafruit_NeoPixel pixels(NOOFLED, LEDPIN, NEO_GRB + NEO_KHZ800);
 
-#define CMD_MAX_LENGTH 63
-
-#define LEFT_EYE 0
-#define RIGHT_EYE 2
-
+/*************************************************************************
+ ************************** GLOBAL VARIABLES  ****************************
+ *************************************************************************/
 char cmdStr[64];
-
 long int currentTime = millis();
-
-#define MPU 'F'
 char devMPU, devCmd;
 int devAddr, devOpt;
-
 int pingPongIntervalDirection = 1;
-
 long int displayPause = currentTime;
 int displayInterval = 5;
 long int mainPause = currentTime;
@@ -81,7 +85,6 @@ long int eyesPause = currentTime;
 int eyesInterval = 250;
 long int statusPause = currentTime;
 int statusInterval = 500;
-
 bool allOn = false;
 int allState     = 0;
 int eyesState    = 1;
@@ -90,52 +93,13 @@ int mainState    = 1;
 int displayState = 1;
 float mainPixelColors[10][3];
 float eyesPixelColors[3][3];
+Adafruit_NeoPixel pixels(NOOFLED, LEDPIN, NEO_GRB + NEO_KHZ800);
+
+/*************************************************************************
+ ******************************** FUNCTIONS  *****************************
+ *************************************************************************/
 
 
-void setup() {
-  srand((unsigned int)time(NULL));
-
-  for (int i = 3; i <= 9; i++) {
-    pinMode(i, OUTPUT);
-  }
-
-  for (int i=0; i<=12 - 3; i++) {
-    mainPixelColors[i][0] = 1;
-    mainPixelColors[i][1] = 1;
-    mainPixelColors[i][2] = 1;
-  }
-  for (int i=0; i<3; i++) {
-    eyesPixelColors[i][0] = 0;
-    eyesPixelColors[i][1] = 0;
-    eyesPixelColors[i][2] = 0;
-  }
-
-  pixels.begin();
-  Serial.begin(9600);
-}
-
-void loop() {
-  checkSerial();
-
-  pixels.clear();
-
-  runAll();
-
-  if (allOn)
-  {
-    runMain(mainState);
-    runDisplay(displayState);
-    runEyes(eyesState);
-    runStatus(statusState);
-  } else {
-    runMain(0);
-    runDisplay(0);
-    runEyes(0);
-    runStatus(0);
-  }
-
-  pixels.show();
-}
 
 void runAll() {
   switch(allState) {
@@ -152,17 +116,10 @@ void runAll() {
 }
 
 int parseCommand(char* inputStr) {
-  byte hasArgument = false;
-  byte pos = 0;
   byte length = strlen(inputStr);
   if (length < 2) goto deadCmd;  //not enough characters
-  int mpu = inputStr[pos];      //MPU is the first character
-  if (!MPU == mpu) {             //if command is not for this MPU - send it on its way
-    //transmitCMD(MPU,mpu);
-    return;
-  }
-  if (mpu >= '@' && mpu <= 'F') devMPU = mpu;
-  else goto deadCmd;  //Not a valid MPU - end command
+  int mpu = inputStr[0];      //MPU is the first character
+  devMPU = mpu;
   // Now the address which should be the next two characters
   char addrStr[3];  //set up a char array to hold them (plus the EOS (end of String) character)
   addrStr[0] = inputStr[1];
@@ -172,19 +129,26 @@ int parseCommand(char* inputStr) {
   if (!length > 3) goto deadCmd;  //invalid, no command after address
   devCmd = inputStr[3];
   char optStr[4];
-  for (int x = 0; x <= 3; x++) optStr[x] = inputStr[x + 4];
-  optStr[4] = '\0';
+  optStr[0]=inputStr[4];
+  if(inputStr[5]==13){
+    optStr[1]='\0';
+  }else{
+    optStr[1]=inputStr[5];
+    if(inputStr[6]==13){
+      optStr[2]='\0';
+    }else{
+      optStr[2]=inputStr[6];
+      optStr[3]='\0';
+    }
+  }
   devOpt = atoi(optStr);  // that's the numerical argument after the command character
-  hasArgument = true;
   // switch on command character
   switch (devCmd)  // 2nd or third char, should be the command char
   {
     case 'T':
-      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
       doTcommand(devAddr, devOpt);
       break;
     case 'S':
-      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
       //doScommand(devAddr, devOpt);
       break;
     default:
@@ -632,3 +596,55 @@ void setColor(int pixel, float r, float g, float b) {
     pixels.Color((int)r * COLOR_MAX, (int)g * COLOR_MAX, (int)b * COLOR_MAX));
 }
 #undef COLOR_MAX
+
+/*************************************************************************
+ **************************  SETUP FUNCTION  *****************************
+ *************************************************************************/
+
+void setup() {
+  srand((unsigned int)time(NULL));
+
+  for (int i = 3; i <= 9; i++) {
+    pinMode(i, OUTPUT);
+  }
+
+  for (int i=0; i<=12 - 3; i++) {
+    mainPixelColors[i][0] = 1;
+    mainPixelColors[i][1] = 1;
+    mainPixelColors[i][2] = 1;
+  }
+  for (int i=0; i<3; i++) {
+    eyesPixelColors[i][0] = 0;
+    eyesPixelColors[i][1] = 0;
+    eyesPixelColors[i][2] = 0;
+  }
+
+  pixels.begin();
+  Serial.begin(9600);
+}
+
+
+/*************************************************************************
+ ****************************  LOOP FUNCTION  ****************************
+ *************************************************************************/
+void loop() {
+  checkSerial();
+  pixels.clear();
+
+  runAll();
+
+  if (allOn)
+  {
+    runMain(mainState);
+    runDisplay(displayState);
+    runEyes(eyesState);
+    runStatus(statusState);
+  } else {
+    runMain(0);
+    runDisplay(0);
+    runEyes(0);
+    runStatus(0);
+  }
+
+  pixels.show();
+}
