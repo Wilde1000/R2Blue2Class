@@ -1,5 +1,11 @@
-/*R2 Lift System program
-Written by Gold and Blue FTC comp. Tech*/
+/*************************************************************************
+ * ********************** Body Master Mega  ******************************
+ * ***********************************************************************/
+/*
+The Body Master Mega is used to route communications between the Dome Lift Mega, the Body Lights Mega
+and the Drive Uno.  It is also used to control all the body servos except the Dataport door servo. It 
+is also responisble for all sounds coming out of the droid as it is connected to the MP3 Trigger.
+*/
 
 /*
 We will be using a Jawa-Lite inspired technique to control all the MPU's in 
@@ -10,7 +16,7 @@ The command structure is as follows:
     Element 0 - MPU Code - Single Character indicating the Microprocessor Unit
     Element 1, 2 - two digit Integer representing the device attached to the MPU
     Element 3 - one character command code
-    Element 4 - the command option
+    Element 4, 5, 6 - the command option
 
     MPU Codes:
       
@@ -23,6 +29,7 @@ The command structure is as follows:
       G - Teeces Micro
       H - CBI Nano
       I - Exp. Nano
+      J - MP3 Trigger - Not an Microprocessor, but treated as such for serial communications
 
     Device Codes:
       0-9 - Teeces
@@ -45,572 +52,264 @@ The command structure is as follows:
 */
 
 
+//We have used (with slight modifications for our droid) most of the MP3sound.h and MP3sound.c
+//functions with credit given below:
 
 
-/************************************************
-*               Included Libraries              *
-*************************************************/
+/***********************************************************
+ *  MP3sound.h
+ *	MarcDuino interface to play sounds from an MP3Trigger board
+ *  Created on: Sep 17, 2013
+ *  Author: Marc Verdiell
+ *  Copyright © 2013 Marc Verdiell, All Rights Reserved
+ *
+ *  On the MP3, there are a maximum of 255 sound files
+ *  They must be named NNN-xxxx.mp3
+ *  Where NNN = 001 to 255
+ *  The numbering ranges are predetermined, 25 sounds per
+ *  bank category
+ *       Bank 1: gen sounds, numbered 001 to 025
+ *       Bank 2: chat sounds, numbered 026 to 050
+ *       Bank 3: happy sounds, numbered 051 to 075
+ *       Bank 4: sad sounds, numbered 076 to 100
+ *       Bank 5: whistle sounds, numbered 101 to 125
+ *       Bank 6: scream sounds, numbered 126 to 150
+ *       Bank 7: Leia sounds, numbered 151 to 175
+ *       Bank 8: sing sounds (deprecated, not used by R2 Touch)
+ *       Bank 9: mus sounds, numbered 201 t0 225
+ *
+ *  The pre-cooked R2 sound library contains aonly a few non-copyrighted music sounds.
+ *  Sound 202, 203 and 205 are beep placeholders, meant to be replaced with the
+ *  original score of Star Wars, Empire March, and Cantina respectively
+ *
+ ***********************************************************/
 
-#include <Adafruit_PWMServoDriver.h>
-#include <Servo.h>
+/////////////COMMAND VOCABULARY///////////
+// Play sound command by bank/sound numbers
+// Jxyy
+// x=bank number
+// yy=sound number. If none, next sound is played in the bank
+//
+// Other commands
+// Jc
+// where c is a command character
+// R - random from 4 first banks
+// O - sound off
+// L - Leia message (bank 7 sound 1)
+// C - Cantina music (bank 9 sound 5)
+// c - Beep cantina (bank 9 sound 1)
+// S - Scream (bank 6 sound 1)
+// F - Faint/Short Circuit (bank 6 sound 3)
+// D - Disco (bank 9 sound 6)
+// s - stop sounds
+// + - volume up
+// - - volume down
+// m - volume mid
+// f - volume max
+// p - volume min
+// W - Star Wars music (bank 9 sound 2)
+// M - Imperial March (bank 9 sound 3)
+//
+///////////////////////////////////////////////
+
+
+
+/*************************************************************************
+ * ********************** INCLUDED LIBRARIES  ****************************
+ * ***********************************************************************/
+
+#include <Adafruit_PWMServoDriver.h>  //Needed for PCA9685 16 Servo Driver
+
+/*************************************************************************
+ * *********************** MACRO DEFINITIONS  ****************************
+ * ***********************************************************************/
+
+/*>>>>>>>>>>>>>>>>>>> Servo Macros <<<<<<<<<<<<<<<<<<<<*/
+
+// Utility Arms
+
+#define UA_TOP 0        //Utility Arm Top Servo PCA9685 pin
+#define UA_TOP_MAX 200  //Utility Arm Top Servo (open position)
+#define UA_TOP_MIN 500  //Utility Arm Top Servo (close position)
+#define UA_BOT 1        //Utility Arm Bottom Servo PCA9685 pin
+#define UA_BOT_MAX 200  //Utility Arm Bottom Servo (open position)
+#define UA_BOT_MIN 450  //Utility Arm Bottom Servo (close position)
+// Interface Arm
+#define IA_DOR 2        //Interface Arm Door Servo PCA9685 pin
+#define IA_DOR_MAX 275  //Interface Arm Door Servo (open position)
+#define IA_DOR_MIN 375  //Interface Arm Door Servo (close position)
+#define IA_LFT 3        //Interface Arm Lift Servo PCA9685 pin
+#define IA_LFT_MAX 475  //Interface Arm Lift Servo (up position)
+#define IA_LFT_MIN 150  //Interface Arm Lift Servo (down position)
+#define IA_EXT 6        //Interface Arm Extension Servo PCA9685 pin
+#define IA_EXT_MAX 375  //Interface Arm Extension (out position)
+#define IA_EXT_MIN 200  //Interface Arm Extension (in position)
+//Gripper Arm
+#define GA_DOR 4        //Gripper Arm Door Servo PCA9685 pin
+#define GA_DOR_MAX 375  //Gripper Arm Door Servo (open position)
+#define GA_DOR_MIN 200  //Gripper Arm Door Servo (close position)
+#define GA_LFT 5        //Gripper Arm Lift Servo PCA9685 pin
+#define GA_LFT_MAX 150  //Gripper Arm Lift Servo (up position)
+#define GA_LFT_MIN 450  //Gripper Arm Lift Servo (down position)
+#define GA_EXT 7        //Gripper Arm Extension Servo PCA9685 pin
+#define GA_EXT_MAX 200  //Gripper Arm Extension Servo (open gripper)
+#define GA_EXT_MIN 375  //Gripper Arm Extension Servo (close gripper)
+//Data Panel Door
+#define DP_DOR 8        //Data Panel Door Servo PCA9685 pin
+#define DP_DOR_MAX 425  //Data Panel Door Servo (open position)
+#define DP_DOR_MIN 200  //Data Panel Door Servo (close position)
+
+#define OE_PIN 8       //Set low to enable servos - low to disable servos
+#define SERVO_FREQ 50  //Standard servo frequency is 50Kz
+
+
+
+/*>>>>>>>>>>>>>>>>>>>>>>>>> Music Macros <<<<<<<<<<<<<<<<<<<<<<<<<<<*/
+#define USER_MUSIC_SOUNDS_NUMBER 5
+#define MP3_MAX_BANKS 9             // nine banks
+#define MP3_MAX_SOUNDS_PER_BANK 25  // no more than 25 sound in each
+#define MP3_BANK_CUTOFF 4           // cutoff for banks that play "next" sound on $x
+
+// for the random sounds, needs to know max sounds of first 5 banks
+// only important for sounds below cutoff
+#define MP3_BANK1_SOUNDS 19  // gen sounds, numbered 001 to 025
+#define MP3_BANK2_SOUNDS 18  // chat sounds, numbered 026 to 050
+#define MP3_BANK3_SOUNDS 7   // happy sounds, numbered 051 to 075
+#define MP3_BANK4_SOUNDS 4   // sad sounds, numbered 076 to 100
+#define MP3_BANK5_SOUNDS 3   // whistle sounds, numbered 101 to 125
+// unless you change bank cutoff, these are ignored, so I set them to max
+#define MP3_BANK6_SOUNDS MP3_MAX_SOUNDS_PER_BANK  // scream sounds, numbered 126 to 150
+#define MP3_BANK7_SOUNDS MP3_MAX_SOUNDS_PER_BANK  // Leia sounds, numbered 151 to 175
+#define MP3_BANK8_SOUNDS MP3_MAX_SOUNDS_PER_BANK  // sing sounds (deprecated, not used by R2 Touch)
+#define MP3_BANK9_SOUNDS MP3_MAX_SOUNDS_PER_BANK  // mus sounds, numbered 201 t0 225
+
+// this defines where the startup sound is
+#define MP3_EMPTY_SOUND 254   // workaround, used to stop sounds
+#define MP3_START_SOUND 255   // startup sound is number 255
+#define SOUND_START_CHAR 'J'  //Lead character for sound commands
+#define MP3_VOLUME_MID 50     // guessing mid volume 32 is right in-between...
+#define MP3_VOLUME_MIN 100    // doc says anything below 64 is inaudible, not true, 100 is. 82 is another good value
+#define MP3_VOLUME_MAX 0      // doc says max is 0
+#define MP3_VOLUME_STEPS 20   // R2 Touch app has 20 steps from min to max
+#define MP3_VOLUME_OFF 254    // to turn it off... 255 gets a buzz.
+
+#define MP3_PLAY_CMD 't'               // command to play sound file on the MP3 trigger
+#define MP3_VOLUME_CMD 'v'             // command to play sound file on the MP3 trigger
+#define MP3_STOP_CMD 'O'               // command to stop/play  - not used
+#define MP3_MIN_RANDOM_PAUSE 10000     // min wait on random sounds
+#define MP3_MAX_RANDOM_PAUSE 20000     // max wait on random sounds
+#define MP3_MAX_PAUSE_ON_RESUME 30000  // default wait to resume random. Works for short sound. Set mp3_random_timer manually for long ones.
+#define CMD_MAX_LENGTH 64              //Defines max command Length - same as serial buffer
+#define MPU 'A'                        //Defines the MPU code for the program
+
+/*************************************************************************
+ *************************  GLOBAL VARIABLES  ****************************
+ *************************************************************************/
+
 Adafruit_PWMServoDriver servoControl = Adafruit_PWMServoDriver();
-#include <Adafruit_NeoPixel.h>
-#include <time.h>
-#include <stdlib.h>
 
+char dev_MPU, dev_command;
+char cmdStr0[CMD_MAX_LENGTH];
+char cmdStr1[CMD_MAX_LENGTH];
+char cmdStr2[CMD_MAX_LENGTH];
+char cmdStr3[CMD_MAX_LENGTH];
 
-
-/************************************************
-*               Macro Definitions               *
-*************************************************/
-#define SERVO_FREQ 50
-//#define OSCIL_FREQ 27000000
-#define MPU 'E'
-#define CMD_MAX_LENGTH 63
-
-
-//define Adafruit PWM servo Pins and Limits
-
-#define Z_ROT 1
-#define Z_RMAX 150
-#define Z_RMID 425
-#define Z_RMIN 700
-#define Z_EXT 0
-#define Z_EMAX 125
-#define Z_EMIN 300
-#define Z_EMID 150
-#define Z_PIE 2
-#define Z_PMAX 400
-#define Z_PMIN 250
-#define LS_PIE 3
-#define LS_PMAX 250  //revisit
-#define LS_PMIN 400  //revisit
-#define BM_PIE 4
-#define BM_PMAX 475
-#define BM_PMIN 325
-#define LF_PIE 5
-#define LF_PMAX 475
-#define LF_PMIN 325
-#define DP1 6
-#define DP1_MIN 270  //done
-#define DP1_MAX 425  //done
-#define DP2 7
-#define DP2_MIN 300
-#define DP2_MAX 400
-#define DP3 8
-#define DP3_MIN 275  //done
-#define DP3_MAX 400  //done
-#define DP4 9
-#define DP4_MIN 240
-#define DP4_MAX 375
-#define DP5 10
-#define DP5_MIN 340
-#define DP5_MAX 425
-#define DP6 11
-#define DP6_MIN 305  //done
-#define DP6_MAX 400  //done
-
-
-//define Motor Pins
-#define Z_IN1 2
-#define Z_IN2 3
-#define LS_IN1 4
-#define LS_IN2 5
-#define P_IN1 6
-#define P_IN2 7
-#define BM_IN1 8
-#define BM_IN2 9
-#define LF_IN1 10
-#define LF_IN2 11
-//define Cont. Rotation servo pins
-#define P_ROT 12
-#define LF_ROT 13
-//define Holoprojector servo pins
-
-//define the Output Enable Pin for the Adafruit servo driver
-#define OE_PIN 34
-//define Bad Motivator 74hc595 pins
-#define BM_DATA 36
-#define BM_LATCH 37
-#define BM_CLOCK 38
-//define Zapper LED pin
-#define Z_LED 39
-//define HALL effect pins
-#define P_HALL 41
-#define LF_HALL 40
-//#define the Limit Switch pins
-#define Z_TOP 44
-#define Z_BOT 45
-#define LS_TOP 46
-#define LS_BOT 47
-#define P_TOP 48
-#define P_BOT 49
-#define BM_TOP 50
-#define BM_BOT 51
-#define LF_TOP 52
-#define LF_BOT 53
-
-/************************************************
-*                Global Variables               *
-*************************************************/
-//Neo-Pixel Objects
-byte leds = 0;  //Contains LED pattern as a 8-bit number
-
-char cmdStr[64];   //Contains the incoming message from Serial0
-char cmdStr1[64];  //Contains the incoming message from Serial1
-char dev_MPU;      //Contains the MPU code from incoming serial message
-char dev_cmd;      //Contains the command code from the incoming serial message
-
-int bad_motive_state = 0;   //Contains current state for Bad Motivator
-int bm_int = 75;            //Delay interval for the Bad Motivator lights (keep under 100)
-int dev_addr;               //Device address received from Serial interface
-int dev_opt;                //Device option received from the Serial interface
-int life_form_state = 0;    //Contains current state for the life form scanner
-int light_saber_state = 0;  //Contains current state for the Light Saber lift
-int periscope_state = 0;    //Contains current state for the Periscope
-int seq_state = 0;          //Contains current state for the Panel Sequencer
-int z_flash_count = 0;      //Contains current number of Zapper pulses
-int z_int = 50;             //Contains current zapper pulse timeout
-int z_raise_int = 100;      //Contains the raise timeout for the Zapper
-int z_state = 0;            //Contains the current step for the Zapper
-int zapper_state = 0;       //Contains the current state for the Zapper
-
-
-
-//integer Arrays
-int badMotive[8] = { BM_IN1, BM_IN2, BM_TOP, BM_BOT, -1, -1, -1, BM_PIE };
-int lifeForm[8] = { LF_IN1, LF_IN2, LF_TOP, LF_BOT, -1, -1, LF_HALL, LF_PIE };
-int lifts[6][8];
-int lSaber[8] = { LS_IN1, LS_IN2, LS_TOP, LS_BOT, -1, -1, -1, LS_PIE };
-int periscope[8] = { P_IN1, P_IN2, P_TOP, P_BOT, -1, -1, P_HALL, -1 };
-int servoLmt[16][3];
-int zapper[8] = { Z_IN1, Z_IN2, Z_TOP, Z_BOT, Z_ROT, Z_EXT, -1, Z_PIE };
-
-
-long int current_time = millis();       //Contains current time
-long int z_timer = current_time;        //Holds the zapper flash timer
-long int z_raise_timer = current_time;  //Holds the zapper raise timer
-long int bm_timer = current_time;       //Holds the timer for bad motivator lights
-long int p_timer = current_time;        //Holds the rotational timer for the Periscope
-long int seq_timer = current_time;      //Holds the sequence step timer for the Panel Sequencer
-
-//Servo Objects
-Servo lfServo;   //Life Form Continous Rotation Servo
-Servo perServo;  //Periscope Continous Rotation Servo
-
-uint16_t seq_Timeout;  //Holds the sequence step timeout for the Panel Sequencer (must be a 16 bit integer)
-
-
-/***********************************************
-*    Panel Sequence Constants stored in Program memory  *
-***********************************************/
-
-
-const uint16_t panel_init[][11] PROGMEM = {
-  { 20, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+int dev_option, dev_address;
+unsigned long current_time = millis();
+unsigned long door_time = current_time;
+unsigned long lift_time = current_time;
+unsigned long ext_time = current_time;
+unsigned long mp3_random_timer = millis();
+long door_int = 1500;
+long lift_int = 2000;
+long ext_int = 2000;
+int mp3_random_int = random(MP3_MIN_RANDOM_PAUSE, MP3_MAX_RANDOM_PAUSE);
+static uint8_t mp3_bank_indexes[MP3_MAX_BANKS];
+static const uint8_t mp3_max_sounds[] = {
+  MP3_BANK1_SOUNDS,
+  MP3_BANK2_SOUNDS,
+  MP3_BANK3_SOUNDS,
+  MP3_BANK4_SOUNDS,
+  MP3_BANK5_SOUNDS,
+  MP3_BANK6_SOUNDS,
+  MP3_BANK7_SOUNDS,
+  MP3_BANK8_SOUNDS,
+  MP3_BANK9_SOUNDS,
 };
-
-
-const uint16_t panel_all_open[][11] PROGMEM = {
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 300, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 150, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-};
-
-const uint16_t panel_all_open_long[][11] PROGMEM = {
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 1000, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 150, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-};
-
-const uint16_t panel_wave[][11] PROGMEM = {
-  { 30, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 30, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 30, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 30, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 30, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 30, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 30, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MAX },
-  { 30, Z_PMAX, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 30, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 30, Z_PMIN, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 30, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 30, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-};
-
-const uint16_t panel_fast_wave[][11] PROGMEM = {
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MAX },
-  { 15, Z_PMAX, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMAX, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MAX },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 15, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-};
-
-const uint16_t panel_open_close_wave[][11] PROGMEM = {
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MIN },
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 20, Z_PMAX, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 20, Z_PMAX, LS_PMAX, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 20, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 80, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 20, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 20, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 20, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 20, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MAX, DP6_MAX },
-  { 20, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MAX },
-  { 20, Z_PMIN, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 20, Z_PMIN, LS_PMIN, BM_PMAX, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-};
-
-const uint16_t panel_dance[][11] PROGMEM = {
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMAX, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMAX, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MAX, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MAX },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MAX, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MAX, DP6_MAX },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMAX, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MIN, DP4_MIN, DP5_MAX, DP6_MAX },
-  { 45, Z_PMIN, LS_PMIN, BM_PMAX, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MAX, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMAX, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MIN, DP4_MIN, DP5_MAX, DP6_MAX },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MAX, DP3_MAX, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 45, Z_PMAX, LS_PMAX, BM_PMAX, LF_PMAX, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MAX, DP2_MAX, DP3_MAX, DP4_MAX, DP5_MAX, DP6_MAX },
-  { 45, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-};
-
-
-const uint16_t panel_marching_ants[][11] PROGMEM = {
-  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MIN },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMAX, LS_PMIN, BM_PMAX, LF_PMIN, DP1_MAX, DP2_MIN, DP3_MAX, DP4_MIN, DP5_MAX, DP6_MIN },
-  { 50, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
-  { 50, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
-  { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-};
-
-//  Color Sequences stored in Program Memory
-const uint16_t np_color[][3] PROGMEM = {
-  { 0, 0, 0 },       //Off - 0
-  { 255, 0, 0 },     //Red - 1
-  { 255, 0, 128 },   //Rose - 2
-  { 255, 0, 255 },   //Magenta - 3
-  { 128, 0, 255 },   //Violet - 4
-  { 0, 0, 255 },     //Blue - 5
-  { 0, 128, 255 },   //Azure - 6
-  { 0, 255, 255 },   //Cyan - 7
-  { 0, 255, 128 },   //Spring Green - 8
-  { 0, 255, 0 },     //Green - 9
-  { 128, 255, 0 },   //Chartreuse - 10
-  { 255, 255, 0 },   //Yellow - 11
-  { 255, 128, 0 },   //Orange - 12
-  { 255, 255, 255 }  //White - 13
-};
-
-void setup() {
-  Serial.begin(9600);   //Connection with controller Arduino
-  Serial1.begin(9600);  //Connection with Holo Projector Nano
-  Serial2.begin(9600);  //Connection with Periscope
-  Serial3.begin(2400);  //Teeces Connection
-  servoControl.begin();
-  servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
-  int x;
-  for (x = 0; x <= 7; x++) lifts[1][x] = zapper[x];
-  for (x = 0; x <= 7; x++) lifts[2][x] = lSaber[x];
-  for (x = 0; x <= 7; x++) lifts[3][x] = periscope[x];
-  for (x = 0; x <= 7; x++) lifts[4][x] = badMotive[x];
-  for (x = 0; x <= 7; x++) lifts[5][x] = lifeForm[x];
-
-  // set Motor pins as output
-  for (x = 1; x <= 5; x++) {
-    pinMode(lifts[x][0], OUTPUT);
-    pinMode(lifts[x][1], OUTPUT);
-  }
-  //set Limit Switch pins to use internal resister to pull them HIGH
-  for (x = 1; x <= 5; x++) {
-    pinMode(lifts[x][2], INPUT_PULLUP);
-    pinMode(lifts[x][3], INPUT_PULLUP);
-  }
-  //Attach the servo objects to pins
-  perServo.attach(P_ROT);
-  lfServo.attach(LF_ROT);
-  perServo.write(90);
-  lfServo.write(90);
-
-
-  //set the Adafruit Servo Driver OE pin to output
-  pinMode(OE_PIN, OUTPUT);
-  //set 74HC595 pins to output
-  pinMode(BM_LATCH, OUTPUT);
-  pinMode(BM_DATA, OUTPUT);
-  pinMode(BM_CLOCK, OUTPUT);
-  //set Zapper LED to output;
-  pinMode(Z_LED, OUTPUT);
-  //Set the OE_PIN to LOW to enable output on the Adafruit servo driver
-  digitalWrite(OE_PIN, LOW);
-  leds = 0;
-  updateShiftRegister();
-}
+static uint8_t mp3_volume = MP3_VOLUME_MAX;
+static uint8_t saveflag;
+const char strSoundCmdError[] PROGMEM = "Invalid MP3Trigger Sound Command";
+uint8_t mp3_random_mode_flag = 1;  // the switch to check random sound mode
+byte ua_State = 0;
+byte ia_State = 0;
+byte ga_State = 0;
+byte dp_State = 0;
 
 
 
-void loop() {
-  checkSerial();              //Check Serial 0 for commands
-  checkSerial1();             //Check Serial 0 for commands
-  ZapLift(zapper_state);      // Run actions on the Zapper if any
-  LSLift(light_saber_state);  //Run actions on the Light Saber if any
-  PLift(periscope_state);     //Run actions on the Periscope if any
-  BMLift(bad_motive_state);   //Run actions on the Bad Motivator if any
-  LFLift(life_form_state);    //Run actions on the Life Form Scanner if any
-  Sequencer(seq_state);       //Run panel sequences
-}
+/*************************************************************************
+ ***********************  FUNCTION DEFINITIONS  **************************
+ *************************************************************************/
+/*
+
+
+//The buildCommand takes the output from the checkSerial functions and builds a command
+byte buildCommand(char ch, char* output_str);  
+byte checkSerial();              // Checks serial0 for commands and processes them
+byte checkSerial1();              // Checks serial1 for commands and processes them
+byte checkSerial2();              // Checks serial2 for commands and processes them
+byte checkSerial3();              // Checks serial3 for commands and processes them
+void doTcommand(int address, int argument);   //Processes T commands for this mpu
+void doScommand(int address, int argument);   //Processes S commands for this mpu
+void gripper(int option);         //Controls the Gripper Arm
+void interfaceArm(int option);    //Controls the Interface Arm
+void liftInterface();             //Raises the Interface Arm
+byte parseCommand(char* input_str);           //Parses command for processing
+void safeReset();                 //Safely resets all devices to stored position
+void utilityArms(int option);     //Controls the Utility Arms
 
 
 
+//Sound functions from MP3Sound.h and MP3Sound.c
+// public
+void mp3_init();  // wait at least 3s after mp3trigger power up before calling
+void mp3_parse_command(char* commandstr);     //Parses a music command for execution
+void mp3_do_random();  // need to be called in the main loop for random sounds to work
+
+// utilities
+void mp3_sound(uint8_t bank, uint8_t sound);  // Plays sound from bank
+void mp3_stop();                              // Stops sounds
+void mp3_playstartsound();                    // Plays starting sound
+void mp3_random();                            // Plays a random sound
+void mp3_volumeup();                          // Turns the MP3 Volume up
+void mp3_volumedown();                        // Turns the MP3 Volume down
+void mp3_volumemid();                         // Sets MP3 volume to mid 
+void mp3_volumeoff();                         // Sets MP3 volume to off
+void mp3_volumemax();                         // Sets MP3 volume to max
+void mp3_volumemin();                         // Sets MP3 volume to min
+
+// private
+void mp3_send_command_byte(char command);    //sends command byte to MP3 Trigger
+void mp3_setvolume(uint8_t vol);             //sets volume on MP3 Trigger
+void mp3_suspend_random();                   //suspends random noises
+void mp3_resume_random();                    //resumes random noises
+void mp3_stop_random();                      //stops random noises
+void mp3_start_random();                     //starts random noises
+void mp3_check_timer();                      //helper function to check timeouts
+*/
 
 
+/*************************************************************************
+ *****************************  FUNCTIONS  *******************************
+ *************************************************************************/
 
 
-
-//BM_Raise raises the Bad motivator and returns a 0 while rising and a 1 when raised
-byte BM_Raise() {
-  static int step = 0;
-  switch (step) {
-    case 0:  //Open pie
-      servoControl.setPWM(BM_PIE, 0, BM_PMAX);
-      step = 1;
-      break;
-    case 1:  //Move lift up
-      if (motorUp(4)) step = 2;
-      break;
-    case 2:
-      step = 0;
-      return 1;
-      break;
-  }
-  return 0;
-}
-
-//BM_Lower lowers the Bad Motivator and returns a 0 when lowering and a 1 when down.
-byte BM_Lower() {
-  bmLights(0);
-  static int step = 0;
-  switch (step) {
-    case 0:  //Move Motor
-      if (motorDown(4)) step = 1;
-      break;
-    case 1:  //Close the pie
-      servoControl.setPWM(BM_PIE, 0, BM_PMIN);
-      step = 2;
-      break;
-    case 2:  //Final cleanup and return 1 for a job well done
-      step = 0;
-      return 1;
-      break;
-  }
-  return 0;
-}
-
-
-//BMLift is the sixth thread of seven threads in this program.  It handles all interactions with the
-//Bad Motivator.  It is controlled by the bad_motive_state.
-void BMLift(int option) {
-  switch (option) {
-    case 0:
-      //default - No Action
-      if (digitalRead(BM_BOT)) bmLights(1);
-      return 0;
-      break;
-    case 1:  //Raise LSaber
-      if (BM_Raise() == 1) bad_motive_state = 0;
-      break;
-    case 2:  //Light Saber down
-      if (BM_Lower() == 1) bad_motive_state = 0;
-      break;
-  }
-}
-
-
-//The bmLights function controls the 8 leds in the Bad Motivator.  The BM uses a 74HC595 shift register chip to control
-//the eight lights with three pins. Passing a 0 to the function turns the ligts off, a 1 turns them on.
-void bmLights(int num) {
-  if (num) {
-    current_time = millis();
-    if (current_time - bm_timer > bm_int) {
-      bm_timer = current_time;
-      leds = random(0, 255);
-      updateShiftRegister();
-    }
-  } else {
-    leds = 0;
-    updateShiftRegister();
-  }
-  return;
-}
-
-
-//The buildCommand takes the current byte from the Serial0 buffer and builds a command for processing.  It returns a 0
-//while in the building process and a 1 when the command is ready.
-int buildCommand(char ch, char* output_str) {
+//The buildCommand takes the output from the checkSerial functions and builds a command
+byte buildCommand(char ch, char* output_str) {
   static int pos = 0;
   switch (ch) {
+    case '\r':  //end character reached
     case '\n':
-    case '\r':
-    case '\0':
-      output_str[pos] = 13;
-      pos = 0;
-      return true;
-      break;
-    default:
-      output_str[pos] = ch;
-      if (pos <= CMD_MAX_LENGTH - 1) pos++;
-      break;
-  }
-  return false;
-}
-
-//The buildCommand takes the current byte from the Serial0 buffer and builds a command for processing.  It returns a 0
-//while in the building process and a 1 when the command is ready.
-int buildCommand1(char ch, char* output_str) {
-  //Serial.print("here");
-  static int pos = 0;
-  switch (ch) {
-    case '\n':
-    case '\r':
     case '\0':
       output_str[pos] = 13;
       pos = 0;
@@ -625,979 +324,763 @@ int buildCommand1(char ch, char* output_str) {
 }
 
 
-
-
-//The checkSerial function is the first thread of seven threads in this program.  It checks the Serial0 buffer for incoming serial
-//data and then sends it to be processed.
-void checkSerial() {
-  char ch;
-  byte cmd_Complete;
+//The checkSerial() function takes the serial data from Serial0 and sends it to the
+//buildCommand function for further processing.
+byte checkSerial() {
   if (Serial.available()) {
-    ch = Serial.read();
-    //Serial.print(ch);
-    cmd_Complete = buildCommand(ch, cmdStr);
-    if (cmd_Complete) {
-      parseCommand(cmdStr);
-      //Serial.println();
-    }
-  }
-}
-
-
-void checkSerial1() {
-  char ch;
-  byte cmd_Complete;
-  if (Serial1.available()) {
-    ch = Serial1.read();
-    //Serial.print(ch);
-    cmd_Complete = buildCommand1(ch, cmdStr1);
-    if (cmd_Complete) {
-      parseCommand(cmdStr1);
-      //Serial.println();
-    }
-  }
-}
-
-
-
-
-//The doTcommand handles all T commands sent from the parseCommand function
-int doTcommand(int addr, int opt) {
-  //Serial.println("T command");
-  switch (addr) {
-    case 51:
-      zapper_state = opt;
-      break;
-    case 52:
-      light_saber_state = opt;
-      break;
-    case 53:
-      periscope_state = opt;
-      break;
-    case 54:
-      bad_motive_state = opt;
-      break;
-    case 55:
-      life_form_state = opt;
-      break;
-    case 80:
-      seq_state = opt;
-      break;
-  }
-}
-
-//The doScommand handles all T commands sent from the parseCommand function
-int doScommand(int addr, int opt) {
-  //Serial.println("S command");
-  switch (addr) {
-    case 80:
-      seq_state = opt;
-      break;
-  }
-}
-
-
-
-
-//Raises the Life Form Scanner - Return 0 while raising and 1 when raised
-byte LF_Raise() {
-  static int step = 0;
-  switch (step) {
-    case 0:  //Move lift up
-      servoControl.setPWM(LF_PIE, 0, LF_PMAX);
-      if (motorUp(5)) step = 1;
-      break;
-    case 1:
-      lfServo.write(180);
-      step = 2;
-      break;
-    case 2:
-      step = 0;
+    char ch;                                       //create a character to hold the current byte from Serial stream
+    byte command_complete;                         //Establish a flag value to indicate a complete command
+    ch = Serial.read();                            //Read a byte from the Serial Stream
+    command_complete = buildCommand(ch, cmdStr0);  //Build the command string
+    if (command_complete) {                        //if complete return 1 to start the processing
       return 1;
-      break;
+    }
   }
   return 0;
 }
 
-//Lowers the Life Form Scanner - Returns 0 while raising and 1 when raised
-byte LF_Lower() {
+//The checkSerial1() function takes the serial data from Serial1 and sends it to the
+//buildCommand function for further processing.
+byte checkSerial1() {
+  if (Serial1.available()) {
+    char ch;                                       //create a character to hold the current byte from Serial stream
+    byte command_complete;                         //Establish a flag value to indicate a complete command
+    ch = Serial1.read();                           //Read a byte from the Serial Stream
+    command_complete = buildCommand(ch, cmdStr1);  //Build the command string
+    if (command_complete) {                        //if complete return 1 to start the processing
+      return 1;
+    }
+  }
+  return 0;
+}
+
+
+//The checkSerial2() function takes the serial data from Serial2 and sends it to the
+//buildCommand function for further processing.
+byte checkSerial2() {
+  if (Serial2.available()) {
+    char ch;                                       //create a character to hold the current byte from Serial stream
+    byte command_complete;                         //Establish a flag value to indicate a complete command
+    ch = Serial2.read();                           //Read a byte from the Serial Stream
+    command_complete = buildCommand(ch, cmdStr2);  //Build the command string
+    if (command_complete) {                        //if complete return 1 to start the processing
+      return 1;
+    }
+  }
+  return 0;
+}
+
+
+//The checkSerial3() function takes the serial data from Serial3 and sends it to the
+//buildCommand function for further processing.
+byte checkSerial3() {
+  if (Serial3.available()) {
+    char ch;                                       //create a character to hold the current byte from Serial stream
+    byte command_complete;                         //Establish a flag value to indicate a complete command
+    ch = Serial3.read();                           //Read a byte from the Serial Stream
+    command_complete = buildCommand(ch, cmdStr3);  //Build the command string
+    if (command_complete) {                        //if complete return 1 to start the processing
+      return 1;
+    }
+  }
+  return 0;
+}
+
+
+
+//The doTcommand processes all action commands rececived from the parseCommand function.
+void doTcommand(int address, int argument) {
+  switch (address) {
+    case 10:
+      ua_State = argument;
+      break;
+    case 11:
+      ia_State = argument;
+      break;
+    case 12:
+      ga_State = argument;
+      break;
+  }
+}
+
+
+//The doScommand processes all settings commands rececived from the parseCommand function.
+void doScommand(int address, int argument) {
+  switch (argument) {
+  }
+}
+
+//The gripper function handles all actions for the gripper arm
+void gripper(int option) {
   static int step = 0;
-  switch (step) {
-    case 0:  //Move Motor
-      if (digitalRead(LF_HALL) == LOW) {
+  static int count = 0;
+  switch (option) {
 
+    current_time = millis();
+    case 0:
+      return;
+    case 1:
+      switch (step) {
+        case 0:
+          servoControl.setPWM(GA_DOR, 0, GA_DOR_MAX);
+          step++;
+          break;
+        case 1:
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
+            servoControl.setPWM(GA_LFT, 0, GA_LFT_MAX);
+            step++;
+          }
+          break;
+        case 2:
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
+            servoControl.setPWM(GA_EXT, 0, GA_EXT_MAX);
+            step = 3;
+          }
+          break;
+        case 3:
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
+            servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
+            step = 2;
+            count++;
+            if (count == 3) {
+              step = 0;
+              count = 0;
+              ga_State = 0;
+            }
+          }
 
-        lfServo.write(90);
-        step = 1;
+          break;
       }
       break;
-    case 1:
-      if (motorDown(5)) step = 2;
-      break;
-    case 2:  //Final cleanup and return 1 for a job well done
-      step = 0;
-      servoControl.setPWM(LF_PIE, 0, LF_PMIN);
-      return 1;
+    case 2:
+      switch (step) {
+        case 0:
+          servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
+          step = 1;
+          break;
+        case 1:
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
+            servoControl.setPWM(GA_LFT, 0, GA_LFT_MIN);
+            step = 2;
+          }
+          break;
+        case 2:
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
+            servoControl.setPWM(GA_DOR, 0, GA_DOR_MIN);
+            step = 0;
+            ga_State = 0;
+          }
+          break;
+      }
       break;
   }
-  return 0;
 }
-//LFLift is the last thread of seven threads in this program.  It handles all interactions with the
-//Life Form Scanner.  It is controlled by the life_form_state.
-void LFLift(int option) {
+
+
+//The interfaceArm function handles all actions for the interface arm
+void interfaceArm(int option) {
+  static int step = 0;
+  static int count = 0;
+  current_time = millis();
+
   switch (option) {
     case 0:
-      //default - No Action
-      return 0;
-    case 1:  //Raise Life Form Scanner
-      if (LF_Raise() == 1) life_form_state = 0;
+      return;
+    case 1:
+      liftInterface();
       break;
-    case 2:  //lower Life Form Scanner
-      if (LF_Lower() == 1) life_form_state = 0;
-      break;
-    case 3:  //lower Life Form Scanner
-      LF_Alt_Raise();
+    case 2:
+      switch (step) {
+        case 0:
+          servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
+          step = 1;
+          break;
+        case 1:
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
+            servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
+            step = 2;
+          }
+          break;
+        case 2:
+          if (current_time - ext_time > ext_int) {
+            ext_time = current_time;
+            servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
+            step = 0;
+            ia_State = 0;
+          }
+          break;
+      }
       break;
   }
-  return;
 }
-int LF_Alt_Raise() {
+
+
+//The liftInterface function raises the interface arm.
+void liftInterface() {
   static int step = 0;
-  static byte dir = 0;
-  static byte hall_hit = 0;
-  servoControl.setPWM(LF_PIE, 0, LF_PMAX);
+  static int count = 0;
+  //Serial.println(step);
   switch (step) {
-    case 0:  //Move lift up
-      if (motorUp(5)) step = 1;
+    case 0:
+      servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
+      step = 1;  // Lift thingy
       break;
     case 1:
-      if (dir) {
-        lfServo.write(135);
-      } else {
-        lfServo.write(45);
+      if (current_time - ext_time > ext_int) {
+        ext_time = current_time;
+        servoControl.setPWM(IA_LFT, 0, IA_LFT_MAX);
+        step = 2;  // Extend thingy
       }
-      step = 2;
       break;
-
     case 2:
-      current_time = millis();
-      if (current_time - p_timer > 1000) {
-        p_timer = current_time;
-        step = 3;
-        hall_hit = 0;
+      if (current_time - ext_time > ext_int) {
+        ext_time = current_time;
+        servoControl.setPWM(IA_EXT, 0, IA_EXT_MAX);
+        step = 3;  // Unextend thingy
       }
       break;
     case 3:
-      if (digitalRead(LF_HALL) == LOW && hall_hit == 0) {
-        hall_hit = 1;
-        lfServo.write(90);
-        dir = !dir;
-        step = 4;
+      if (current_time - ext_time > ext_int) {
+        ext_time = current_time;
+        servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
+        step = 2;  // Extend thingy again
+        count++;
+
+        // Stop
+        if (count == 3) {
+          step = 0;
+          count = 0;
+          ia_State = 0;
+        }
       }
       break;
-    case 4:
-      current_time = millis();
-      if (current_time - p_timer > 200) {
-        p_timer = current_time;
-        step = 1;
-      }
-      break;
-  }
-  return 0;
-}
-
-
-//The LS_Raise function raises the Light Saber and returns a 0 while raising and a 1 when raised
-byte LS_Raise() {
-  static int step = 0;
-  switch (step) {
-    case 0:  //Open pie
-      servoControl.setPWM(LS_PIE, 0, LS_PMAX);
-      step = 1;
-      break;
-    case 1:  //Move lift up
-      if (motorUp(2)) step = 2;
-      break;
-    case 2:
-      step = 0;
-      return 1;
-      break;
-  }
-  return 0;
-}
-
-//The LS_Lower function lowers the Light Saber and returns a 0 while lowering and a 1 when down
-byte LS_Lower() {
-
-  static int step = 0;
-  switch (step) {
-    case 0:  //Move Motor
-      if (motorDown(2)) step = 1;
-      break;
-    case 1:  //Close the pie
-      servoControl.setPWM(LS_PIE, 0, LS_PMIN);
-      step = 2;
-    case 2:  //Final cleanup and return 1 for a job well done
-      step = 0;
-      return 1;
-      break;
-  }
-  return 0;
-}
-//LSLift is the fourth thread of seven threads in this program.  It handles all interactions with the
-//Light Saber Lift.  It is controlled by the light_saber_state.
-void LSLift(int option) {
-  //Serial.println("Light saber");
-  switch (option) {
-    case 0:
-      //default - No Action
-      return 0;
-    case 1:  //Raise LSaber
-      if (LS_Raise() == 1) light_saber_state = 0;
-      break;
-    case 2:  //Light Saber down
-      if (LS_Lower() == 1) light_saber_state = 0;
-      break;
   }
 }
 
 
-// The loadServos function loads min and max values into the servoLmt array
-void loadServos() {
-  //list each servos min and max
-  servoLmt[0][0] = Z_RMIN;
-  servoLmt[0][1] = Z_RMAX;
-  servoLmt[1][0] = Z_EMIN;
-  servoLmt[1][1] = Z_EMAX;
-  servoLmt[2][0] = Z_PMIN;
-  servoLmt[2][1] = Z_PMAX;
-  servoLmt[3][0] = LS_PMIN;
-  servoLmt[3][1] = LS_PMAX;
-  servoLmt[4][0] = BM_PMIN;
-  servoLmt[4][1] = BM_PMAX;
-  servoLmt[5][0] = LF_PMIN;
-  servoLmt[5][1] = LF_PMAX;
+//The mp3_do_random functions allows R2 to make random sounds from the first 4 banks
+void mp3_do_random() {
+  if (!mp3_random_mode_flag) return;
+  if (millis() - mp3_random_timer < mp3_random_int) return;
+  mp3_random_timer = millis();
+  // play a random sound
+  mp3_random();
+  // set the timer for next sound
+  mp3_random_int = random(MP3_MIN_RANDOM_PAUSE, MP3_MAX_RANDOM_PAUSE);
+}
+
+
+//The mp3_init() function initiates the MP3 Trigger
+void mp3_init() {
+  for (uint8_t i = 0; i < MP3_MAX_BANKS; i++) {
+    mp3_bank_indexes[i] = 0;
+  }
+
+  // set volume somewhere in the middle
+  mp3_volumemax();
+
+  // play the startup sound (this function return immediately)
+  mp3_playstartsound();
   return;
 }
 
-//Moves the specified mtr until it reaches the bottom limit switch. Returns a 0 when the motor is moving and a 1 when the limit switch is hit.
-byte motorDown(int mtr) {
-  if (digitalRead(lifts[mtr][3])) {
-    analogWrite(lifts[mtr][1], 255);
-    return 0;  //Motor is moving
-  } else {
-    digitalWrite(lifts[mtr][1], LOW);
-    return 1;  //Motor is stopped
+
+//The mp3_parse_command parse all Sound commands and sends the appropriate commands to the MP3 Trigger
+void mp3_parse_command(char* commandstr) {
+  ////////////////////////////////////////////////
+  // Play sound command by bank/sound numbers
+  // Jxyy
+  // x=bank number
+  // yy=sound number. If none, next sound is played in the bank
+  //
+  // Other commands
+  // Jc
+  // where c is a command character
+  // R - random from 4 first banks
+  // O - sound off
+  // L - Leia message (bank 7 sound 1)
+  // C - Cantina music (bank 9 sound 5)
+  // c - Beep cantina (bank 9 sound 1)
+  // S - Scream (bank 6 sound 1)
+  // F - Faint/Short Circuit (bank 6 sound 3)
+  // D - Disco (bank 9 sound 6)
+  // s - stop sounds
+  // + - volume up
+  // - - volume down
+  // m - volume mid
+  // f - volume max
+  // p - volume min
+  // W - Star Wars music (bank 9 sound 2)
+  // M - Imperial March (bank 9 sound 3)
+  //
+  ///////////////////////////////////////////////
+
+
+  uint8_t len = strlen(commandstr);
+  // check the start character
+  if (commandstr[0] != SOUND_START_CHAR) {
+    Serial1.write(strSoundCmdError);
+    return;
+  }
+
+  // should have between 2 and 4 characters
+  if (len < 2 || len > 4) {
+    Serial1.write(strSoundCmdError);
+    return;
+  }
+
+  char cmdch = commandstr[1];
+
+  // if the command character is a digit, this is a sound play command
+  if (isdigit(cmdch)) {
+    mp3_stop_random();                   // any manual sound command stops random automatically
+    uint8_t bank = (uint8_t)cmdch - 48;  // cheap ASCII to number conversion
+    uint8_t sound = 0;
+    if (len > 2) {
+      sound = atoi(commandstr + 2);
+    }
+    mp3_sound(bank, sound);
+    return;
+  }
+
+  // the command is a character
+  switch (cmdch) {
+    case 'R':              // R - random from 4 first banks
+      mp3_start_random();  // keep firing random sounds
+      //mp3_random();		// this is just a one shot
+      break;
+    case 'O':  // O - sound off
+      mp3_stop_random();
+      mp3_volumeoff();
+      break;
+    case 'L':  // L - Leia message (bank 7 sound 1)
+      //mp3_stop_random();		// so long (34s), just stop random?
+      mp3_suspend_random();
+      mp3_sound(7, 1);
+      mp3_random_timer = 4400;  // 34s + 10s extra long delay
+      mp3_resume_random();
+      break;
+    case 'C':  // C - Cantina music (bank 9 sound 5)
+      //mp3_stop_random();		// so long, just stop random
+      mp3_suspend_random();
+      mp3_sound(8, 5);
+      mp3_random_timer = 5600;  // extra long delay
+      mp3_resume_random();
+      break;
+    case 'c':  // c - Beep cantina (bank 9 sound 1)
+      mp3_suspend_random();
+      mp3_sound(8, 1);
+      mp3_random_timer = 2700;  // extra long delay
+      mp3_resume_random();
+      break;
+    case 'S':  // S - Scream (bank 6 sound 1)
+      mp3_suspend_random();
+      mp3_sound(6, 1);
+      mp3_resume_random();
+      break;
+    case 'F':  // F - Faint/Short Circuit (bank 6 sound 3)
+      mp3_suspend_random();
+      mp3_sound(6, 3);
+      mp3_resume_random();
+      break;
+    case 'D':  // D - Disco (bank 9 sound 6)
+      mp3_suspend_random();
+      mp3_sound(8, 6);
+      mp3_random_timer = 39600;  // 6:26 +10s min extra long delay
+      mp3_resume_random();
+      break;
+    case 's':  // s - stop sounds
+      mp3_stop_random();
+      mp3_stop();
+      break;
+    case '+':  // + - volume up
+      mp3_volumeup();
+      break;
+    case '-':  // - - volume down
+      mp3_volumedown();
+      break;
+    case 'm':  // m - volume mid
+      mp3_volumemid();
+      break;
+    case 'f':  // f - volume max
+      mp3_volumemax();
+      break;
+    case 'p':  // p - volume min
+      mp3_volumemin();
+      break;
+    case 'W':             // W - Star Wars music (bank 9 sound 2)
+      mp3_stop_random();  // so long, just stop random
+      //mp3_suspend_random();
+      mp3_sound(8, 2);
+      //mp3_resume_random();
+      break;
+    case 'M':             // M - Imperial March (bank 9 sound 3)
+      mp3_stop_random();  // so long, just stop random
+      //mp3_suspend_random();
+      mp3_sound(8, 3);
+      //mp3_resume_random();
+      break;
+    default:
+      Serial1.write(strSoundCmdError);
+      break;
   }
 }
 
-//Moves the specified mtr until it reaches the top limit switch. Returns a 0 when the motor is moving and a 1 when the limit switch is hit.
-byte motorUp(int mtr) {
-  if (digitalRead(lifts[mtr][2])) {
-    analogWrite(lifts[mtr][0], 255);
-    return 0;  //Motor is moving
-  } else {
-    digitalWrite(lifts[mtr][0], LOW);
-    return 1;  //Motor is stopped
-  }
-  return 0;
+//The mp3_playstartsound() function plays the start sound
+void mp3_playstartsound() {
+  // access the start sound directly through the global bank 0
+  mp3_sound(0, MP3_START_SOUND);
 }
 
-// Move servo from the passed from to the passed to
-void moveServo(int srvNo, int from, int to) {
-  if (to > from) {
-    for (int pulselen = from; pulselen < to; pulselen++) {
-      servoControl.setPWM(srvNo, 0, pulselen);
-    }
-  } else {
-    for (int pulselen = from; pulselen > to; pulselen--) {
-      servoControl.setPWM(srvNo, 0, pulselen);
-    }
-
+//The mp3_random() function plays a random sound from the first 4 banks
+void mp3_random() {
+  uint8_t num;
+  // Plays a random sound from the first 5 banks only
+  num = random(1, MP3_BANK1_SOUNDS + MP3_BANK2_SOUNDS + MP3_BANK3_SOUNDS + MP3_BANK4_SOUNDS + MP3_BANK5_SOUNDS);
+  if (num <= MP3_BANK1_SOUNDS) {
+    mp3_sound(1, num);
+    return;
+  }
+  num -= MP3_BANK1_SOUNDS;
+  if (num <= MP3_BANK2_SOUNDS) {
+    mp3_sound(2, num);
+    return;
+  }
+  num -= MP3_BANK2_SOUNDS;
+  if (num <= MP3_BANK3_SOUNDS) {
+    mp3_sound(3, num);
+    return;
+  }
+  num -= MP3_BANK3_SOUNDS;
+  if (num <= MP3_BANK4_SOUNDS) {
+    mp3_sound(4, num);
+    return;
+  }
+  num -= MP3_BANK4_SOUNDS;
+  if (num <= MP3_BANK5_SOUNDS) {
+    mp3_sound(5, num);
     return;
   }
 }
 
-//The parseCommand takes the command from the buildCommand function and parses into its component parts - MPU, Address, Command and Option
-int parseCommand(char* input_str) {
-  byte hasArgument = false;
+//The mp3_resume_random() resumes the random sounds after a call to mp3_suspend_random()
+void mp3_resume_random() {
+  mp3_random_mode_flag = saveflag;
+}
+
+// Sends the hardware command, assumes MP3 is connected to suart2 on the MarcDuino
+void mp3_send_command_byte(char command) {
+  // sends a single byte at a time
+  Serial1.write(command);
+}
+
+
+//Set volume for the MP3 Trigger
+void mp3_setvolume(uint8_t vol) {
+  mp3_send_command_byte(MP3_VOLUME_CMD);
+  mp3_send_command_byte(vol);
+}
+
+// play sound from bank. If sound=0, plays next sound in bank
+// for bank 1 to 4, and first sound in bank for bank 5-9
+// Bank 0 can access any sound
+void mp3_sound(uint8_t bank, uint8_t sound) {
+  uint8_t filenum;
+
+  if (bank > MP3_MAX_BANKS) return;
+  if (bank != 0 && sound > MP3_MAX_SOUNDS_PER_BANK) return;
+
+  // if bank=0 play the sound number provided
+  if (bank == 0) filenum = sound;
+
+  else if (sound != 0) {
+    // calculate actual file number on the MP3 memory card
+    filenum = (bank - 1) * MP3_MAX_SOUNDS_PER_BANK + sound;
+    // also adjust last sound played index for the next sound command
+    // make sure not to go past max sounds
+    if (sound > mp3_max_sounds[bank])
+      mp3_bank_indexes[bank] = mp3_max_sounds[bank];
+    else
+      mp3_bank_indexes[bank] = sound;
+  }
+  // sound "0", play first or next sound depending on bank
+  else {
+    if (bank <= MP3_BANK_CUTOFF) {
+      // advance index, rewind to first sound if at end
+      if ((++mp3_bank_indexes[bank]) > mp3_max_sounds[bank])
+        mp3_bank_indexes[bank] = 1;
+      // we'll play the new indexed sound
+      sound = mp3_bank_indexes[bank];
+    } else {
+      // for banks that always play the first sound
+      sound = 1;
+    }
+    filenum = (bank - 1) * MP3_MAX_SOUNDS_PER_BANK + sound;
+  }
+
+  // send a 't'nnn number where nnn=file number
+  mp3_send_command_byte(MP3_PLAY_CMD);
+  mp3_send_command_byte(filenum);
+}
+
+
+//helper function to start the random sounds
+void mp3_start_random() {
+  mp3_random_timer = 0;
+  mp3_random_mode_flag = 1;
+}
+
+//Stops the MP3 Trigger
+void mp3_stop() {
+  // this doesn't work as this is a start/stop combined
+  //mp3_send_command_byte(MP3_STOP_CMD);
+  // instead go to an empty sound
+  mp3_sound(0, MP3_EMPTY_SOUND);
+  //#ifdef _MP3_DEBUG_MESSAGES_
+  //	printstr("MP3 stop: ");
+  //	printlnchar(MP3_STOP_CMD);
+  //#endif
+}
+
+// Stops the random sounds
+void mp3_stop_random() {
+  mp3_random_mode_flag = 0;
+  mp3_random_timer = 0;
+}
+
+
+//Suspends random sounds
+void mp3_suspend_random() {
+  mp3_random_timer = MP3_MAX_PAUSE_ON_RESUME;
+  saveflag = mp3_random_mode_flag;
+  mp3_random_mode_flag = 0;
+}
+
+
+//Turns the volume down
+void mp3_volumedown() {
+  uint8_t step = (MP3_VOLUME_MIN - MP3_VOLUME_MAX) / MP3_VOLUME_STEPS;
+  // volume was set to off, or ended up too low
+  if (mp3_volume > MP3_VOLUME_MIN) mp3_volume = MP3_VOLUME_MIN;
+  else {
+    // the step would be too bit, peg to minimum
+    if (MP3_VOLUME_MIN - mp3_volume < step)
+      mp3_volume = MP3_VOLUME_MIN;
+    // go up one step (volume goes inverse with value)
+    else
+      mp3_volume += step;
+  }
+  mp3_setvolume(mp3_volume);
+}
+
+//Sets the volume to Max
+void mp3_volumemax() {
+  mp3_volume = MP3_VOLUME_MAX;
+  mp3_setvolume(mp3_volume);
+}
+
+//Sets the volume to mid-level
+void mp3_volumemid() {
+  mp3_volume = MP3_VOLUME_MID;
+  mp3_setvolume(mp3_volume);
+}
+
+//Sets volume to minimum audible
+void mp3_volumemin() {
+  mp3_volume = MP3_VOLUME_MIN;
+  mp3_setvolume(mp3_volume);
+}
+
+//Turns the volume off
+void mp3_volumeoff() {
+  mp3_volume = MP3_VOLUME_OFF;
+  mp3_setvolume(mp3_volume);
+}
+
+
+//Turns the volume up
+void mp3_volumeup() {
+  uint8_t step = (MP3_VOLUME_MIN - MP3_VOLUME_MAX) / MP3_VOLUME_STEPS;
+  // volume was at max or too high
+  if (mp3_volume <= MP3_VOLUME_MAX) mp3_volume = MP3_VOLUME_MAX;
+  else {
+    // the step would be too big, peg to maximum
+    if (mp3_volume - MP3_VOLUME_MAX < step)
+      mp3_volume = MP3_VOLUME_MAX;
+    // go up down step (volume goes inverse with value)
+    else
+      mp3_volume -= step;
+  }
+  mp3_setvolume(mp3_volume);
+}
+
+
+//Parses serial command and routes it on its way
+byte parseCommand(char* input_str) {
+  bool hasArgument = false;
+  //At this point we have a command from one of the serial interfaces
+  //The first step is to determine if it is for this MPU or needs to sent to another MPU
   byte pos = 0;
   byte length = strlen(input_str);
   if (length < 2) goto deadCmd;  //not enough characters
-  int mpu = input_str[pos];      //MPU is the first character
-  if (MPU != mpu) {
-    if (mpu == 'A' || mpu == 'B' || mpu == 'C' || mpu == 'H' || mpu == 'I') {
-      Serial.flush();
-      for (int x = 0; x < length; x++) Serial.write(input_str[x]);
-      Serial.write(13);
-      return;
+  char mpu = input_str[pos];
+  if (MPU != mpu) {  //if command is not for this MPU - send it on its way
+    switch (mpu) {
+      
+      case 'B':
+        Serial2.flush();
+        for (int i = 0; i < length; i++) Serial2.write(input_str[i]);
+        Serial2.write(13);
+        break;
+      case 'C':
+        Serial3.flush();
+        for (int i = 0; i < length; i++) Serial3.write(input_str[i]);
+        Serial3.write(13);
+        break;
+      case 'D':
+      case 'E':
+      case 'F':
+      case 'G':
+        Serial.flush();
+        for (int i = 0; i < length; i++) Serial.write(input_str[i]);
+        Serial.write(13);
+        break;
+      case 'H':
+      case 'I':
+        Serial2.flush();
+        for (int i = 0; i < length; i++) Serial2.write(input_str[i]);
+        Serial2.write(13);
+        break;
+      case 'J':
+        mp3_parse_command(input_str);
+        break;
     }
-    
-    if (mpu == 'D') {
-      Serial1.flush();
-      for (int x = 0; x < length; x++) Serial1.write(input_str[x]);
-      Serial1.write(13);
-      return;      
-    }
-    if (mpu == 'F') {
-      Serial2.flush();
-      for (int x = 0; x < length; x++) Serial2.write(input_str[x]);
-      Serial2.write(13);
-      return;      
-    }    
-
-    if (mpu == 'G') {
-      Serial3.flush();
-      for (int x = 1; x < length; x++) Serial3.write(input_str[x]);
-      Serial3.write(13);
-      return;                  
-    }
-    
+    return;
   }
-  if ((mpu > 64 && mpu < 73) || mpu == '$') dev_MPU = mpu;
-  else goto deadCmd;  //Not a valid MPU - end command
-  // Now the address which should be the next two characters
-  char addrStr[3];  //set up a char array to hold them (plus the EOS (end of String) character)
+  //At this stage, the command is for this MPU which means that if it as valid
+  //command then it should have a minimum length of 5 and a maximum length of 7.
+  //It should start with an 'A'; followed by a number between 10 and 19, an 'T' or an 'S',
+  //and a 1 to 3 digit option.
+  dev_MPU = mpu;  //Should be an 'A'
+  char addrStr[3];  //char array to hold address
   addrStr[0] = input_str[1];
   addrStr[1] = input_str[2];
   addrStr[2] = '\0';
-  dev_addr = atoi(addrStr);
-  if (!length > 3) goto deadCmd;  //invalid, no command after address
-  dev_cmd = input_str[3];
+  dev_address = atoi(addrStr);
+  if (dev_address < 9 || dev_address > 19) goto deadCmd;  //invalid address
+  if (!(length > 4)) goto deadCmd;                      //invalid, no command after address
+  dev_command = input_str[3];
   char optStr[4];
-  for (int x = 0; x <= 2; x++) optStr[x] = input_str[x + 4];
-  optStr[3] = '\0';
-  dev_opt = atoi(optStr);  // that's the numerical argument after the command character
-  hasArgument = true;
+  optStr[0] = input_str[4];
+  if(input_str[5] == 13){
+    optStr[1]='\0';
+    dev_option = atoi(optStr);
+  }else {
+    optStr[1]=input_str[5];
+    if(input_str[6] == 13){
+      optStr[2]='\0';
+      dev_option = atoi(optStr);  
+    }else{
+      optStr[3]=input_str[6];
+      optStr[4]='\0';
+      dev_option = atoi(optStr);
+    }
+  }
   // switch on command character
-  switch (dev_cmd)  // 2nd or third char, should be the command char
+  switch (dev_command)  // 2nd char, should be the command char
   {
     case 'T':
-      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
-      doTcommand(dev_addr, dev_opt);
+      doTcommand(dev_address, dev_option);
       break;
     case 'S':
-      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
-      doScommand(dev_addr, dev_opt);
+      doScommand(dev_address, dev_option);
       break;
     default:
       goto deadCmd;  // unknown command
       break;
   }
+
   return;
+
+
 deadCmd:
+
   return;
 }
-//Raises the periscope - Return 0 while raising and 1 when raised
-byte P_Raise() {
-  static bool lightsOn = false;
-  static int step = 0;
-  switch (step) {
-    case 0:  //Move lift up
-      pLights(1);
-      step = 1;
-      break;
-    case 1:
-      if (motorUp(3)) step = 2;
-      break;
-    case 2:
-      perServo.write(135);
-      step = 3;
-      break;
-    case 3:
-      step = 0;
-      return 1;
-      break;
-  }
-  return 0;
-}
 
-//Lowers the periscope - Returns 0 while raising and 1 when raised
-byte P_Lower() {
-  static int step = 0;
-  switch (step) {
-    case 0:  //Move Motor
-      if (digitalRead(P_HALL) == LOW) {
-        perServo.write(90);
-        step = 1;
-      }
-      break;
-    case 1:
-      if (motorDown(3)) step = 2;
-      break;
-    case 2:
-      pLights(0);
-      step = 3;
-      break;
-    case 3:  //Final cleanup and return 1 for a job well done
-      step = 0;
-      return 1;
-      break;
-  }
-  return 0;
+//Safely reset all body devices to their starting configuration.
+void safeReset() {
+  servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
+  servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
+  servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
+  servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
+  delay(2000);
+  servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
+  servoControl.setPWM(GA_LFT, 0, GA_LFT_MIN);
+  delay(2000);
+  servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
+  servoControl.setPWM(GA_DOR, 0, GA_DOR_MIN);
 }
 
 
-//PLift is the fifth thread of seven threads in this program.  It handles all interactions with the
-//Periscope.  It is controlled by the periscope_state.
-void PLift(int option) {
-  static int plstate = 0;
-  //Serial.println("Light saber");
+//Handles all interactions with the utility arms
+void utilityArms(int option) {
   switch (option) {
     case 0:
-      //default - No Action
       return;
-      break;
-    case 1:  //Raise Periscope
-      if (!plstate) {
-        pLights(1);
-        plstate = 1;
-      }
-      if (P_Raise() == 1) periscope_state = 0;
-      break;
-    case 2:  //lower Periscope
-      if (P_Lower() == 1) {
-        periscope_state = 0;
-        pLights(0);
-        plstate = 0;
-      }
-      break;
-    case 3:  // Alternate rotation
-      P_Alt_Raise();
-      break;
-  }
-}
-
-int P_Alt_Raise() {
-  static int step = 0;
-  static byte dir = 0;
-  static byte hall_hit = 0;
-  switch (step) {
-    case 0:  //Move lift up
-      pLights(1);
-      step = 1;
-      break;
     case 1:
-      if (motorUp(3)) step = 2;
+      servoControl.setPWM(UA_TOP, 0, UA_TOP_MAX);
+      servoControl.setPWM(UA_BOT, 0, UA_BOT_MAX);
+      ua_State = 0;
       break;
     case 2:
-      if (dir) {
-        perServo.write(135);
-      } else {
-        perServo.write(45);
-      }
-      step = 3;
-      break;
-
-    case 3:
-      current_time = millis();
-      if (current_time - p_timer > 1000) {
-        p_timer = current_time;
-        step = 4;
-        hall_hit = 0;
-      }
-      break;
-    case 4:
-      if (digitalRead(P_HALL) == LOW && hall_hit == 0) {
-        hall_hit = 1;
-        perServo.write(90);
-        dir = !dir;
-        step = 5;
-      }
-      break;
-    case 5:
-      current_time = millis();
-      if (current_time - p_timer > 200) {
-        p_timer = current_time;
-        step = 0;
-      }
-      break;
-  }
-  return 0;
-}
-
-void pLights(int num) {
-  switch (num) {
-    case 0:  //Periscope Lights off
-      char cmd0[] = "F60T2";
-      Serial2.flush();
-      for (int x = 0; x < 5; x++) Serial2.write(cmd0[x]);
-      Serial2.write(13);
-      break;
-    case 1:  //Periscope Light on defalult value
-      char cmd1[] = "F60T1";
-      Serial2.flush();
-      for (int x = 0; x < 5; x++) Serial2.write(cmd1[x]);
-      Serial2.write(13);
-      break;
-  }
-  return;
-}
-
-
-
-// The bad motivator uses a 74HC595 chip to control its 8 lights.  The updateShiftRegister
-// function uses the binary value of leds to update the lights
-void updateShiftRegister() {
-  digitalWrite(BM_LATCH, LOW);
-  shiftOut(BM_DATA, BM_CLOCK, LSBFIRST, leds);
-  digitalWrite(BM_LATCH, HIGH);
-}
-
-
-//ZapLift is the third thread of seven threads in this program.  It handles all interactions with the
-//Zapper.  It is controlled by the zapper_state.
-void ZapLift(int option) {
-  static int step = 0;
-  if (option == 7) setTimer(1, 250);
-  current_time = millis();
-  switch (option) {
-    case 0:  //ZapLift state unchanged;
-      step = 0;
-      return;
-      break;
-    case 1:  //Raise lift
-      if (Z_Raise()) {
-        zapper_state = 0;
-        return;
-      }
-      break;
-    case 2:  //Move Zapper to stored position
-      if (Z_Lower()) {
-        zapper_state = 0;
-        return;
-      }
-      break;
-    case 3:  //Rotate Zapper Open
-      moveServo(Z_ROT, Z_RMIN, Z_RMAX);
-      zapper_state = 0;
-      break;
-    case 4:  //Rotate Zapper closed
-      moveServo(Z_ROT, Z_RMAX, Z_RMIN);
-      zapper_state = 0;
-      break;
-    case 5:  //Extend Zapper
-      moveServo(Z_EXT, Z_EMIN, Z_EMAX);
-      zapper_state = 0;
-      break;
-    case 6:  //Fold Zapper
-      moveServo(Z_EXT, Z_EMAX, Z_EMIN);
-      zapper_state = 0;
-      break;
-    case 7:  //Zap!
-      if (ZapLights(1) == 1) {
-        ZapLights(0);
-        zapper_state = 0;
-      }
-      break;
-    case 8:  //Long Zap Seq
-      if (zapSeq1() == 1) {
-        zapper_state = 0;
-      }
+      servoControl.setPWM(UA_TOP, 0, UA_TOP_MIN);
+      servoControl.setPWM(UA_BOT, 0, UA_BOT_MIN);
+      ua_State = 0;
       break;
   }
 }
 
 
-//ZapLights operates the Zap light on the zapper. Pass a 0 to shut off and a positive number to run
-byte ZapLights(int num) {
-  if (num) {
-    switch (z_state) {
-      case 0:
-        current_time = millis();
-        digitalWrite(Z_LED, HIGH);  // sets the led HIGH
-        if (current_time - z_timer >= z_int) {
-          z_timer = current_time;
-          z_state = 1;
-        }
-        break;
-      case 1:
-        current_time = millis();
-        digitalWrite(Z_LED, LOW);  // sets the led LOW
-        if (current_time - z_timer >= z_int) {
-          z_timer = current_time;
-          z_state = 2;
-        }
-        break;
-      case 2:
-        current_time = millis();
-        z_flash_count++;
-        if (z_flash_count == 8) {
-          z_state = 0;
-          z_flash_count = 0;
-          return 1;
-        } else {
-          z_state = 0;
-        }
-        break;
-    }
-  } else digitalWrite(Z_LED, LOW);
-  return 0;
+/*************************************************************************
+ **************************  SETUP FUNCTION  *****************************
+ *************************************************************************/
+
+void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(9600);   //Serial Connection with Dome Lift Mega
+  Serial1.begin(9600);  //Serial Connection with MP3 Trigger
+  Serial2.begin(9600);  //Serial Connection with Lights Mega
+  Serial3.begin(9600);  //Serial Connection with Xbox Uno
+  //Wait 3 seconds before playing startup sound
+  servoControl.begin();
+  servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
+  pinMode(OE_PIN, OUTPUT);
+  digitalWrite(OE_PIN, LOW);
+  safeReset();
+  mp3_init();
+}
+
+/*************************************************************************
+ ***************************  LOOP FUNCTION  *****************************
+ *************************************************************************/
+void loop() {
+  mp3_do_random();
+  // put your main code here, to run repeatedly:
+  if (checkSerial()) parseCommand(cmdStr0);
+  if (checkSerial1()) parseCommand(cmdStr1);
+  if (checkSerial2()) parseCommand(cmdStr2);
+  if (checkSerial3()) parseCommand(cmdStr3);
+  utilityArms(ua_State);
+  interfaceArm(ia_State);
+  gripper(ga_State);
 }
 
 
 
-int setTimer(int num, int interval) {
-  if (num) {
-    current_time = millis();
-    z_raise_timer = current_time;
-    z_raise_int = interval;
-    return 0;
-  } else {
-    current_time = millis();
-    if (current_time - z_raise_timer > z_raise_int) return 1;
-    else return 0;
-  }
-}
-byte Z_Lower() {
-  static int step = 0;
-  switch (step) {
-    case 0:  //Lights are off;
-      ZapLights(0);
-      step = 1;
-      break;
-    case 1:  //Rotate the Zapper
-      moveServo(Z_ROT, Z_RMAX, Z_RMIN);
-      step = 2;
-      break;
-    case 2:  //Zapper folded
-      moveServo(Z_EXT, Z_EMAX, Z_EMIN);
-      step = 3;
-      break;
-    case 3:  //Move Motor
-      if (motorDown(1)) step = 4;
-      break;
-    case 4:  //Close the pie
-      servoControl.setPWM(Z_PIE, 0, Z_PMIN);
-      step = 5;
-      break;
-    case 5:  //Final cleanup and return 1 for a job well done
-      step = 0;
-      return 1;
-      break;
-  }
-  return 0;
-}
-
-byte Z_Raise() {
-  static int step = 0;
-  switch (step) {
-    case 0:  //Open pie
-      servoControl.setPWM(Z_PIE, 0, Z_PMAX);
-      step = 1;
-      break;
-    case 1:  //Move lift up
-      if (motorUp(1)) step = 2;
-      break;
-    case 2:  //Extend the zapper
-      moveServo(Z_EXT, Z_EMIN, Z_EMAX);
-      step = 3;
-      setTimer(1, 500);
-      break;
-    case 3:  //Rotate the zapper
-      moveServo(Z_ROT, Z_RMIN, Z_RMAX);
-      step = 4;
-      break;
-    case 4:  //Wait for everything to settle
-      if (setTimer(0, 500)) step = 5;
-      break;
-    case 5:  //Light the zapper
-      if (ZapLights(1) == 1) {
-        ZapLights(0);
-        step = 0;
-        return 1;
-      }
-      break;
-  }
-  return 0;
-}
-
-byte zapSeq1() {
-  static int step = 0;
-  switch (step) {
-    case 0:  //Open pie
-      servoControl.setPWM(Z_PIE, 0, Z_PMAX);
-      step = 1;
-      break;
-    case 1:  //Raise Zapper
-      if (motorUp(1)) step = 2;
-      break;
-    case 2:  //Extend Zapper
-      moveServo(Z_EXT, Z_EMIN, Z_EMAX);
-      setTimer(1, 500);
-      step = 3;
-      break;
-    case 3:
-      if (setTimer(0, 500)) step = 4;
-      break;
-    case 4:
-      if (ZapLights(1) == 1) {
-        ZapLights(0);
-        step = 5;
-        setTimer(1, 500);
-      }
-      break;
-    case 5:  //Move Servo to zap Position 2
-      moveServo(Z_ROT, Z_RMIN, Z_RMID);
-      moveServo(Z_EXT, Z_EMAX, Z_EMID);
-      setTimer(1, 500);
-      step = 6;
-      break;
-    case 6:  //Wait for dust to settle
-      if (setTimer(0, 500)) step = 7;
-      break;
-    case 7:  //Zap
-      if (ZapLights(1) == 1) {
-        ZapLights(0);
-        step = 8;
-        setTimer(1, 500);
-      }
-      break;
-    case 8:  //Move to position three
-      moveServo(Z_ROT, Z_RMID, Z_RMAX);
-      moveServo(Z_EXT, Z_EMID, Z_EMAX);
-      setTimer(1, 500);
-      step = 9;
-      break;
-    case 9:  //Wait for dust to settle
-      if (setTimer(0, 500)) step = 10;
-      break;
-    case 10:  //Zap
-      if (ZapLights(1) == 1) {
-        ZapLights(0);
-        step = 11;
-        setTimer(1, 500);
-      }
-      break;
-    case 11:  //Move to position four
-      moveServo(Z_EXT, Z_EMAX, Z_EMID);
-      setTimer(1, 500);
-      step = 12;
-      break;
-    case 12:  //Wait for dust to settle
-      if (setTimer(0, 500)) step = 13;
-      break;
-    case 13:  //Zap
-      if (ZapLights(1) == 1) {
-        ZapLights(0);
-        step = 14;
-        setTimer(1, 500);
-      }
-      break;
-    case 14:  //Move to position five
-      moveServo(Z_ROT, Z_RMAX, Z_RMID);
-      moveServo(Z_EXT, Z_EMID, Z_EMAX);
-      setTimer(1, 500);
-      step = 15;
-      break;
-    case 15:  //Wait for dust to settle
-      if (setTimer(0, 500)) step = 16;
-      break;
-    case 16:  //Zap
-      if (ZapLights(1) == 1) {
-        ZapLights(0);
-        step = 17;
-        setTimer(1, 500);
-      }
-      break;
-    case 17:  //Move to position six
-      moveServo(Z_ROT, Z_RMID, Z_RMIN);
-      moveServo(Z_EXT, Z_EMAX, Z_EMID);
-      setTimer(1, 500);
-      step = 18;
-      break;
-    case 18:  //Wait for dust to settle
-      if (setTimer(0, 500)) step = 19;
-      break;
-    case 19:  //Zap
-      if (ZapLights(1) == 1) {
-        ZapLights(0);
-        step = 20;
-        setTimer(1, 500);
-      }
-      break;
-    case 20:  //Move to open position
-      moveServo(Z_ROT, Z_RMID, Z_RMAX);
-      moveServo(Z_EXT, Z_EMID, Z_EMAX);
-      setTimer(1, 1000);
-      step = 21;
-      break;
-    case 21:  //Fold the Zapper and return to store position
-      moveServo(Z_ROT, Z_RMAX, Z_RMIN);
-      moveServo(Z_EXT, Z_EMAX, Z_EMIN);
-      step = 22;
-      break;
-    case 22:  //Move the Lift down
-      if (motorDown(1)) step = 23;
-      break;
-    case 23:  //Close Pie
-      servoControl.setPWM(Z_PIE, 0, Z_PMIN);
-      step = 24;
-      break;
-    case 24:
-      step = 0;
-      zapper_state = 0;
-      return 1;
-      break;
-  }
-  return 0;
-}
-
-void Sequencer(int opt) {
-  switch (opt) {
-    case 0:
-      return;
-      break;
-    case 1:
-      if (runSeq(panel_init)) seq_state = 0;
-      break;
-    case 2:
-      if (runSeq(panel_all_open)) seq_state = 0;
-      break;
-    case 3:
-      if (runSeq(panel_all_open_long)) seq_state = 0;
-      break;
-    case 4:
-      if (runSeq(panel_wave)) seq_state = 0;
-      break;
-    case 5:
-      if (runSeq(panel_fast_wave)) seq_state = 0;
-      break;
-    case 6:
-      if (runSeq(panel_open_close_wave)) seq_state = 0;
-      break;
-    case 7:
-      if (runSeq(panel_marching_ants)) seq_state = 0;
-      break;
-    case 8:
-      if (runSeq(panel_dance)) seq_state = 0;
-      break;
-    case 9:                   //opens all lift systems
-      zapper_state = 1;       // Run actions on the Zapper if any
-      light_saber_state = 1;  //Run actions on the Light Saber if any
-      periscope_state = 1;    //Run actions on the Periscope if any
-      bad_motive_state = 1;   //Run actions on the Bad Motivator if any
-      life_form_state = 1;    //Run actions on the Life Form Scanner if any
-      seq_state = 0;
-      break;
-    case 10:                  //Closes all lift systems
-      zapper_state = 2;       // Run actions on the Zapper if any
-      light_saber_state = 2;  //Run actions on the Light Saber if any
-      periscope_state = 2;    //Run actions on the Periscope if any
-      bad_motive_state = 2;   //Run actions on the Bad Motivator if any
-      life_form_state = 2;    //Run actions on the Life Form Scanner if any
-      seq_state = 0;
-      break;
-    case 11:
-      servoControl.setPWM(Z_PIE, 0, Z_PMAX);
-      seq_state = 0;
-      break;
-    case 12:
-      servoControl.setPWM(LS_PIE, 0, LS_PMAX);
-      seq_state = 0;
-      break;
-    case 13:
-      servoControl.setPWM(BM_PIE, 0, BM_PMAX);
-      seq_state = 0;
-      break;
-    case 14:
-      servoControl.setPWM(LF_PIE, 0, LF_PMAX);
-      seq_state = 0;
-      break;
-    case 15:
-      servoControl.setPWM(DP1, 0, DP1_MAX);
-      seq_state = 0;
-      break;
-    case 16:
-      servoControl.setPWM(DP2, 0, DP2_MAX);
-      seq_state = 0;
-      break;
-    case 17:
-      servoControl.setPWM(DP3, 0, DP3_MAX);
-      seq_state = 0;
-      break;
-    case 18:
-      servoControl.setPWM(DP4, 0, DP4_MAX);
-      seq_state = 0;
-      break;
-    case 19:
-      servoControl.setPWM(DP5, 0, DP5_MAX);
-      seq_state = 0;
-      break;
-    case 20:
-      servoControl.setPWM(DP6, 0, DP6_MAX);
-      seq_state = 0;
-      break;
-    case 21:
-      servoControl.setPWM(Z_PIE, 0, Z_PMIN);
-      seq_state = 0;
-      break;
-    case 22:
-      servoControl.setPWM(LS_PIE, 0, LS_PMIN);
-      seq_state = 0;
-      break;
-    case 23:
-      servoControl.setPWM(BM_PIE, 0, BM_PMIN);
-      seq_state = 0;
-      break;
-    case 24:
-      servoControl.setPWM(LF_PIE, 0, LF_PMIN);
-      seq_state = 0;
-      break;
-    case 25:
-      servoControl.setPWM(DP1, 0, DP1_MIN);
-      seq_state = 0;
-      break;
-    case 26:
-      servoControl.setPWM(DP2, 0, DP2_MIN);
-      seq_state = 0;
-      break;
-    case 27:
-      servoControl.setPWM(DP3, 0, DP3_MIN);
-      seq_state = 0;
-      break;
-    case 28:
-      servoControl.setPWM(DP4, 0, DP4_MIN);
-      seq_state = 0;
-      break;
-    case 29:
-      servoControl.setPWM(DP5, 0, DP5_MIN);
-      seq_state = 0;
-      break;
-    case 30:
-      servoControl.setPWM(DP6, 0, DP6_MIN);
-      seq_state = 0;
-      break;
-  }
-  return;
-}
-
-int runSeq(uint16_t const sequence_array[][11]) {
-  static int seq_step = 0;
-  static byte servo_moved = 0;
-  seq_Timeout = pgm_read_word(&(sequence_array[seq_step][0])) * 10;  // restart timer with step time value
-  if (seq_Timeout == 0) {
-    servo_moved = 0;
-    seq_step = 0;
-    return 1;
-  }
-  if (!servo_moved) {
-    //Serial.print(seq_Timeout);
-    //Serial.print(", ");
-    for (int x = 1; x <= 10; x++) {
-      uint16_t servo_pos = pgm_read_word(&sequence_array[seq_step][x]);
-      servoControl.setPWM(x + 1, 0, servo_pos);
-      //Serial.print(servo_pos);
-      //Serial.print(", ");
-    }
-    //Serial.println();
-    servo_moved = 1;
-  }
-  current_time = millis();
-  if (current_time - seq_timer > seq_Timeout) {
-    seq_timer = current_time;
-    seq_step++;
-    servo_moved = 0;
-  }
-  return 0;
-}
