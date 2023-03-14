@@ -100,6 +100,8 @@ Command lifeForm = createCommand(LF_ON, LF_OFF);
 Command scream = createCommand(SF_ON, SF_OFF);
 Command leia = createCommand(LW_ON, LW_OFF);
 Command music = createCommand(MU_ON, MU_OFF);
+Command holos = createCommand("D40T1", "D40T0");
+Command magicpanel = createCommand("D45T1", "D45T0");
 bool mtrsEnable = 0;
 
 
@@ -217,36 +219,18 @@ void loop() {
 
 
 
-      if (Xbox.getButtonClick(UP)) {
-        runCommand(&scream);
-      }
-      if (Xbox.getButtonClick(DOWN)) {
-        runCommand(&leia);
-      }
-      if (Xbox.getButtonClick(LEFT)) {
-        runCommand(&music);
-      }
-      if (Xbox.getButtonClick(RIGHT)) {
-        runCommand(&zapper);
-      }
+      if (Xbox.getButtonClick(UP)) runCommand(&scream);
+      if (Xbox.getButtonClick(DOWN)) runCommand(&leia);
+      if (Xbox.getButtonClick(LEFT)) runCommand(&music);
+      if (Xbox.getButtonClick(RIGHT)) runCommand(&holos);
+      if (Xbox.getButtonClick(START)) runCommand(&zapper);
+      if (Xbox.getButtonClick(BACK)) runCommand(&utility);
+      
+      if (Xbox.getButtonClick(L1)) runCommand(&gripper);
+      if (Xbox.getButtonClick(R1)) runCommand(&interface);
 
-
-      if (Xbox.getButtonClick(START)) {
-        //Xbox.setLedMode(ALTERNATING);
-        runCommand(&interface);
-      }
-      if (Xbox.getButtonClick(BACK)) {
-        //Xbox.setLedBlink(ALL);
-        runCommand(&gripper);
-      }
-      if (Xbox.getButtonClick(L1))
-      //runCommand(&zapper);
-      //if (Xbox.getButtonClick(R1)) runCommand(&utility);
-
-      if (Xbox.getButtonClick(L3))
-        runCommand(&dataport);
-      if (Xbox.getButtonClick(R3))
-        runCommand(&utility);
+      if (Xbox.getButtonClick(L3)) runCommand(&dataport);
+      if (Xbox.getButtonClick(R3)) runCommand(&magicpanel);
       if (Xbox.getButtonClick(XBOX)) {
         mtrsEnable = !mtrsEnable;
         if (mtrsEnable) {
@@ -282,5 +266,4 @@ void loop() {
     }
   }
 }
-
 
