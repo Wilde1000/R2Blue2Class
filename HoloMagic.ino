@@ -233,11 +233,11 @@ void checkSerial() {
   byte cmd_Complete;
   if (Serial.available()) {
     ch = Serial.read();
-    Serial.print(ch);
+    //Serial.print(ch);
     cmd_Complete = buildCommand(ch, cmdStr);
     if (cmd_Complete) {
       parseCommand(cmdStr);
-      Serial.println();
+     // Serial.println();
     }
   }
 }
@@ -318,8 +318,8 @@ void Holos(int opt) {
       break;
     case 1:  //Turn on holos with current color
       setHoloColor(curr_holo_color, 0);
-      holo_speed = 2000;
-      holoRandom();
+     // holo_speed = 2000;
+      //holoRandom();
 
       break;
     case 2:  //Standard random motion
@@ -395,48 +395,45 @@ void MagicPanel(int opt) {
 
 //The parseCommand takes the command from the buildCommand function and parses into its component parts - MPU, Address, Command and Option
 int parseCommand(char* input_str) {
-  byte hasArgument = false;
-  byte pos = 0;
   byte length = strlen(input_str);
   if (length < 2) goto deadCmd;  //not enough characters
-  int mpu = input_str[pos];      //MPU is the first character
+  int mpu = input_str[0];      //MPU is the first character
   if (MPU != mpu) {              //if command is not for this MPU - send it on its way
-
-    // Serial.println("HERE");
     Serial.flush();
-
-    for (int x = 0; x < length; x++) {
-      Serial.write(input_str[x]);
-    }
+    for (int x = 0; x < length; x++)  Serial.write(input_str[x]);
     Serial.write(13);
-    // Serial.println("DONE");
-
     return;
   }
-  if ((mpu > 64 && mpu < 71) || mpu == '@') dev_MPU = mpu;
-  else goto deadCmd;  //Not a valid MPU - end command
+  dev_MPU = mpu;
   // Now the address which should be the next two characters
   char addrStr[3];  //set up a char array to hold them (plus the EOS (end of String) character)
   addrStr[0] = input_str[1];
   addrStr[1] = input_str[2];
   addrStr[2] = '\0';
   dev_addr = atoi(addrStr);
-  if (!length > 3) goto deadCmd;  //invalid, no command after address
+  if (!length > 4) goto deadCmd;  //invalid, no command after address
   dev_cmd = input_str[3];
   char optStr[4];
-  for (int x = 0; x <= 2; x++) optStr[x] = input_str[x + 4];
-  optStr[3] = '\0';
+  optStr[0] = input_str[4];
+  if(input_str[5] == 13){
+    optStr[1]='\0';
+  }else {
+    optStr[1]=input_str[5];
+    if(input_str[6] == 13){
+      optStr[2]='\0';
+    }else{
+      optStr[3]=input_str[6];
+      optStr[4]='\0';
+    }
+  }
   dev_opt = atoi(optStr);  // that's the numerical argument after the command character
-  hasArgument = true;
   // switch on command character
   switch (dev_cmd)  // 2nd or third char, should be the command char
   {
     case 'T':
-      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
       doTcommand(dev_addr, dev_opt);
       break;
     case 'S':
-      if (!hasArgument) goto deadCmd;  // invalid, no argument after command
       doScommand(dev_addr, dev_opt);
       break;
     default:
