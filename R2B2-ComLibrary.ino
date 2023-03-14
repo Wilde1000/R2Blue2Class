@@ -630,7 +630,7 @@ void mp3_parse_command(char* commandstr) {
 
   uint8_t len = strlen(commandstr);
   // should have between 2 and 4 characters
-  if (len < 2 || len > 4) {
+  if (len < 2 || len > 5) {
     //Serial1.write(strSoundCmdError);
     return;
   }
