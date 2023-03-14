@@ -40,9 +40,36 @@ const byte team_9055[][16] PROGMEM = {
 {"D40S5#           "},
 {"W03#             "},
 {"@@@@@@#          "}  
-    
 };
 
+const byte team_9101[][16] PROGMEM = {
+{"G1T100#          "},  //Turns Top FLD to text mode
+{"G2T100#          "},  //Turns Bottom FLD to text mode
+{"E54T1#           "},  //Raise Motivator
+{"B24T1#           "},  //Open Data Panel
+{"B21T1#           "},  //Change Coin Slots to Red
+{"B22T1#           "},  //Change LDPL to Red
+{"D40S1#           "},  //Set Color of Holoprojectors to Red
+{"D45S1#           "},  //Set Color of Magic Panel to Red
+{"D45T1#           "},  //Turn on Magic Panel
+{"D40T1#           "},  //Turn on Holoprojectors
+{"J0001#           "},  //Play General Sound #1 
+{"G1MTEAM#         "},  //Display TEAM on Top FLD
+{"G2M9101#         "},  //Display 9101 on Bottom FLD
+{"W15#             "},  //Wait 15 secs
+{"E54T2#           "},  //Lower Motivator
+{"G0T1#            "},  //Return FLD to Normal
+{"B21T16#          "},  //Change coin slots to Blue Single
+{"B22T16#          "},  //Change LDPL to Blue Two Across
+{"B24T2#           "},  //Close the Dataport Door
+{"D40T0#           "},  //Shut off Holoprojectors
+{"D45T0#           "},  //Shut off Magic Panel
+{"D45S5#           "},  //Reset Magic Panel back to Blue
+{"D40S5#           "},  //Reset Holoprojector back to Blue
+{"W03#             "},  //Wait 3 Seconds
+{"@@@@@@#          "}   //End program
+    
+};
 
 
 const byte all_tools_card[][16] PROGMEM = {
