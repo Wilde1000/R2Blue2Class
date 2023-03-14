@@ -14,6 +14,36 @@ const byte panel_open_close_wave_card[][16] PROGMEM = {
     
 };
 
+const byte team_9055[][16] PROGMEM = {
+{"G1T100#          "},
+{"G2T100#          "},
+{"E54T1#           "},
+{"B24T1#           "},
+{"B21T1#           "},
+{"B22T1#           "},
+{"D40S1#           "},
+{"D45S1#           "},
+{"D45T1#           "},
+{"D40T1#           "},
+{"JS#              "},
+{"G1MTEAM#         "},
+{"G2M9055#         "},
+{"W15#             "},
+{"E54T2#           "},
+{"G0T1#            "},
+{"B21T16#          "},
+{"B22T16#          "},
+{"B24T2#           "},
+{"D40T0#           "},
+{"D45T0#           "},
+{"D45S5#           "},
+{"D40S5#           "},
+{"W03#             "},
+{"@@@@@@#          "}  
+    
+};
+
+
 
 const byte all_tools_card[][16] PROGMEM = {
 {"E51T1#           "},
