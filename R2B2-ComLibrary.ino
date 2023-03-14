@@ -146,7 +146,7 @@ The command structure is as follows:
 #define IA_EXT_MIN 200  //Interface Arm Extension (in position)
 //Gripper Arm
 #define GA_DOR 4        //Gripper Arm Door Servo PCA9685 pin
-#define GA_DOR_MAX 375  //Gripper Arm Door Servo (open position)
+#define GA_DOR_MAX 300  //Gripper Arm Door Servo (open position)
 #define GA_DOR_MIN 200  //Gripper Arm Door Servo (close position)
 #define GA_LFT 5        //Gripper Arm Lift Servo PCA9685 pin
 #define GA_LFT_MAX 150  //Gripper Arm Lift Servo (up position)
@@ -186,6 +186,12 @@ The command structure is as follows:
 // this defines where the startup sound is
 #define MP3_EMPTY_SOUND 254   // workaround, used to stop sounds
 #define MP3_START_SOUND 255   // startup sound is number 255
+#define MP3_LEIA 151 //Leia Sound number
+#define MP3_FAINT 128
+#define MP3_SCREAM 126
+#define MP3_DISCO 181
+#define MP3_MANAMA 179
+#define MP3_CANTINA 180
 #define SOUND_START_CHAR 'J'  //Lead character for sound commands
 #define MP3_VOLUME_MID 50     // guessing mid volume 32 is right in-between...
 #define MP3_VOLUME_MIN 100    // doc says anything below 64 is inaudible, not true, 100 is. 82 is another good value
@@ -623,15 +629,9 @@ void mp3_parse_command(char* commandstr) {
 
 
   uint8_t len = strlen(commandstr);
-  // check the start character
-  if (commandstr[0] != SOUND_START_CHAR) {
-    Serial1.write(strSoundCmdError);
-    return;
-  }
-
   // should have between 2 and 4 characters
   if (len < 2 || len > 4) {
-    Serial1.write(strSoundCmdError);
+    //Serial1.write(strSoundCmdError);
     return;
   }
 
@@ -659,24 +659,24 @@ void mp3_parse_command(char* commandstr) {
       break;
     case 'C':  // C - Cantina music (bank 9 sound 5)
       mp3_stop_random();
-      mp3_sound(8, 5);
+      mp3_sound(0, MP3_CANTINA);
       break;
     case 'D':  // D - Disco (bank 9 sound 6)
       mp3_stop_random();
-      mp3_sound(8, 6);
+      mp3_sound(0, MP3_DISCO);
       break;
     case 'F':  // F - Faint/Short Circuit (bank 6 sound 3)
       mp3_stop_random();
-      mp3_sound(6, 3);
+      mp3_sound(0, MP3_FAINT);
       break;
     case 'L':  // L - Leia message (bank 7 sound 1)
       mp3_stop_random();		// so long (34s), just stop random?
-      mp3_sound(7, 1);
+      mp3_sound(0, MP3_LEIA);
       break;
     case 'M':             // M - Imperial March (bank 9 sound 3)
       mp3_stop_random();  // so long, just stop random
       //mp3_suspend_random();
-      mp3_sound(8, 3);
+      mp3_sound(0, MP3_MANAMA);
       //mp3_resume_random();
       break;
     case 'O':  // O - sound off
@@ -689,7 +689,7 @@ void mp3_parse_command(char* commandstr) {
       break;
     case 'S':  // S - Scream (bank 6 sound 1)
       mp3_stop_random();
-      mp3_sound(6, 1);
+      mp3_sound(0, MP3_SCREAM);
       break;
     case 'W':             // W - Star Wars music (bank 9 sound 2)
       mp3_stop_random();  // so long, just stop random
@@ -719,9 +719,10 @@ void mp3_parse_command(char* commandstr) {
       mp3_stop();
       break;
     default:
-      Serial1.write(strSoundCmdError);
+      //Serial1.write(strSoundCmdError);
       break;
   }
+  return;
 }
 
 //The mp3_playstartsound() function plays the start sound
