@@ -651,68 +651,45 @@ void mp3_parse_command(char* commandstr) {
 
   // the command is a character
   switch (cmdch) {
-    case 'R':              // R - random from 4 first banks
-      mp3_start_random();  // keep firing random sounds
-      //mp3_random();		// this is just a one shot
-      break;
-    case 'O':  // O - sound off
-      mp3_stop_random();
-      mp3_volumeoff();
-      break;
-    case 'L':  // L - Leia message (bank 7 sound 1)
-      //mp3_stop_random();		// so long (34s), just stop random?
-      mp3_suspend_random();
-      mp3_sound(7, 1);
-      mp3_random_timer = 4400;  // 34s + 10s extra long delay
-      mp3_resume_random();
-      break;
-    case 'C':  // C - Cantina music (bank 9 sound 5)
-      //mp3_stop_random();		// so long, just stop random
-      mp3_suspend_random();
-      mp3_sound(8, 5);
-      mp3_random_timer = 5600;  // extra long delay
-      mp3_resume_random();
-      break;
-    case 'c':  // c - Beep cantina (bank 9 sound 1)
-      mp3_suspend_random();
-      mp3_sound(8, 1);
-      mp3_random_timer = 2700;  // extra long delay
-      mp3_resume_random();
-      break;
-    case 'S':  // S - Scream (bank 6 sound 1)
-      mp3_suspend_random();
-      mp3_sound(6, 1);
-      mp3_resume_random();
-      break;
-    case 'F':  // F - Faint/Short Circuit (bank 6 sound 3)
-      mp3_suspend_random();
-      mp3_sound(6, 3);
-      mp3_resume_random();
-      break;
-    case 'D':  // D - Disco (bank 9 sound 6)
-      mp3_suspend_random();
-      mp3_sound(8, 6);
-      mp3_random_timer = 39600;  // 6:26 +10s min extra long delay
-      mp3_resume_random();
-      break;
-    case 's':  // s - stop sounds
-      mp3_stop_random();
-      mp3_stop();
-      break;
     case '+':  // + - volume up
       mp3_volumeup();
       break;
     case '-':  // - - volume down
       mp3_volumedown();
       break;
-    case 'm':  // m - volume mid
-      mp3_volumemid();
+    case 'C':  // C - Cantina music (bank 9 sound 5)
+      mp3_stop_random();
+      mp3_sound(8, 5);
       break;
-    case 'f':  // f - volume max
-      mp3_volumemax();
+    case 'D':  // D - Disco (bank 9 sound 6)
+      mp3_stop_random();
+      mp3_sound(8, 6);
       break;
-    case 'p':  // p - volume min
-      mp3_volumemin();
+    case 'F':  // F - Faint/Short Circuit (bank 6 sound 3)
+      mp3_stop_random();
+      mp3_sound(6, 3);
+      break;
+    case 'L':  // L - Leia message (bank 7 sound 1)
+      mp3_stop_random();		// so long (34s), just stop random?
+      mp3_sound(7, 1);
+      break;
+    case 'M':             // M - Imperial March (bank 9 sound 3)
+      mp3_stop_random();  // so long, just stop random
+      //mp3_suspend_random();
+      mp3_sound(8, 3);
+      //mp3_resume_random();
+      break;
+    case 'O':  // O - sound off
+      mp3_stop_random();
+      mp3_volumeoff();
+      break;
+    case 'R':              // R - random from 4 first banks
+      //mp3_start_random();  // keep firing random sounds
+      mp3_random();		// this is just a one shot
+      break;
+    case 'S':  // S - Scream (bank 6 sound 1)
+      mp3_stop_random();
+      mp3_sound(6, 1);
       break;
     case 'W':             // W - Star Wars music (bank 9 sound 2)
       mp3_stop_random();  // so long, just stop random
@@ -720,11 +697,26 @@ void mp3_parse_command(char* commandstr) {
       mp3_sound(8, 2);
       //mp3_resume_random();
       break;
-    case 'M':             // M - Imperial March (bank 9 sound 3)
-      mp3_stop_random();  // so long, just stop random
-      //mp3_suspend_random();
-      mp3_sound(8, 3);
-      //mp3_resume_random();
+    case 'c':  // c - Beep cantina (bank 9 sound 1)
+      mp3_stop_random();
+      mp3_sound(8, 1);
+      break;
+    case 'f':  // f - volume max
+      mp3_volumemax();
+      break;
+    case 'm':  // m - volume mid
+      mp3_volumemid();
+      break;
+    case 'p':  // p - volume min
+      mp3_volumemin();
+      break;
+    case 'r':              // R - random from 4 first banks
+      mp3_start_random();  // keep firing random sounds
+      //mp3_random();		// this is just a one shot
+      break;
+    case 's':  // s - stop sounds
+      mp3_stop_random();
+      mp3_stop();
       break;
     default:
       Serial1.write(strSoundCmdError);
@@ -923,13 +915,11 @@ void mp3_volumeup() {
 
 //Parses serial command and routes it on its way
 byte parseCommand(char* input_str) {
-  bool hasArgument = false;
   //At this point we have a command from one of the serial interfaces
   //The first step is to determine if it is for this MPU or needs to sent to another MPU
-  byte pos = 0;
   byte length = strlen(input_str);
   if (length < 2) goto deadCmd;  //not enough characters
-  char mpu = input_str[pos];
+  char mpu = input_str[0];
   if (MPU != mpu) {  //if command is not for this MPU - send it on its way
     switch (mpu) {
       
@@ -1081,5 +1071,4 @@ void loop() {
   interfaceArm(ia_State);
   gripper(ga_State);
 }
-
 
