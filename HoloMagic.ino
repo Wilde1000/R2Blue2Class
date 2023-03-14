@@ -118,9 +118,9 @@ char dev_cmd;                 //Contains the Command code from incoming serial m
 char rfData[MAX_RF_CMD][16];  //Contains the all the data from a scanned card
 
 int blockNum = 2;                  //Contains the current block number
-int curr_holo_color = 13;          //Contains current color code for the holoprojectors
+int curr_holo_color = 5;          //Contains current color code for the holoprojectors
 int curr_tholo_color = 5;          //Contains current color code for the top holoprojector
-int current_mp_color = 6;          //Contains current color code for the Magic Panel
+int current_mp_color = 1;          //Contains current color code for the Magic Panel
 int dev_addr;                      //Device address received from Serial interface
 int dev_opt;                       //Device option received from the Serial interface
 int holo_speed;                    //Holds the current holo timeout speed.
@@ -527,7 +527,7 @@ void sequencer() {
       rf_wait = ((cmd[1] - 48) * 10 + (cmd[2] - 48)) * 1000;
       //Serial.println(rf_wait);
       return;
-    } else if (cmd[0] >= 65 && cmd[0] <= 71) parseCommand(cmd);
+    } else if (cmd[0] >= 65 && cmd[0] <= 75) parseCommand(cmd);
     return;
   }
 }
