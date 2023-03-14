@@ -18,6 +18,7 @@ In addition, two more Nanos (H and I) are available on the electronics board.
 
 R2B2-ComLib.ino is the program for the Body Master.  It connects to the Dome Lift Mega through Serial0, to the MP3 Trigger through Serial1, to the Body Lights Mega through Serial2, and the Drive Uno through Serial3.  In addition, it is connected through I2C to a PCA9685 16-Servo Driver.
 
+R2B2-BodyLights.ino is the program for the Body Lights Mega.  It connects to the Body Master through Serial 0; 
 
 
 
