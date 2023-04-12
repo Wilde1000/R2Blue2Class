@@ -1566,7 +1566,7 @@ void setup() {
   Serial.begin(9600);   //Connection with controller Arduino
   Serial1.begin(9600);  //Connection with Holo Projector Nano
   Serial2.begin(9600);  //Connection with Periscope
-  Serial3.begin(2400);  //Teeces Connection
+  Serial3.begin(9600);  //Teeces Connection
   servoControl.begin();
   servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
   int x;
@@ -1611,7 +1611,7 @@ void setup() {
 
 void loop() {
   checkSerial();              //Check Serial 0 for commands
-  checkSerial1();             //Check Serial 0 for commands
+  checkSerial1();             //Check Serial 1 for commands
   ZapLift(zapper_state);      // Run actions on the Zapper if any
   LSLift(light_saber_state);  //Run actions on the Light Saber if any
   PLift(periscope_state);     //Run actions on the Periscope if any
