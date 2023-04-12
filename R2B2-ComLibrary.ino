@@ -1065,8 +1065,6 @@ void loop() {
   mp3_do_random();
   // put your main code here, to run repeatedly:
   if (checkSerial()) parseCommand(cmdStr0);
-  if (checkSerial1()) parseCommand(cmdStr1);
-  if (checkSerial2()) parseCommand(cmdStr2);
   if (checkSerial3()) parseCommand(cmdStr3);
   utilityArms(ua_State);
   interfaceArm(ia_State);
