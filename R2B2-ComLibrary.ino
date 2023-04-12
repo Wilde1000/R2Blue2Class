@@ -155,9 +155,9 @@ The command structure is as follows:
 #define GA_EXT_MAX 200  //Gripper Arm Extension Servo (open gripper)
 #define GA_EXT_MIN 375  //Gripper Arm Extension Servo (close gripper)
 //Data Panel Door
-#define DP_DOR 8        //Data Panel Door Servo PCA9685 pin
-#define DP_DOR_MAX 425  //Data Panel Door Servo (open position)
-#define DP_DOR_MIN 200  //Data Panel Door Servo (close position)
+//#define DP_DOR 8        //Data Panel Door Servo PCA9685 pin
+//#define DP_DOR_MAX 425  //Data Panel Door Servo (open position)
+//#define DP_DOR_MIN 200  //Data Panel Door Servo (close position)
 
 #define OE_PIN 8       //Set low to enable servos - low to disable servos
 #define SERVO_FREQ 50  //Standard servo frequency is 50Kz
