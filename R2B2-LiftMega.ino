@@ -880,7 +880,6 @@ int parseCommand(char* input_str) {
       Serial.write(13);
       return;
     }
-
     if (mpu == 'D') {
       Serial1.flush();
       for (int x = 0; x < length; x++) Serial1.write(input_str[x]);
@@ -902,7 +901,6 @@ int parseCommand(char* input_str) {
     }
   }
   dev_MPU = mpu;
-  //Not a valid MPU - end command
   // Now the address which should be the next two characters
   char addrStr[3];  //set up a char array to hold them (plus the EOS (end of String) character)
   addrStr[0] = input_str[1];
@@ -1561,12 +1559,53 @@ int runSeq(uint16_t const sequence_array[][11]) {
   return 0;
 }
 
+//safeReset resets all dome tools to their stored positions and all panels to their closed positions.
+void safeReset(){
+  //The zapper - Since the zapper animation is a routine that both raises and lowers the zapper, it 
+  //should never be a in a halfway position. 
+  if(digitalRead(Z_BOT)){  //If the bottom limit switch is open (1 is open)
+    while(!motorUp(1)); //Move until zapper top limit switch engages
+    //Rotate servo to stored position
+    servoControl.setPWM(Z_ROT, 0, Z_RMIN);
+    delay(100); //Wait to get in position
+    servoControl.setPWM(Z_EXT, 0, Z_EMIN);
+    delay(100); //Wait to get in position
+    while(!motorDown(1)); 
+    servoControl.setPWM(Z_PIE, 0, Z_PMIN);
+  } 
+  //Light saber
+  if(digitalRead(LS_BOT)){
+    while(!motorDown(2));
+    servoControl.setPWM(LS_PIE, 0, LS_PMIN);
+  }
+  //Periscope
+  if(digitalRead(P_BOT)){
+    while(!motorUp(3));  //Raise the periscope
+    perServo.write(135);  //Turn the periscope
+    while(!P_Lower());  //Lower the periscope
+  }
+  //Bad Motivator
+  if(digitalRead(BM_BOT)){
+    while(!motorDown(4));
+    servoControl.setPWM(BM_PIE, 0, BM_PMIN);
+  }
+  //Life Form Scanner
+  if(digitalRead(LF_BOT)){
+    while(!motorUp(5));  //Raise the Life Form Scanner
+    lfServo.write(135);  //Turn the Life Form Scanner
+    while(!LS_Lower());  //Lower the Life Form Scanner
+  }
+  Sequencer(1);
+  return;
+}
+
+
 
 void setup() {
   Serial.begin(9600);   //Connection with controller Arduino
   Serial1.begin(9600);  //Connection with Holo Projector Nano
-  Serial2.begin(9600);  //Connection with Periscope
-  Serial3.begin(9600);  //Teeces Connection
+  Serial2.begin(9600);  //Connection with Periscope Nano
+  Serial3.begin(9600);  //Teeces Connection 
   servoControl.begin();
   servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
   int x;
@@ -1605,6 +1644,7 @@ void setup() {
   digitalWrite(OE_PIN, LOW);
   leds = 0;
   updateShiftRegister();
+  safeReset();
 }
 
 
