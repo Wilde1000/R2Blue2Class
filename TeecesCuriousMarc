@@ -72,9 +72,9 @@
 #define BAUDRATE 9600
 
 // Startup Text
-char TFLDtext[] =  "       R2-BLUE2    "; //PUT YOUR TOP FRONT STARTUP TEXT HERE.
-char BFLDtext[] =  "   BLUE CREW 6153  "; //PUT YOUR BOTTOM FRONT STARTUP TEXT HERE.
-char RLDtext[] =   "FOSTER TECH CENTER "; //PUT YOUR REAR STARTUP TEXT HERE.
+char TFLDtext[] =  "       R2-BLUE2     "; //PUT YOUR TOP FRONT STARTUP TEXT HERE.
+char BFLDtext[] =  "   BLUE CREW 6153   "; //PUT YOUR BOTTOM FRONT STARTUP TEXT HERE.
+char RLDtext[] =   "BLUE CREW ROBOTICS  "; //PUT YOUR REAR STARTUP TEXT HERE.
 
 //#define TESTLOGICS //uncomment to turns on all logic LEDs at once, useful for troubleshooting
 
@@ -148,9 +148,9 @@ Command S, PSI state
 // =======================================================================================
 
 // set brightness levels here (a value of 0-15)
-#define RLDbrightness    2  //rear Logic
+#define RLDbrightness    1  //rear Logic
 #define RPSIbrightness   15  //rear PSI
-#define FLDbrightness    2   //front Logics
+#define FLDbrightness    1   //front Logics
 #define FPSIbrightness   15  //front PSI
 
 // time in ms between logic display updates (lower = blink faster)
@@ -180,7 +180,7 @@ Command S, PSI state
 #define PSIstuckhowoften 5     // how often. 5 means 1 out of 5 swipes on average. So the higher the less often.
 
 // text scroll speed (in ms, lower= scroll faster)
-#define SCROLLspeed 64
+#define SCROLLspeed 96
 
 // Leia effect parameters
 #define LEIAduration  34000 // in ms
