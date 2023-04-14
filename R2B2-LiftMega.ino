@@ -108,7 +108,7 @@ The command structure is as follows:
 #define DP3_MIN 275  //done
 #define DP3_MAX 400  //done
 #define DP4 9
-#define DP4_MIN 240
+#define DP4_MIN 200
 #define DP4_MAX 375
 #define DP5 10
 #define DP5_MIN 340
@@ -216,7 +216,7 @@ uint16_t seq_Timeout;  //Holds the sequence step timeout for the Panel Sequencer
 
 
 const uint16_t panel_init[][11] PROGMEM = {
-  { 20, Z_PMIN, LS_PMAX, BM_PMIN, LF_PMAX, DP1_MIN, DP2_MAX, DP3_MIN, DP4_MAX, DP5_MIN, DP6_MAX },
+  { 20, Z_PMIN, LS_PMIN, BM_PMIN, LF_PMIN, DP1_MIN, DP2_MIN, DP3_MIN, DP4_MIN, DP5_MIN, DP6_MIN },
   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
 
