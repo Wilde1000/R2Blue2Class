@@ -50,7 +50,7 @@ Spark Max (Ask me how I know this!!!).
 #define BM_OFF "E54T2"        //Bad Motivator off command
 #define LF_ON  "E55T1"        //Life Form on command
 #define LF_OFF "E55T2"        //Life Form off command
-#define SF_ON  "JS"           //Scream command
+#define SF_ON  "E50T31"           //Scream command
 #define SF_OFF "JF"           //Faint command                              
 #define LW_ON  "JL"           //Leia command
 #define LW_OFF "JW"           //Star Wars Music
