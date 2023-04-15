@@ -202,7 +202,7 @@ long int z_raise_timer = current_time;  //Holds the zapper raise timer
 long int bm_timer = current_time;       //Holds the timer for bad motivator lights
 long int p_timer = current_time;        //Holds the rotational timer for the Periscope
 long int seq_timer = current_time;      //Holds the sequence step timer for the Panel Sequencer
-
+long int scream_timer = current_time;  
 //Servo Objects
 Servo lfServo;   //Life Form Continous Rotation Servo
 Servo perServo;  //Periscope Continous Rotation Servo
@@ -923,23 +923,24 @@ int parseCommand(char* input_str) {
     }
   }
 
-dev_opt = atoi(optStr);  // that's the numerical argument after the command character
+  dev_opt = atoi(optStr);  // that's the numerical argument after the command character
 
-// switch on command character
-switch (dev_cmd)  // 2nd or third char, should be the command char
-{
-  case 'T':
-    doTcommand(dev_addr, dev_opt);
-    break;
-  case 'S':
-    doScommand(dev_addr, dev_opt);
-    break;
-  default:
-    goto deadCmd;  // unknown command
-    break;
-}
-return;
-deadCmd : return;
+  // switch on command character
+  switch (dev_cmd)  // 2nd or third char, should be the command char
+  {
+    case 'T':
+      doTcommand(dev_addr, dev_opt);
+      break;
+    case 'S':
+      doScommand(dev_addr, dev_opt);
+      break;
+    default:
+      goto deadCmd;  // unknown command
+      break;
+  }
+  return;
+deadCmd:
+  return;
 }
 
 
@@ -1525,9 +1526,76 @@ void Sequencer(int opt) {
       servoControl.setPWM(DP6, 0, DP6_MIN);
       seq_state = 0;
       break;
+    case 31:  //Scream Sequence
+    if (screamSeq()==1) seq_state = 0;
+      break;
   }
   return;
 }
+
+
+int screamSeq() {
+  current_time = millis();
+  int static step=0;
+  
+  char hpon[]="D40T1";
+  char mpon[]="D45T1";
+  char mpoff[]="D40T0";
+  char hpoff[]="D45T0";
+  char scream[]="JS";
+  char teeceOn[]="G0T2";
+  char teeceOff[]="G0T1";
+  switch(step){
+    case 0:  //Turn on the Holoprojectors
+      Serial.flush();
+      for(int x=0; x<5; x++) Serial.write(hpon[x]);
+      Serial.write(13);
+      step=1;
+      break;
+    case 1: //Turn on Magic Panel
+      for(int x=0; x<5; x++) Serial.write(mpon[x]);
+      Serial.write(13);
+      step=2;
+      break;
+    case 2:  //Set the Teeces to Scream
+      for(int x=0; x<4; x++) Serial.write(teeceOn[x]);
+      Serial.write(13);
+      step=3;
+      break;
+    case 3: //Send the Scream command
+      for(int x=0; x<2; x++) Serial.write(scream[x]);
+      Serial.write(13);
+      step=4;
+      break;
+    case 4: //Open the panels
+      if(runSeq(panel_all_open))step = 5;
+      break;
+    case 5:  //Reset teeces
+      for(int x=0; x<4; x++) Serial.write(teeceOff[x]);
+      Serial.write(13);
+      step=6;
+      break;
+    case 6:  //Turn off Magic Panel
+      for(int x=0; x<5; x++) Serial.write(mpoff[x]);
+      Serial.write(13);
+      step=7;
+      break;
+    case 7: //Turn off Holoprojectors
+      for(int x=0; x<5; x++) Serial.write(hpoff[x]);
+      Serial.write(13);
+      step=8;
+      break;
+    case 8:
+      step=0;
+      return 1;
+      break;
+        
+  }
+  return 0;
+
+
+}
+
 
 int runSeq(uint16_t const sequence_array[][11]) {
   static int seq_step = 0;
@@ -1560,40 +1628,48 @@ int runSeq(uint16_t const sequence_array[][11]) {
 }
 
 //safeReset resets all dome tools to their stored positions and all panels to their closed positions.
-void safeReset(){
-  //The zapper - Since the zapper animation is a routine that both raises and lowers the zapper, it 
-  //should never be a in a halfway position. 
-  if(digitalRead(Z_BOT)){  //If the bottom limit switch is open (1 is open)
-    while(!motorUp(1)); //Move until zapper top limit switch engages
+void safeReset() {
+  //The zapper - Since the zapper animation is a routine that both raises and lowers the zapper, it
+  //should never be a in a halfway position.
+  if (digitalRead(Z_BOT)) {  //If the bottom limit switch is open (1 is open)
+    while (!motorUp(1))
+      ;  //Move until zapper top limit switch engages
     //Rotate servo to stored position
     servoControl.setPWM(Z_ROT, 0, Z_RMIN);
-    delay(100); //Wait to get in position
+    delay(100);  //Wait to get in position
     servoControl.setPWM(Z_EXT, 0, Z_EMIN);
-    delay(100); //Wait to get in position
-    while(!motorDown(1)); 
+    delay(100);  //Wait to get in position
+    while (!motorDown(1))
+      ;
     servoControl.setPWM(Z_PIE, 0, Z_PMIN);
-  } 
+  }
   //Light saber
-  if(digitalRead(LS_BOT)){
-    while(!motorDown(2));
+  if (digitalRead(LS_BOT)) {
+    while (!motorDown(2))
+      ;
     servoControl.setPWM(LS_PIE, 0, LS_PMIN);
   }
   //Periscope
-  if(digitalRead(P_BOT)){
-    while(!motorUp(3));  //Raise the periscope
+  if (digitalRead(P_BOT)) {
+    while (!motorUp(3))
+      ;                   //Raise the periscope
     perServo.write(135);  //Turn the periscope
-    while(!P_Lower());  //Lower the periscope
+    while (!P_Lower())
+      ;  //Lower the periscope
   }
   //Bad Motivator
-  if(digitalRead(BM_BOT)){
-    while(!motorDown(4));
+  if (digitalRead(BM_BOT)) {
+    while (!motorDown(4))
+      ;
     servoControl.setPWM(BM_PIE, 0, BM_PMIN);
   }
   //Life Form Scanner
-  if(digitalRead(LF_BOT)){
-    while(!motorUp(5));  //Raise the Life Form Scanner
+  if (digitalRead(LF_BOT)) {
+    while (!motorUp(5))
+      ;                  //Raise the Life Form Scanner
     lfServo.write(135);  //Turn the Life Form Scanner
-    while(!LS_Lower());  //Lower the Life Form Scanner
+    while (!LS_Lower())
+      ;  //Lower the Life Form Scanner
   }
   Sequencer(1);
   return;
@@ -1605,7 +1681,7 @@ void setup() {
   Serial.begin(9600);   //Connection with controller Arduino
   Serial1.begin(9600);  //Connection with Holo Projector Nano
   Serial2.begin(9600);  //Connection with Periscope Nano
-  Serial3.begin(9600);  //Teeces Connection 
+  Serial3.begin(9600);  //Teeces Connection
   servoControl.begin();
   servoControl.setPWMFreq(SERVO_FREQ);  // Analog servos run at ~50 Hz updates
   int x;
