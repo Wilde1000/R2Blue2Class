@@ -74,7 +74,17 @@ The command structure is as follows:
 //#define OSCIL_FREQ 27000000
 #define MPU 'E'
 #define CMD_MAX_LENGTH 63
-
+#define HP_RED "D40S1\r"
+#define HP_BLUE "D40S6\r"
+#define MP_RED "D45S1\r"
+#define MP_BLUE "D45S6\r"
+#define SCREAM "JS\r"
+#define HP_ON "D40T1\r"
+#define HP_OFF "D40T0\r"
+#define MP_ON "D45T1\r"
+#define MP_OFF "D45T0\r"
+#define TEECES_ALARM "G0T2\r"
+#define TEECES_NORMAL "G0T1\r"
 
 //define Adafruit PWM servo Pins and Limits
 
@@ -202,7 +212,7 @@ long int z_raise_timer = current_time;  //Holds the zapper raise timer
 long int bm_timer = current_time;       //Holds the timer for bad motivator lights
 long int p_timer = current_time;        //Holds the rotational timer for the Periscope
 long int seq_timer = current_time;      //Holds the sequence step timer for the Panel Sequencer
-long int scream_timer = current_time;  
+long int scream_timer = current_time;
 //Servo Objects
 Servo lfServo;   //Life Form Continous Rotation Servo
 Servo perServo;  //Periscope Continous Rotation Servo
@@ -1527,7 +1537,7 @@ void Sequencer(int opt) {
       seq_state = 0;
       break;
     case 31:  //Scream Sequence
-    if (screamSeq()==1) seq_state = 0;
+      if (screamSeq() == 1) seq_state = 0;
       break;
   }
   return;
@@ -1536,64 +1546,40 @@ void Sequencer(int opt) {
 
 int screamSeq() {
   current_time = millis();
-  int static step=0;
-  
-  char hpon[]="D40T1";
-  char mpon[]="D45T1";
-  char mpoff[]="D40T0";
-  char hpoff[]="D45T0";
-  char scream[]="JS";
-  char teeceOn[]="G0T2";
-  char teeceOff[]="G0T1";
-  switch(step){
-    case 0:  //Turn on the Holoprojectors
-      Serial.flush();
-      for(int x=0; x<5; x++) Serial.write(hpon[x]);
-      Serial.write(13);
-      step=1;
+  int static step = 0;
+  switch (step) {
+    case 0:  //Set color on the Holoprojector and Magic Panel
+      Serial1.write(HP_RED);
+      Serial1.write(MP_RED);
+      step = 1;
       break;
-    case 1: //Turn on Magic Panel
-      for(int x=0; x<5; x++) Serial.write(mpon[x]);
-      Serial.write(13);
-      step=2;
+    case 1:  //Turn on Magic Panel
+      Serial.write(SCREAM);
+      Serial1.write(HP_ON);
+      Serial1.write(MP_ON);
+      Serial3.write(TEECES_ALARM);
+      step = 2;
       break;
     case 2:  //Set the Teeces to Scream
-      for(int x=0; x<4; x++) Serial.write(teeceOn[x]);
-      Serial.write(13);
-      step=3;
+      if (runSeq(panel_all_open)) step = 3;
       break;
-    case 3: //Send the Scream command
-      for(int x=0; x<2; x++) Serial.write(scream[x]);
-      Serial.write(13);
+    case 3:  //Reset teeces
+      Serial1.write(HP_OFF);
+      Serial1.write(MP_OFF);
+      Serial3.write(TEECES_NORMAL);
       step=4;
       break;
-    case 4: //Open the panels
-      if(runSeq(panel_all_open))step = 5;
+    case 4:  //Turn off Magic Panel
+      Serial1.write(HP_BLUE);
+      Serial1.write(MP_BLUE);
+      step = 5;
       break;
-    case 5:  //Reset teeces
-      for(int x=0; x<4; x++) Serial.write(teeceOff[x]);
-      Serial.write(13);
-      step=6;
-      break;
-    case 6:  //Turn off Magic Panel
-      for(int x=0; x<5; x++) Serial.write(mpoff[x]);
-      Serial.write(13);
-      step=7;
-      break;
-    case 7: //Turn off Holoprojectors
-      for(int x=0; x<5; x++) Serial.write(hpoff[x]);
-      Serial.write(13);
-      step=8;
-      break;
-    case 8:
-      step=0;
+    case 5:
+      step = 0;
       return 1;
       break;
-        
   }
   return 0;
-
-
 }
 
 
