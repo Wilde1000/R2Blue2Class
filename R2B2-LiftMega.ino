@@ -79,12 +79,14 @@ The command structure is as follows:
 #define MP_RED "D45S1\r"
 #define MP_BLUE "D45S6\r"
 #define SCREAM "JS\r"
-#define HP_ON "D40T1\r"
+#define HP_BLINK_4 "D40T10\r"
+#define HP_FLICKER_4 "D40T9\r" 
 #define HP_OFF "D40T0\r"
-#define MP_ON "D45T1\r"
+#define MP_BLINK_4 "D45T7\r"
+#define MP_FLICKER_4 "D45T6\r"
 #define MP_OFF "D45T0\r"
-#define TEECES_ALARM "G0T2\r"
-#define TEECES_NORMAL "G0T1\r"
+#define TEECES_ALARM "0T2\r"
+#define TEECES_NORMAL "0T1\r"
 
 //define Adafruit PWM servo Pins and Limits
 
@@ -1543,9 +1545,14 @@ void Sequencer(int opt) {
   return;
 }
 
+int waveSeq(){
+  
+
+}
+
+
 
 int screamSeq() {
-  current_time = millis();
   int static step = 0;
   switch (step) {
     case 0:  //Set color on the Holoprojector and Magic Panel
@@ -1555,8 +1562,8 @@ int screamSeq() {
       break;
     case 1:  //Turn on Magic Panel
       Serial.write(SCREAM);
-      Serial1.write(HP_ON);
-      Serial1.write(MP_ON);
+      Serial1.write(HP_FLICKER_4);
+      Serial1.write(MP_FLICKER_4);
       Serial3.write(TEECES_ALARM);
       step = 2;
       break;
