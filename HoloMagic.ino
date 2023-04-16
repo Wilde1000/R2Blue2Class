@@ -59,8 +59,8 @@ The command structure is as follows:
 #define SS_PIN 10  //SDA pin on the MFRC522
 #define RST_PIN 6  //Reset pin on the MFRC522
 
-#define MAX_RF_CMD 47  //Defines Maximum number of RF Commands
-#define BUFFER_LEN  18  //Defines the Buffer length for a single block on a scanned card
+#define MAX_RF_CMD 47       //Defines Maximum number of RF Commands
+#define BUFFER_LEN 18       //Defines the Buffer length for a single block on a scanned card
 #define MPU 'D'             //Define the current Microprocessor
 #define CMD_MAX_LENGTH 63   //Define the maximum serial command length
 #define HOLO_LED 1          //Define the Number of neopixel in the holoprojectors
@@ -107,8 +107,8 @@ Adafruit_NeoPixel fHolo(HOLO_LED, FRT_HOLO_LGT, NEO_GRB + NEO_KHZ800);         /
 Adafruit_NeoPixel tHolo(HOLO_LED, TOP_HOLO_LGT, NEO_GRB + NEO_KHZ800);         //Top Holo Light
 Adafruit_NeoPixel mPanel(MAGIC_PANEL_LED, MAGIC_PANEL, NEO_GRB + NEO_KHZ800);  //Magic Panel
 
-byte nuidPICC[4];               //Holds the UID of scanned card
-byte bufferLen=18;         
+byte nuidPICC[4];  //Holds the UID of scanned card
+byte bufferLen = 18;
 byte readBlockData[BUFFER_LEN];  //Holds the contents of a single block of data on scanned card
 
 
@@ -117,21 +117,22 @@ char dev_MPU;                 //Contains the MPU code from incoming serial messa
 char dev_cmd;                 //Contains the Command code from incoming serial message
 char rfData[MAX_RF_CMD][16];  //Contains the all the data from a scanned card
 
-int blockNum = 2;                  //Contains the current block number
-int curr_holo_color = 13;          //Contains current color code for the holoprojectors
-int curr_tholo_color = 5;          //Contains current color code for the top holoprojector
-int current_mp_color = 6;          //Contains current color code for the Magic Panel
-int dev_addr;                      //Device address received from Serial interface
-int dev_opt;                       //Device option received from the Serial interface
-int holo_speed;                    //Holds the current holo timeout speed.
-int holo_state = 0;                //Contains current state for the holoprojectors
-int mPanel_state = 0;              //Contains the current state for the Magic Panel
-int sequencer_state = 0;           //Contains the current state for the sequencer
-int rf_wait = 5;                   //Contains the Sequencer current wait state
-long int current_time = millis();  //Contains current time
-
-long int holo_timer = current_time;  //Holds the holo random movement timer
-long int mp_timer = current_time;    //Holds the magic panel timer
+int blockNum = 2;          //Contains the current block number
+int curr_holo_color = 13;  //Contains current color code for the holoprojectors
+int curr_tholo_color = 5;  //Contains current color code for the top holoprojector
+int current_mp_color = 6;  //Contains current color code for the Magic Panel
+int dev_addr;              //Device address received from Serial interface
+int dev_opt;               //Device option received from the Serial interface
+int holo_speed;            //Holds the current holo timeout speed.
+int flickerTime = 250;
+int blinkTime = 500;
+int holo_state = 0;              //Contains current state for the holoprojectors
+int mPanel_state = 0;            //Contains the current state for the Magic Panel
+int sequencer_state = 0;         //Contains the current state for the sequencer
+int rf_wait = 5;                 //Contains the Sequencer current wait state
+long current_time = millis();    //Contains current time
+long holo_timer = current_time;  //Holds the holo random movement timer
+long mp_timer = current_time;    //Holds the magic panel timer
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);  // Create an instance of the RFID Reader
 MFRC522::MIFARE_Key key;           // Create instance of MIFARE key
@@ -237,7 +238,7 @@ void checkSerial() {
     cmd_Complete = buildCommand(ch, cmdStr);
     if (cmd_Complete) {
       parseCommand(cmdStr);
-     // Serial.println();
+      // Serial.println();
     }
   }
 }
@@ -318,7 +319,7 @@ void Holos(int opt) {
       break;
     case 1:  //Turn on holos with current color
       setHoloColor(curr_holo_color, 0);
-     // holo_speed = 2000;
+      // holo_speed = 2000;
       //holoRandom();
 
       break;
@@ -362,9 +363,148 @@ void Holos(int opt) {
       //Serial.println(servoPOS);
       holo_state = 0;
       break;
+    case 9:
+      if (HPFlicker(4)) holo_state = 0;
+      break;
+    case 10:
+      if (HPBlink(4)) holo_state = 0;
+      break;
+    case 11:
+      if (HPFlicker1(34)) holo_state = 0;
+      break;
   }
   return;
 }
+
+int HPBlink(int seconds) {
+  int static step = 1;
+  long static routineTimer, blinkTimer;
+  int static setTime = 0;
+  int num = curr_holo_color;
+  int interval = 750;
+  int red = pgm_read_word(&(np_color[num][0]));
+  int green = pgm_read_word(&(np_color[num][1]));
+  int blue = pgm_read_word(&(np_color[num][2]));
+  current_time = millis();
+  if (!setTime) {
+    setTime = 1;
+    routineTimer = current_time;
+    blinkTimer = current_time;
+  }
+  if (current_time - routineTimer < seconds * 1000) {
+    if (current_time - blinkTimer > interval) {
+      blinkTimer = current_time;
+      if (step) {
+        bHolo.setPixelColor(0, bHolo.Color(red, green, blue));
+        fHolo.setPixelColor(0, fHolo.Color(red, green, blue));
+        tHolo.setPixelColor(0, tHolo.Color(red, green, blue));
+        step = 0;
+      } else {
+        bHolo.setPixelColor(0, bHolo.Color(0, 0, 0));
+        fHolo.setPixelColor(0, fHolo.Color(0, 0, 0));
+        tHolo.setPixelColor(0, tHolo.Color(0, 0, 0));
+        step = 1;
+      }
+      bHolo.show();
+      fHolo.show();
+      tHolo.show();
+    }
+  } else {
+    routineTimer = current_time;
+    setTime = 0;
+    bHolo.setPixelColor(0, bHolo.Color(0, 0, 0));
+    fHolo.setPixelColor(0, fHolo.Color(0, 0, 0));
+    tHolo.setPixelColor(0, tHolo.Color(0, 0, 0));
+    return 1;
+  }
+  return 0;
+}
+
+
+int HPFlicker(int seconds) {
+  byte flicker[10] = { 180, 30, 89, 23, 255, 200, 90, 150, 60, 230 };
+  byte static setTime = 0;
+  int num = curr_holo_color;
+  int red = pgm_read_word(&(np_color[num][0]));
+  int green = pgm_read_word(&(np_color[num][1]));
+  int blue = pgm_read_word(&(np_color[num][2]));
+  int static step = 0;
+  long static routineTimer, flickerTimer;
+  int interval = 250;
+  current_time = millis();
+  if (!setTime) {
+    setTime = 1;
+    routineTimer = current_time;
+    flickerTimer = current_time;
+  }
+  if (current_time - routineTimer < seconds * 1000) {
+    if (current_time - flickerTimer > interval) {
+      flickerTimer = current_time;
+      bHolo.setPixelColor(0, bHolo.Color(red * flicker[step] / 255, green * flicker[step] / 255, blue * flicker[step] / 255));
+      fHolo.setPixelColor(0, fHolo.Color(red * flicker[step] / 255, green * flicker[step] / 255, blue * flicker[step] / 255));
+      tHolo.setPixelColor(0, tHolo.Color(red * flicker[step] / 255, green * flicker[step] / 255, blue * flicker[step] / 255));
+      bHolo.show();
+      fHolo.show();
+      tHolo.show();
+      if (step < 9) step++;
+      else step = 0;
+      return 0;
+    }
+  } else {
+    routineTimer = current_time;
+    bHolo.setPixelColor(0, bHolo.Color(0, 0, 0));
+    fHolo.setPixelColor(0, fHolo.Color(0, 0, 0));
+    tHolo.setPixelColor(0, tHolo.Color(0, 0, 0));
+    bHolo.show();
+    fHolo.show();
+    tHolo.show();
+    setTime = 0;
+    return 1;
+  }
+}
+
+int HPFlicker1(int seconds) {
+  byte flicker[10] = { 180, 30, 89, 23, 255, 200, 90, 150, 60, 230 };
+  byte static setTime = 0;
+  int static step = 0;
+  long static routineTimer, flickerTimer;
+  int num = 13;
+  int red = pgm_read_word(&(np_color[num][0]));
+  int green = pgm_read_word(&(np_color[num][1]));
+  int blue = pgm_read_word(&(np_color[num][2]));
+  int interval = 250;
+  current_time = millis();
+  if (!setTime) {
+    setTime = 1;
+    routineTimer = current_time;
+    flickerTimer = current_time;
+  }
+  if (current_time - routineTimer < seconds * 1000) {
+    if (current_time - flickerTimer > interval) {
+      flickerTimer = current_time;
+      bHolo.setPixelColor(0, bHolo.Color(0, 0, 0));
+      fHolo.setPixelColor(0, fHolo.Color(red * flicker[step] / 255, green * flicker[step] / 255, blue * flicker[step] / 255));
+      tHolo.setPixelColor(0, tHolo.Color(0, 0, 0));
+      bHolo.show();
+      fHolo.show();
+      tHolo.show();
+      if (step < 9) step++;
+      else step = 0;
+      return 0;
+    }
+  } else {
+    routineTimer = current_time;
+    bHolo.setPixelColor(0, bHolo.Color(0, 0, 0));
+    fHolo.setPixelColor(0, fHolo.Color(0, 0, 0));
+    tHolo.setPixelColor(0, tHolo.Color(0, 0, 0));
+    bHolo.show();
+    fHolo.show();
+    tHolo.show();
+    setTime = 0;
+    return 1;
+  }
+}
+
 
 //The MagicPanel function handles all operations for the Magic Panel on R2
 void MagicPanel(int opt) {
@@ -390,17 +530,100 @@ void MagicPanel(int opt) {
     case 5:
       rainbow(10);
       break;
+    case 6:
+      if (MPFlicker(4)) mPanel_state = 0;
+      break;
+    case 7:
+      if (MPBlink(4)) mPanel_state = 0;
+      break;
   }
+  return;
 }
+
+int MPBlink(int seconds) {
+  int static step = 1;
+  long static routineTimer, blinkTimer;
+  int static setTime = 0;
+  int num = current_mp_color;
+  int interval = 750;
+  int red = pgm_read_word(&(np_color[num][0]));
+  int green = pgm_read_word(&(np_color[num][1]));
+  int blue = pgm_read_word(&(np_color[num][2]));
+  current_time = millis();
+  if (!setTime) {
+    setTime = 1;
+    routineTimer = current_time;
+    blinkTimer = current_time;
+  }
+  if (current_time - routineTimer < seconds * 1000) {
+    if (current_time - blinkTimer > interval) {
+      blinkTimer = current_time;
+      if (step) {
+        for (int x = 0; x < MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, mPanel.Color(red, green, blue));
+        mPanel.show();
+        step = 0;
+      } else {
+        for (int x = 0; x < MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, mPanel.Color(0, 0, 0));
+        mPanel.show();
+        step = 1;
+      }
+    }
+  } else {
+    routineTimer = current_time;
+    setTime = 0;
+    for (int x = 0; x < MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, mPanel.Color(0, 0, 0));
+        mPanel.show();
+    return 1;
+  }
+  return 0;
+}
+
+
+int MPFlicker(int seconds) {
+  byte static timeSet = 0;  //Switch to set the timers
+  long static routineTime, flickerTimer;
+  byte flicker[10] = { 180, 30, 89, 23, 255, 200, 90, 150, 60, 230 };
+  int num = current_mp_color;
+  int red = pgm_read_word(&(np_color[num][0]));
+  int green = pgm_read_word(&(np_color[num][1]));
+  int blue = pgm_read_word(&(np_color[num][2]));
+  int static step = 0;
+  int interval = 250;
+  current_time = millis();
+  if (!timeSet) {
+    timeSet = 1;
+    routineTime = current_time;
+    flickerTimer = current_time;
+  }
+
+  if (current_time - routineTime < seconds * 1000) {
+    if (current_time - flickerTimer > interval) {
+      flickerTimer = current_time;
+      for (int x = 0; x < MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, mPanel.Color(red * flicker[step] / 255, green * flicker[step] / 255, blue * flicker[step] / 255));
+      mPanel.show();
+      if (step < 9) step++;
+      else step = 0;
+    }
+  } else {
+    routineTime = current_time;
+    for (int x = 0; x < MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, 0, 0, 0);
+    mPanel.show();
+    timeSet = 0;
+    return 1;
+  }
+  return 0;
+}
+
+
 
 //The parseCommand takes the command from the buildCommand function and parses into its component parts - MPU, Address, Command and Option
 int parseCommand(char* input_str) {
   byte length = strlen(input_str);
   if (length < 2) goto deadCmd;  //not enough characters
-  int mpu = input_str[0];      //MPU is the first character
+  int mpu = input_str[0];        //MPU is the first character
   if (MPU != mpu) {              //if command is not for this MPU - send it on its way
     Serial.flush();
-    for (int x = 0; x < length; x++)  Serial.write(input_str[x]);
+    for (int x = 0; x < length; x++) Serial.write(input_str[x]);
     Serial.write(13);
     return;
   }
@@ -415,15 +638,15 @@ int parseCommand(char* input_str) {
   dev_cmd = input_str[3];
   char optStr[4];
   optStr[0] = input_str[4];
-  if(input_str[5] == 13){
-    optStr[1]='\0';
-  }else {
-    optStr[1]=input_str[5];
-    if(input_str[6] == 13){
-      optStr[2]='\0';
-    }else{
-      optStr[3]=input_str[6];
-      optStr[4]='\0';
+  if (input_str[5] == 13) {
+    optStr[1] = '\0';
+  } else {
+    optStr[1] = input_str[5];
+    if (input_str[6] == 13) {
+      optStr[2] = '\0';
+    } else {
+      optStr[3] = input_str[6];
+      optStr[4] = '\0';
     }
   }
   dev_opt = atoi(optStr);  // that's the numerical argument after the command character
@@ -527,7 +750,7 @@ void sequencer() {
       rf_wait = ((cmd[1] - 48) * 10 + (cmd[2] - 48)) * 1000;
       //Serial.println(rf_wait);
       return;
-    } else if (cmd[0] >= 65 && cmd[0] <= 71) parseCommand(cmd);
+    } else if (cmd[0] >= 65 && cmd[0] <= 74) parseCommand(cmd);
     return;
   }
 }
@@ -623,9 +846,9 @@ void setup() {
   mPanel.begin();
   mPanel.clear();
   mPanel.setBrightness(100);
-  bHolo.setBrightness(150);
-  fHolo.setBrightness(150);
-  tHolo.setBrightness(150);
+  bHolo.setBrightness(250);
+  fHolo.setBrightness(250);
+  tHolo.setBrightness(250);
   //th1.attach(TOP_HOLO1);
   //th2.attach(TOP_HOLO2);
   //fh1.attach(FRT_HOLO1);
