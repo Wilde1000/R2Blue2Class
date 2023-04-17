@@ -1605,31 +1605,15 @@ void Sequencer(int opt) {
 int waveSeq() {
   int static step = 0;
   switch (step) {
-    case 0:  //Set color on the Holoprojector and Magic Panel
-
+    case 0:  //Set HP to blink and play a Happy sound
+      Serial1.write(HP_BLINK_4);
+      Serial.write("J355");
+      step=1;
       break;
-    case 1:  //Turn on Magic Panel
-      Serial.write(SCREAM);
-      Serial1.write(HP_FLICKER_4);
-      Serial1.write(MP_FLICKER_4);
-      Serial3.write(TEECES_ALARM);
-      step = 2;
+    case 1:  //Start the show
+      if (runSeq(panel_wave)) step = 2;
       break;
-    case 2:  //Set the Teeces to Scream
-      if (runSeq(panel_all_open)) step = 3;
-      break;
-    case 3:  //Reset teeces
-      Serial1.write(HP_OFF);
-      Serial1.write(MP_OFF);
-      Serial3.write(TEECES_NORMAL);
-      step = 4;
-      break;
-    case 4:  //Turn off Magic Panel
-      Serial1.write(HP_BLUE);
-      Serial1.write(MP_BLUE);
-      step = 5;
-      break;
-    case 5:
+    case 2:
       step = 0;
       return 1;
       break;
@@ -1637,6 +1621,7 @@ int waveSeq() {
   return 0;
 
 }
+
 
 
 
