@@ -80,7 +80,7 @@ The command structure is as follows:
 #define MP_BLUE "D45S6\r"
 #define SCREAM "JS\r"
 #define HP_BLINK_4 "D40T10\r"
-#define HP_FLICKER_4 "D40T9\r" 
+#define HP_FLICKER_4 "D40T9\r"
 #define HP_OFF "D40T0\r"
 #define MP_BLINK_4 "D45T7\r"
 #define MP_FLICKER_4 "D45T6\r"
@@ -1414,33 +1414,59 @@ byte zapSeq1() {
 }
 
 void Sequencer(int opt) {
+  static int firstRun = 1;
+  if (firstRun) {
+    safeReset();
+    firstRun = 0;
+  }
   switch (opt) {
-    case 0:
-      return;
-      break;
     case 1:
-      if (runSeq(panel_init)) seq_state = 0;
+      if (runSeq(panel_init)){
+         seq_state = 0;
+         firstRun=1;
+      }         
       break;
     case 2:
-      if (runSeq(panel_all_open)) seq_state = 0;
+      if (runSeq(panel_all_open)){
+         seq_state = 0;
+         firstRun=1;
+      }         
       break;
     case 3:
-      if (runSeq(panel_all_open_long)) seq_state = 0;
+      if (runSeq(panel_all_open_long)){
+         seq_state = 0;
+         firstRun=1;
+      }         
       break;
     case 4:
-      if (runSeq(panel_wave)) seq_state = 0;
+      if (runSeq(panel_wave)) {
+         seq_state = 0;
+         firstRun=1;
+      }         
       break;
     case 5:
-      if (runSeq(panel_fast_wave)) seq_state = 0;
+      if (runSeq(panel_fast_wave)) {
+         seq_state = 0;
+         firstRun=1;
+      }         
       break;
     case 6:
-      if (runSeq(panel_open_close_wave)) seq_state = 0;
+      if (runSeq(panel_open_close_wave)) {
+         seq_state = 0;
+         firstRun=1;
+      }         
       break;
     case 7:
-      if (runSeq(panel_marching_ants)) seq_state = 0;
+      if (runSeq(panel_marching_ants)) {
+         seq_state = 0;
+         firstRun=1;
+      }         
       break;
     case 8:
-      if (runSeq(panel_dance)) seq_state = 0;
+      if (runSeq(panel_dance)) {
+         seq_state = 0;
+         firstRun=1;
+      }         
       break;
     case 9:                   //opens all lift systems
       zapper_state = 1;       // Run actions on the Zapper if any
@@ -1448,6 +1474,7 @@ void Sequencer(int opt) {
       periscope_state = 1;    //Run actions on the Periscope if any
       bad_motive_state = 1;   //Run actions on the Bad Motivator if any
       life_form_state = 1;    //Run actions on the Life Form Scanner if any
+         firstRun=1;
       seq_state = 0;
       break;
     case 10:                  //Closes all lift systems
@@ -1457,96 +1484,157 @@ void Sequencer(int opt) {
       bad_motive_state = 2;   //Run actions on the Bad Motivator if any
       life_form_state = 2;    //Run actions on the Life Form Scanner if any
       seq_state = 0;
+      firstRun=1;      
       break;
     case 11:
       servoControl.setPWM(Z_PIE, 0, Z_PMAX);
       seq_state = 0;
-      break;
+      firstRun=1;      
+            break;
     case 12:
       servoControl.setPWM(LS_PIE, 0, LS_PMAX);
       seq_state = 0;
+      firstRun=1;      
       break;
     case 13:
       servoControl.setPWM(BM_PIE, 0, BM_PMAX);
+      firstRun=1;      
       seq_state = 0;
       break;
     case 14:
       servoControl.setPWM(LF_PIE, 0, LF_PMAX);
+      firstRun=1;      
       seq_state = 0;
       break;
     case 15:
       servoControl.setPWM(DP1, 0, DP1_MAX);
       seq_state = 0;
+      firstRun=1;      
       break;
     case 16:
       servoControl.setPWM(DP2, 0, DP2_MAX);
       seq_state = 0;
+      firstRun=1;      
       break;
     case 17:
       servoControl.setPWM(DP3, 0, DP3_MAX);
       seq_state = 0;
+      firstRun=1;      
       break;
     case 18:
       servoControl.setPWM(DP4, 0, DP4_MAX);
       seq_state = 0;
+      firstRun=1;      
       break;
     case 19:
       servoControl.setPWM(DP5, 0, DP5_MAX);
       seq_state = 0;
+      firstRun=1;      
       break;
     case 20:
       servoControl.setPWM(DP6, 0, DP6_MAX);
       seq_state = 0;
+      firstRun=1;      
       break;
     case 21:
       servoControl.setPWM(Z_PIE, 0, Z_PMIN);
       seq_state = 0;
+      firstRun=1;      
       break;
     case 22:
       servoControl.setPWM(LS_PIE, 0, LS_PMIN);
       seq_state = 0;
+      firstRun=1;      
       break;
     case 23:
       servoControl.setPWM(BM_PIE, 0, BM_PMIN);
       seq_state = 0;
+      firstRun=1;      
       break;
     case 24:
       servoControl.setPWM(LF_PIE, 0, LF_PMIN);
       seq_state = 0;
+      firstRun=1;      
       break;
     case 25:
       servoControl.setPWM(DP1, 0, DP1_MIN);
+      firstRun=1;      
       seq_state = 0;
       break;
     case 26:
       servoControl.setPWM(DP2, 0, DP2_MIN);
+      firstRun=1;      
       seq_state = 0;
       break;
     case 27:
       servoControl.setPWM(DP3, 0, DP3_MIN);
+      firstRun=1;      
       seq_state = 0;
       break;
     case 28:
       servoControl.setPWM(DP4, 0, DP4_MIN);
+      firstRun=1;      
       seq_state = 0;
       break;
     case 29:
       servoControl.setPWM(DP5, 0, DP5_MIN);
+      firstRun=1;      
       seq_state = 0;
       break;
     case 30:
       servoControl.setPWM(DP6, 0, DP6_MIN);
+      firstRun=1;      
       seq_state = 0;
       break;
     case 31:  //Scream Sequence
-      if (screamSeq() == 1) seq_state = 0;
+      if (screamSeq() == 1) {
+         seq_state = 0;
+         firstRun=1;
+      }         
+      break;
+    case 32:  //Wave Sequence
+      if (waveSeq() == 1) {
+         seq_state = 0;
+         firstRun=1;
+      }         
       break;
   }
   return;
 }
 
-int waveSeq(){
-  
+int waveSeq() {
+  int static step = 0;
+  switch (step) {
+    case 0:  //Set color on the Holoprojector and Magic Panel
+
+      break;
+    case 1:  //Turn on Magic Panel
+      Serial.write(SCREAM);
+      Serial1.write(HP_FLICKER_4);
+      Serial1.write(MP_FLICKER_4);
+      Serial3.write(TEECES_ALARM);
+      step = 2;
+      break;
+    case 2:  //Set the Teeces to Scream
+      if (runSeq(panel_all_open)) step = 3;
+      break;
+    case 3:  //Reset teeces
+      Serial1.write(HP_OFF);
+      Serial1.write(MP_OFF);
+      Serial3.write(TEECES_NORMAL);
+      step = 4;
+      break;
+    case 4:  //Turn off Magic Panel
+      Serial1.write(HP_BLUE);
+      Serial1.write(MP_BLUE);
+      step = 5;
+      break;
+    case 5:
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
 
 }
 
@@ -1574,7 +1662,7 @@ int screamSeq() {
       Serial1.write(HP_OFF);
       Serial1.write(MP_OFF);
       Serial3.write(TEECES_NORMAL);
-      step=4;
+      step = 4;
       break;
     case 4:  //Turn off Magic Panel
       Serial1.write(HP_BLUE);
@@ -1655,16 +1743,17 @@ void safeReset() {
     while (!motorDown(4))
       ;
     servoControl.setPWM(BM_PIE, 0, BM_PMIN);
+    bmLights(0);
   }
   //Life Form Scanner
   if (digitalRead(LF_BOT)) {
     while (!motorUp(5))
       ;                  //Raise the Life Form Scanner
     lfServo.write(135);  //Turn the Life Form Scanner
-    while (!LS_Lower())
+    while (!LF_Lower())
       ;  //Lower the Life Form Scanner
   }
-  Sequencer(1);
+  runSeq(panel_init);
   return;
 }
 
@@ -1719,12 +1808,16 @@ void setup() {
 
 
 void loop() {
-  checkSerial();              //Check Serial 0 for commands
-  checkSerial1();             //Check Serial 1 for commands
-  ZapLift(zapper_state);      // Run actions on the Zapper if any
-  LSLift(light_saber_state);  //Run actions on the Light Saber if any
-  PLift(periscope_state);     //Run actions on the Periscope if any
-  BMLift(bad_motive_state);   //Run actions on the Bad Motivator if any
-  LFLift(life_form_state);    //Run actions on the Life Form Scanner if any
-  Sequencer(seq_state);       //Run panel sequences
+  checkSerial();   //Check Serial 0 for commands
+  checkSerial1();  //Check Serial 1 for commands
+  if (!seq_state) {
+    ZapLift(zapper_state);      // Run actions on the Zapper if any
+    LSLift(light_saber_state);  //Run actions on the Light Saber if any
+    PLift(periscope_state);     //Run actions on the Periscope if any
+    BMLift(bad_motive_state);   //Run actions on the Bad Motivator if any
+    LFLift(life_form_state);    //Run actions on the Life Form Scanner if any
+  } else {
+
+    Sequencer(seq_state);
+  }  //Run panel sequences
 }
