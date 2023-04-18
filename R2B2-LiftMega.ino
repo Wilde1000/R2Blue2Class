@@ -93,7 +93,7 @@ The command structure is as follows:
 #define MP_OFF "D45T0\r"    //Turn off Magic Panel
 #define TEECES_ALARM "0T3\r"
 #define TEECES_NORMAL "0T1\r"
-
+#define SND_SPARK "J54\r"
 //define Adafruit PWM servo Pins and Limits
 
 #define Z_ROT 1
@@ -1181,6 +1181,7 @@ byte ZapLights(int num) {
     switch (z_state) {
       case 0:
         current_time = millis();
+        Serial.write(SND_SPARK);
         digitalWrite(Z_LED, HIGH);  // sets the led HIGH
         if (current_time - z_timer >= z_int) {
           z_timer = current_time;
