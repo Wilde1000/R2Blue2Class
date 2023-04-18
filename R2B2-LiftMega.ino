@@ -74,18 +74,24 @@ The command structure is as follows:
 //#define OSCIL_FREQ 27000000
 #define MPU 'E'
 #define CMD_MAX_LENGTH 63
-#define HP_RED "D40S1\r"
-#define HP_BLUE "D40S6\r"
-#define MP_RED "D45S1\r"
-#define MP_BLUE "D45S6\r"
-#define SCREAM "JS\r"
-#define HP_BLINK_4 "D40T10\r"
-#define HP_FLICKER_4 "D40T9\r"
-#define HP_OFF "D40T0\r"
-#define MP_BLINK_4 "D45T7\r"
-#define MP_FLICKER_4 "D45T6\r"
-#define MP_OFF "D45T0\r"
-#define TEECES_ALARM "0T2\r"
+#define HPF_03 "D40T203\r"  //HP Flicker for 3 seconds
+#define HP_RED "D40S1\r"    //Change HP to red
+#define HP_BLUE "D40S6\r"   //Change HP to blue
+#define MP_RED "D45S1\r"    //Change MP to Red
+#define MP_BLUE "D45S5\r"   //Change MP to Blue
+#define SND_SCREAM "J61\r"       //Scream sound
+#define SND_FAINT "J63\r"
+#define SND_WAVE "J35\r"   //Sound for Wave seq
+#define SND_WAVE1 "J23\r"  //Sound for Wave 1 seq
+#define SND_WAVE2 "J24\r"  //Sound for Wave 2 seq
+#define HPB_04 "D40T104\r"  //HP Blink for 4 seconds
+#define HPB_17 "D40T117\r"  //HP Blink for 17 seconds
+#define HPF_04 "D40T204\r"  //HP Flicker for 4 seconds
+#define HP_OFF "D40T0\r"    //Turn off holoprojectors
+#define MPB_04 "D45T104\r"  //Blink MP for 4 seconds
+#define MPF_04 "D45T204\r"  //Flicker MP for 4 seconds
+#define MP_OFF "D45T0\r"    //Turn off Magic Panel
+#define TEECES_ALARM "0T3\r"
 #define TEECES_NORMAL "0T1\r"
 
 //define Adafruit PWM servo Pins and Limits
@@ -1421,52 +1427,52 @@ void Sequencer(int opt) {
   }
   switch (opt) {
     case 1:
-      if (runSeq(panel_init)){
-         seq_state = 0;
-         firstRun=1;
-      }         
+      if (runSeq(panel_init)) {
+        seq_state = 0;
+        firstRun = 1;
+      }
       break;
     case 2:
-      if (runSeq(panel_all_open)){
-         seq_state = 0;
-         firstRun=1;
-      }         
+      if (runSeq(panel_all_open)) {
+        seq_state = 0;
+        firstRun = 1;
+      }
       break;
     case 3:
-      if (runSeq(panel_all_open_long)){
-         seq_state = 0;
-         firstRun=1;
-      }         
+      if (runSeq(panel_all_open_long)) {
+        seq_state = 0;
+        firstRun = 1;
+      }
       break;
     case 4:
       if (runSeq(panel_wave)) {
-         seq_state = 0;
-         firstRun=1;
-      }         
+        seq_state = 0;
+        firstRun = 1;
+      }
       break;
     case 5:
       if (runSeq(panel_fast_wave)) {
-         seq_state = 0;
-         firstRun=1;
-      }         
+        seq_state = 0;
+        firstRun = 1;
+      }
       break;
     case 6:
       if (runSeq(panel_open_close_wave)) {
-         seq_state = 0;
-         firstRun=1;
-      }         
+        seq_state = 0;
+        firstRun = 1;
+      }
       break;
     case 7:
       if (runSeq(panel_marching_ants)) {
-         seq_state = 0;
-         firstRun=1;
-      }         
+        seq_state = 0;
+        firstRun = 1;
+      }
       break;
     case 8:
       if (runSeq(panel_dance)) {
-         seq_state = 0;
-         firstRun=1;
-      }         
+        seq_state = 0;
+        firstRun = 1;
+      }
       break;
     case 9:                   //opens all lift systems
       zapper_state = 1;       // Run actions on the Zapper if any
@@ -1474,7 +1480,7 @@ void Sequencer(int opt) {
       periscope_state = 1;    //Run actions on the Periscope if any
       bad_motive_state = 1;   //Run actions on the Bad Motivator if any
       life_form_state = 1;    //Run actions on the Life Form Scanner if any
-         firstRun=1;
+      firstRun = 1;
       seq_state = 0;
       break;
     case 10:                  //Closes all lift systems
@@ -1484,131 +1490,155 @@ void Sequencer(int opt) {
       bad_motive_state = 2;   //Run actions on the Bad Motivator if any
       life_form_state = 2;    //Run actions on the Life Form Scanner if any
       seq_state = 0;
-      firstRun=1;      
+      firstRun = 1;
       break;
     case 11:
       servoControl.setPWM(Z_PIE, 0, Z_PMAX);
       seq_state = 0;
-      firstRun=1;      
-            break;
+      firstRun = 1;
+      break;
     case 12:
       servoControl.setPWM(LS_PIE, 0, LS_PMAX);
       seq_state = 0;
-      firstRun=1;      
+      firstRun = 1;
       break;
     case 13:
       servoControl.setPWM(BM_PIE, 0, BM_PMAX);
-      firstRun=1;      
+      firstRun = 1;
       seq_state = 0;
       break;
     case 14:
       servoControl.setPWM(LF_PIE, 0, LF_PMAX);
-      firstRun=1;      
+      firstRun = 1;
       seq_state = 0;
       break;
     case 15:
       servoControl.setPWM(DP1, 0, DP1_MAX);
       seq_state = 0;
-      firstRun=1;      
+      firstRun = 1;
       break;
     case 16:
       servoControl.setPWM(DP2, 0, DP2_MAX);
       seq_state = 0;
-      firstRun=1;      
+      firstRun = 1;
       break;
     case 17:
       servoControl.setPWM(DP3, 0, DP3_MAX);
       seq_state = 0;
-      firstRun=1;      
+      firstRun = 1;
       break;
     case 18:
       servoControl.setPWM(DP4, 0, DP4_MAX);
       seq_state = 0;
-      firstRun=1;      
+      firstRun = 1;
       break;
     case 19:
       servoControl.setPWM(DP5, 0, DP5_MAX);
       seq_state = 0;
-      firstRun=1;      
+      firstRun = 1;
       break;
     case 20:
       servoControl.setPWM(DP6, 0, DP6_MAX);
       seq_state = 0;
-      firstRun=1;      
+      firstRun = 1;
       break;
     case 21:
       servoControl.setPWM(Z_PIE, 0, Z_PMIN);
       seq_state = 0;
-      firstRun=1;      
+      firstRun = 1;
       break;
     case 22:
       servoControl.setPWM(LS_PIE, 0, LS_PMIN);
       seq_state = 0;
-      firstRun=1;      
+      firstRun = 1;
       break;
     case 23:
       servoControl.setPWM(BM_PIE, 0, BM_PMIN);
       seq_state = 0;
-      firstRun=1;      
+      firstRun = 1;
       break;
     case 24:
       servoControl.setPWM(LF_PIE, 0, LF_PMIN);
       seq_state = 0;
-      firstRun=1;      
+      firstRun = 1;
       break;
     case 25:
       servoControl.setPWM(DP1, 0, DP1_MIN);
-      firstRun=1;      
+      firstRun = 1;
       seq_state = 0;
       break;
     case 26:
       servoControl.setPWM(DP2, 0, DP2_MIN);
-      firstRun=1;      
+      firstRun = 1;
       seq_state = 0;
       break;
     case 27:
       servoControl.setPWM(DP3, 0, DP3_MIN);
-      firstRun=1;      
+      firstRun = 1;
       seq_state = 0;
       break;
     case 28:
       servoControl.setPWM(DP4, 0, DP4_MIN);
-      firstRun=1;      
+      firstRun = 1;
       seq_state = 0;
       break;
     case 29:
       servoControl.setPWM(DP5, 0, DP5_MIN);
-      firstRun=1;      
+      firstRun = 1;
       seq_state = 0;
       break;
     case 30:
       servoControl.setPWM(DP6, 0, DP6_MIN);
-      firstRun=1;      
+      firstRun = 1;
       seq_state = 0;
       break;
     case 31:  //Scream Sequence
       if (screamSeq() == 1) {
-         seq_state = 0;
-         firstRun=1;
-      }         
+        seq_state = 0;
+        firstRun = 1;
+      }
       break;
     case 32:  //Wave Sequence
       if (waveSeq() == 1) {
-         seq_state = 0;
-         firstRun=1;
-      }         
+        seq_state = 0;
+        firstRun = 1;
+      }
+      break;
+    case 33:  //Moody Fast Wave Sequence
+      if (waveSeq1() == 1) {
+        seq_state = 0;
+        firstRun = 1;
+      }
+      break;
+    case 34:  //Open Wave Sequence
+      if (waveSeq2() == 1) {
+        seq_state = 0;
+        firstRun = 1;
+      }
+      break;
+    case 35:  //Cantina Sequence
+      if (cantinaSeq() == 1) {
+        seq_state = 0;
+        firstRun = 1;
+      }
+      break;
+    case 36:  //Open Wave Sequence
+      if (cantinaSeq() == 1) {
+        seq_state = 0;
+        firstRun = 1;
+      }
       break;
   }
   return;
 }
 
-int waveSeq() {
+int cantinaSeq() {
   int static step = 0;
   switch (step) {
-    case 0:  //Set HP to blink and play a Happy sound
-      Serial1.write(HP_BLINK_4);
-      Serial.write("J355");
-      step=1;
+    case 0:
+      Serial1.write(HPB_17);
+      Serial.write(SND_FAINT);
+      step = 1;
       break;
     case 1:  //Start the show
       if (runSeq(panel_wave)) step = 2;
@@ -1619,10 +1649,64 @@ int waveSeq() {
       break;
   }
   return 0;
-
 }
 
+int waveSeq() {
+  int static step = 0;
+  switch (step) {
+    case 0:  //Set HP to blink and play a Happy sound
+      Serial1.write(HPF_03);
+      Serial.write(SND_WAVE);
+      step = 1;
+      break;
+    case 1:  //Start the show
+      if (runSeq(panel_wave)) step = 2;
+      break;
+    case 2:
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+int waveSeq1() {
+  int static step = 0;
+  switch (step) {
+    case 0:
+      Serial3.write(TEECES_ALARM);
+      Serial1.write(HPF_04);
+      Serial.write(SND_WAVE1);
+      step = 1;
+      break;
+    case 1:  //Start the show
+      if (runSeq(panel_fast_wave)) step = 2;
+      break;
+    case 2:
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
 
+int waveSeq2() {
+  int static step = 0;
+  switch (step) {
+    case 0:
+      Serial1.write(HPB_04);
+      Serial.write(SND_WAVE2);
+      step = 1;
+      break;
+    case 1:  //Start the show
+      if (runSeq(panel_open_close_wave)) step = 2;
+      break;
+    case 2:
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
 
 
 int screamSeq() {
@@ -1634,9 +1718,9 @@ int screamSeq() {
       step = 1;
       break;
     case 1:  //Turn on Magic Panel
-      Serial.write(SCREAM);
-      Serial1.write(HP_FLICKER_4);
-      Serial1.write(MP_FLICKER_4);
+      Serial.write(SND_SCREAM);
+      Serial1.write(HPF_04);
+      Serial1.write(MPF_04);
       Serial3.write(TEECES_ALARM);
       step = 2;
       break;
