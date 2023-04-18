@@ -433,22 +433,21 @@ int HPBlink(int seconds) {
 }
 
 
-int HPFlicker(int seconds) {
-  byte flicker[10] = { 180, 30, 89, 23, 255, 200, 90, 150, 60, 230 };
+int HPFlicker(int secs) {
+  byte flicker[10] = { 180, 30, 89, 23, 255, 200, 90, 150, 60, 230 };  //Flicker values to be repeated
   int num = curr_holo_color;
   int red = pgm_read_word(&(np_color[num][0]));
   int green = pgm_read_word(&(np_color[num][1]));
   int blue = pgm_read_word(&(np_color[num][2]));
   int static step = 0;
-  long static rTimer, fTimer, cTimer;
-  int static interval = 50;
+  long unsigned static rTimer, fTimer, cTimer;
+  long unsigned interval = 50;
   cTimer = millis();
   if (!hpFlickSet) {
     hpFlickSet = 1;
     rTimer = cTimer;
-    fTimer = cTimer;
+    fTimer = 0;
   }
-
   if (cTimer - fTimer > interval) {
     fTimer = cTimer;
     bHolo.setPixelColor(0, bHolo.Color(red * flicker[step] / 255, green * flicker[step] / 255, blue * flicker[step] / 255));
@@ -459,10 +458,10 @@ int HPFlicker(int seconds) {
     tHolo.show();
     if (step < 9) step++;
     else step = 0;
-    interval = random(35,65);
-    return 0;
+    //interval = random(35,65);
+    
   }
-  if (cTimer - rTimer > seconds * 1000) {
+  if (cTimer - rTimer > secs * 1000) {
     rTimer = cTimer;
     bHolo.setPixelColor(0, bHolo.Color(0, 0, 0));
     fHolo.setPixelColor(0, fHolo.Color(0, 0, 0));
@@ -473,6 +472,7 @@ int HPFlicker(int seconds) {
     hpFlickSet = 0;
     return 1;
   }
+  return 0;  
 }
 
 int HPFlicker1(int seconds) {
@@ -488,7 +488,7 @@ int HPFlicker1(int seconds) {
   if (!hpFlick1Set) {
     hpFlick1Set = 1;
     rTimer = cTimer;
-    fTimer = cTimer;
+    fTimer = 0;
   }
   if (cTimer - rTimer < seconds * 1000) {
     if (cTimer - fTimer > interval) {
@@ -501,8 +501,8 @@ int HPFlicker1(int seconds) {
       tHolo.show();
       if (step < 9) step++;
       else step = 0;
-      interval = random(35,65);
-      return 0;
+      //interval = random(35,65);
+      
     }
   } else {
     rTimer = cTimer;
@@ -515,6 +515,7 @@ int HPFlicker1(int seconds) {
     hpFlick1Set = 0;
     return 1;
   }
+  return 0;
 }
 
 
