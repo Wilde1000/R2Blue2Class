@@ -79,11 +79,15 @@ The command structure is as follows:
 #define HP_BLUE "D40S6\r"   //Change HP to blue
 #define MP_RED "D45S1\r"    //Change MP to Red
 #define MP_BLUE "D45S5\r"   //Change MP to Blue
-#define SND_SCREAM "J61\r"       //Scream sound
-#define SND_FAINT "J63\r"
-#define SND_WAVE "J35\r"   //Sound for Wave seq
-#define SND_WAVE1 "J23\r"  //Sound for Wave 1 seq
-#define SND_WAVE2 "J24\r"  //Sound for Wave 2 seq
+#define SND_SCREAM "J61\r"  //Scream sound
+#define SND_FAINT "J63\r"   //Faint sound
+#define SND_LEIA "JL\r"     //Leia sound
+#define SND_WAVE "J213\r"   //Sound for Wave seq
+#define SND_WAVE1 "J34\r"   //Sound for Wave 1 seq
+#define SND_WAVE2 "J36\r"   //Sound for Wave 2 seq
+#define SND_CANTINA "JC\r"  //Sound for Cantina Music
+#define SND_CANTINAB "Jc\r" //Sound for Beep Cantina Music 
+#define SND_DISCO "JD\r"    //Sound for Disco Music
 #define HPB_04 "D40T104\r"  //HP Blink for 4 seconds
 #define HPB_17 "D40T117\r"  //HP Blink for 17 seconds
 #define HPF_04 "D40T204\r"  //HP Flicker for 4 seconds
@@ -93,6 +97,7 @@ The command structure is as follows:
 #define MP_OFF "D45T0\r"    //Turn off Magic Panel
 #define TEECES_ALARM "0T3\r"
 #define TEECES_NORMAL "0T1\r"
+#define TEECES_SPECTRUM "0T92\r"
 #define SND_SPARK "J54\r"
 //define Adafruit PWM servo Pins and Limits
 
@@ -1178,10 +1183,12 @@ void ZapLift(int option) {
 //ZapLights operates the Zap light on the zapper. Pass a 0 to shut off and a positive number to run
 byte ZapLights(int num) {
   if (num) {
+    Serial.write(SND_SPARK);
+    delay(100);
     switch (z_state) {
       case 0:
         current_time = millis();
-        Serial.write(SND_SPARK);
+        
         digitalWrite(Z_LED, HIGH);  // sets the led HIGH
         if (current_time - z_timer >= z_int) {
           z_timer = current_time;
@@ -1638,13 +1645,16 @@ int cantinaSeq() {
   switch (step) {
     case 0:
       Serial1.write(HPB_17);
-      Serial.write(SND_FAINT);
+      Serial.write(SND_CANTINA);
+      Serial3.write(TEECES_SPECTRUM);
       step = 1;
       break;
     case 1:  //Start the show
-      if (runSeq(panel_wave)) step = 2;
+      if (runSeq(panel_marching_ants)) step = 2;
       break;
     case 2:
+      Serial3.write(TEECES_NORMAL);
+      Serial1.write(HP_OFF);
       step = 0;
       return 1;
       break;
