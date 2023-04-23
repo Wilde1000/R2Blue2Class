@@ -369,6 +369,9 @@ void Holos(int opt) {
         //Serial.println(servoPOS);
         holo_state = 0;
         break;
+      case 9:
+        rainbowHolos(50);
+        break;
     }
   }
   if (opt >= 100 && opt < 200) {
@@ -401,7 +404,7 @@ int HPBlink(int seconds) {
   if (!hpBlinkSet) {
     hpBlinkSet = 1;
     rTimer = cTimer;
-    bTimer = cTimer;
+    bTimer = 0;
   }
   if (cTimer - rTimer < seconds * 1000) {
     if (cTimer - bTimer > interval) {
@@ -566,7 +569,7 @@ int MPBlink(int seconds) {
   if (!mpBlinkSet) {
     mpBlinkSet = 1;
     rTimer = cTimer;
-    bTimer = cTimer;
+    bTimer = 0;
   }
 
   if (cTimer - bTimer > interval) {
@@ -606,7 +609,7 @@ int MPFlicker(int seconds) {
   if (!timeSet) {
     timeSet = 1;
     rTimer = cTimer;
-    fTimer = cTimer;
+    fTimer = 0;
   }
 
   if (cTimer - rTimer < seconds * 1000) {
@@ -633,13 +636,13 @@ int MPFlicker(int seconds) {
 //The parseCommand takes the command from the buildCommand function and parses into its component parts - MPU, Address, Command and Option
 int parseCommand(char* input_str) {
   byte length = strlen(input_str);
-  if (length < 2) goto deadCmd;  //not enough characters
+  if (length < 2) return 1;  //not enough characters
   int mpu = input_str[0];        //MPU is the first character
   if (MPU != mpu) {              //if command is not for this MPU - send it on its way
     Serial.flush();
     for (int x = 0; x < length; x++) Serial.write(input_str[x]);
     Serial.write(13);
-    return;
+    return 1;
   }
   dev_MPU = mpu;
   // Now the address which should be the next two characters
@@ -648,7 +651,7 @@ int parseCommand(char* input_str) {
   addrStr[1] = input_str[2];
   addrStr[2] = '\0';
   dev_addr = atoi(addrStr);
-  if (!length > 4) goto deadCmd;  //invalid, no command after address
+  if (!length > 4) return 0;  //invalid, no command after address
   dev_cmd = input_str[3];
   char optStr[4];
   optStr[0] = input_str[4];
@@ -674,12 +677,10 @@ int parseCommand(char* input_str) {
       doScommand(dev_addr, dev_opt);
       break;
     default:
-      goto deadCmd;  // unknown command
+      return 1;  // unknown command
       break;
   }
-  return;
-deadCmd:
-  return;
+  return 0;
 }
 
 
@@ -698,6 +699,24 @@ void rainbow(int wait) {
   }
 }
 
+// Rainbow cycle along whole mPanel. Pass delay time (in ms) between frames.
+void rainbowHolos(int wait) {
+  current_time = millis();
+  static long firstPixelHue = 0;
+  if (current_time - mp_timer > wait) {
+    mp_timer = current_time;
+    fHolo.rainbow(firstPixelHue);
+    tHolo.rainbow(firstPixelHue);
+    bHolo.rainbow(firstPixelHue);
+    // Above line is equivalent to:
+    // mPanel.rainbow(firstPixelHue, 1, 255, 255, true);
+    fHolo.show();  // Update strip with new contents
+    tHolo.show(); 
+    bHolo.show();
+    firstPixelHue += 256;
+    if (firstPixelHue >= 5 * 65536) firstPixelHue = 0;
+  }
+}
 
 
 //The ReadDataFromBlock function reads a single block from the scanned card and verifies the encryption
