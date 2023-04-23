@@ -90,14 +90,18 @@ The command structure is as follows:
 #define SND_DISCO "JD\r"    //Sound for Disco Music
 #define HPB_04 "D40T104\r"  //HP Blink for 4 seconds
 #define HPB_17 "D40T117\r"  //HP Blink for 17 seconds
-#define HPF_04 "D40T204\r"  //HP Flicker for 4 seconds
+#define HPF_04 "D40T203\r"  //HP Flicker for 4 seconds
+#define HPF_10 "D40T209\r"  //HP Flicker for 10 seconds
+#define HPF_99 "D40T299\r"  //HP Flicker for 10 seconds
 #define HP_OFF "D40T0\r"    //Turn off holoprojectors
-#define MPB_04 "D45T104\r"  //Blink MP for 4 seconds
-#define MPF_04 "D45T204\r"  //Flicker MP for 4 seconds
+#define MPB_04 "D45T103\r"  //Blink MP for 4 seconds
+#define MPF_04 "D45T203\r"  //Flicker MP for 4 seconds
+#define MPF_10 "D45T209\r"  //Flicker MP for 10 seconds
 #define MP_OFF "D45T0\r"    //Turn off Magic Panel
 #define TEECES_ALARM "0T3\r"
 #define TEECES_NORMAL "0T1\r"
 #define TEECES_SPECTRUM "0T92\r"
+#define TEECES_SHORT "0T4\r"
 #define SND_SPARK "J54\r"
 //define Adafruit PWM servo Pins and Limits
 
@@ -524,7 +528,6 @@ void BMLift(int option) {
     case 0:
       //default - No Action
       if (digitalRead(BM_BOT)) bmLights(1);
-      return 0;
       break;
     case 1:  //Raise LSaber
       if (BM_Raise() == 1) bad_motive_state = 0;
@@ -533,6 +536,7 @@ void BMLift(int option) {
       if (BM_Lower() == 1) bad_motive_state = 0;
       break;
   }
+  return;
 }
 
 
@@ -721,7 +725,7 @@ void LFLift(int option) {
   switch (option) {
     case 0:
       //default - No Action
-      return 0;
+      break;
     case 1:  //Raise Life Form Scanner
       if (LF_Raise() == 1) life_form_state = 0;
       break;
@@ -824,7 +828,7 @@ void LSLift(int option) {
   switch (option) {
     case 0:
       //default - No Action
-      return 0;
+      break;
     case 1:  //Raise LSaber
       if (LS_Raise() == 1) light_saber_state = 0;
       break;
@@ -832,6 +836,7 @@ void LSLift(int option) {
       if (LS_Lower() == 1) light_saber_state = 0;
       break;
   }
+  return;
 }
 
 
@@ -894,33 +899,33 @@ void moveServo(int srvNo, int from, int to) {
 //The parseCommand takes the command from the buildCommand function and parses into its component parts - MPU, Address, Command and Option
 int parseCommand(char* input_str) {
   byte length = strlen(input_str);
-  if (length < 2) goto deadCmd;  //not enough characters
+  if (length < 2) return 1;  //not enough characters
   int mpu = input_str[0];        //MPU is the first character
   if (MPU != mpu) {
     if (mpu == 'A' || mpu == 'B' || mpu == 'C' || mpu == 'H' || mpu == 'I' || mpu == 'J') {
       Serial.flush();
       for (int x = 0; x < length; x++) Serial.write(input_str[x]);
       Serial.write(13);
-      return;
+      return 0;
     }
     if (mpu == 'D') {
       Serial1.flush();
       for (int x = 0; x < length; x++) Serial1.write(input_str[x]);
       Serial1.write(13);
-      return;
+      return 0;
     }
     if (mpu == 'F') {
       Serial2.flush();
       for (int x = 0; x < length; x++) Serial2.write(input_str[x]);
       Serial2.write(13);
-      return;
+      return 0;
     }
 
     if (mpu == 'G') {
       Serial3.flush();
       for (int x = 1; x < length; x++) Serial3.write(input_str[x]);
       Serial3.write(13);
-      return;
+      return 0;
     }
   }
   dev_MPU = mpu;
@@ -930,7 +935,7 @@ int parseCommand(char* input_str) {
   addrStr[1] = input_str[2];
   addrStr[2] = '\0';
   dev_addr = atoi(addrStr);
-  if (!length > 5) goto deadCmd;  //invalid, no command after address
+  if (!length > 5) return 1;  //invalid, no command after address
   dev_cmd = input_str[3];
   char optStr[4];
   optStr[0] = input_str[4];
@@ -958,12 +963,10 @@ int parseCommand(char* input_str) {
       doScommand(dev_addr, dev_opt);
       break;
     default:
-      goto deadCmd;  // unknown command
+      return 1;  // unknown command
       break;
   }
-  return;
-deadCmd:
-  return;
+  return 0;
 }
 
 
@@ -1097,18 +1100,14 @@ void pLights(int num) {
   switch (num) {
     case 0:  //Periscope Lights off
       if (!lightsOn) break;
-      char cmd0[] = "F60T2";
       Serial2.flush();
-      for (int x = 0; x < 5; x++) Serial2.write(cmd0[x]);
-      Serial2.write(13);
+      Serial2.write("F60T2\r");
       lightsOn = false;
       break;
     case 1:  //Periscope Light on defalult value
       if (lightsOn) break;
-      char cmd1[] = "F60T1";
       Serial2.flush();
-      for (int x = 0; x < 5; x++) Serial2.write(cmd1[x]);
-      Serial2.write(13);
+      Serial2.write("F60T1\r");
       lightsOn = true;
       break;
   }
@@ -1625,13 +1624,25 @@ void Sequencer(int opt) {
       }
       break;
     case 35:  //Cantina Sequence
-      if (cantinaSeq() == 1) {
+      if (faintSeq() == 1) {
         seq_state = 0;
         firstRun = 1;
       }
       break;
     case 36:  //Open Wave Sequence
       if (cantinaSeq() == 1) {
+        seq_state = 0;
+        firstRun = 1;
+      }
+      break;
+    case 37:  //Open Wave Sequence
+      if (leiaSeq() == 1) {
+        seq_state = 0;
+        firstRun = 1;
+      }
+      break;
+    case 38:  //Open Wave Sequence
+      if (discoSeq() == 1) {
         seq_state = 0;
         firstRun = 1;
       }
@@ -1661,6 +1672,47 @@ int cantinaSeq() {
   }
   return 0;
 }
+
+int discoSeq() {
+  int static step = 0;
+  switch (step) {
+    case 0:  //Set HP to blink and play a Happy sound
+      Serial1.write(HPF_99);
+      Serial.write(SND_WAVE);
+      step = 1;
+      break;
+    case 1:  //Start the show
+      if (runSeq(panel_dance)) step = 2;
+      break;
+    case 2:
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+
+
+int leiaSeq() {
+  int static step = 0;
+  switch (step) {
+    case 0:  //Set HP to blink and play a Happy sound
+      Serial3.write("0T6\r");
+      Serial1.write("D40T330\r");
+      Serial.write(SND_LEIA);
+      step = 1;
+      break;
+    case 1:  //Start the show
+      if (runSeq(panel_init)) step = 2;
+      break;
+    case 2:
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+
 
 int waveSeq() {
   int static step = 0;
@@ -1750,6 +1802,33 @@ int screamSeq() {
       step = 5;
       break;
     case 5:
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+
+int faintSeq() {
+  int static step = 0;
+  switch (step) {
+    case 0:  //Set color on the Holoprojector and Magic Panel
+      Serial.write(SND_FAINT);
+      Serial1.write(HPF_10);
+      Serial1.write(MPF_10);
+      Serial3.write(TEECES_SHORT);
+      step = 1;
+      break;
+    case 1:  //Set the Teeces to Scream
+      if (runSeq(panel_all_open_long)) step = 2;
+      break;
+    case 2:  //Reset teeces
+      Serial1.write(HP_OFF);
+      Serial1.write(MP_OFF);
+      Serial3.write(TEECES_NORMAL);
+      step = 3;
+      break;
+    case 4:
       step = 0;
       return 1;
       break;
