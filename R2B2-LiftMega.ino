@@ -74,30 +74,31 @@ The command structure is as follows:
 //#define OSCIL_FREQ 27000000
 #define MPU 'E'
 #define CMD_MAX_LENGTH 63
-#define HPF_03 "D40T203\r"  //HP Flicker for 3 seconds
-#define HP_RED "D40S1\r"    //Change HP to red
-#define HP_BLUE "D40S6\r"   //Change HP to blue
-#define MP_RED "D45S1\r"    //Change MP to Red
-#define MP_BLUE "D45S5\r"   //Change MP to Blue
-#define SND_SCREAM "J61\r"  //Scream sound
-#define SND_FAINT "J63\r"   //Faint sound
-#define SND_LEIA "JL\r"     //Leia sound
-#define SND_WAVE "J213\r"   //Sound for Wave seq
-#define SND_WAVE1 "J34\r"   //Sound for Wave 1 seq
-#define SND_WAVE2 "J36\r"   //Sound for Wave 2 seq
-#define SND_CANTINA "JC\r"  //Sound for Cantina Music
-#define SND_CANTINAB "Jc\r" //Sound for Beep Cantina Music 
-#define SND_DISCO "JD\r"    //Sound for Disco Music
-#define HPB_04 "D40T104\r"  //HP Blink for 4 seconds
-#define HPB_17 "D40T117\r"  //HP Blink for 17 seconds
-#define HPF_04 "D40T203\r"  //HP Flicker for 4 seconds
-#define HPF_10 "D40T209\r"  //HP Flicker for 10 seconds
-#define HPF_99 "D40T299\r"  //HP Flicker for 10 seconds
-#define HP_OFF "D40T0\r"    //Turn off holoprojectors
-#define MPB_04 "D45T103\r"  //Blink MP for 4 seconds
-#define MPF_04 "D45T203\r"  //Flicker MP for 4 seconds
-#define MPF_10 "D45T209\r"  //Flicker MP for 10 seconds
-#define MP_OFF "D45T0\r"    //Turn off Magic Panel
+#define HPF_03 "D40T203\r"   //HP Flicker for 3 seconds
+#define HP_RED "D40S1\r"     //Change HP to red
+#define HP_BLUE "D40S6\r"    //Change HP to blue
+#define MP_RED "D45S1\r"     //Change MP to Red
+#define MP_BLUE "D45S5\r"    //Change MP to Blue
+#define SND_SCREAM "J61\r"   //Scream sound
+#define SND_FAINT "J63\r"    //Faint sound
+#define SND_LEIA "JL\r"      //Leia sound
+#define SND_WAVE "J213\r"    //Sound for Wave seq
+#define SND_WAVE1 "J34\r"    //Sound for Wave 1 seq
+#define SND_WAVE2 "J36\r"    //Sound for Wave 2 seq
+#define SND_CANTINA "JC\r"   //Sound for Cantina Music
+#define SND_CANTINAB "Jc\r"  //Sound for Beep Cantina Music
+#define SND_DISCO "JD\r"     //Sound for Disco Music
+#define HPB_04 "D40T104\r"   //HP Blink for 4 seconds
+#define HPB_17 "D40T117\r"   //HP Blink for 17 seconds
+#define HPF_04 "D40T203\r"   //HP Flicker for 4 seconds
+#define HPF_10 "D40T209\r"   //HP Flicker for 10 seconds
+#define HPF_99 "D40T299\r"   //HP Flicker for 10 seconds
+#define HP_RAINBOW "D40T9\r" //Rainbow Halos 
+#define HP_OFF "D40T0\r"     //Turn off holoprojectors
+#define MPB_04 "D45T103\r"   //Blink MP for 4 seconds
+#define MPF_04 "D45T203\r"   //Flicker MP for 4 seconds
+#define MPF_10 "D45T209\r"   //Flicker MP for 10 seconds
+#define MP_OFF "D45T0\r"     //Turn off Magic Panel
 #define TEECES_ALARM "0T3\r"
 #define TEECES_NORMAL "0T1\r"
 #define TEECES_SPECTRUM "0T92\r"
@@ -900,7 +901,7 @@ void moveServo(int srvNo, int from, int to) {
 int parseCommand(char* input_str) {
   byte length = strlen(input_str);
   if (length < 2) return 1;  //not enough characters
-  int mpu = input_str[0];        //MPU is the first character
+  int mpu = input_str[0];    //MPU is the first character
   if (MPU != mpu) {
     if (mpu == 'A' || mpu == 'B' || mpu == 'C' || mpu == 'H' || mpu == 'I' || mpu == 'J') {
       Serial.flush();
@@ -1187,7 +1188,7 @@ byte ZapLights(int num) {
     switch (z_state) {
       case 0:
         current_time = millis();
-        
+
         digitalWrite(Z_LED, HIGH);  // sets the led HIGH
         if (current_time - z_timer >= z_int) {
           z_timer = current_time;
@@ -1677,12 +1678,15 @@ int discoSeq() {
   int static step = 0;
   switch (step) {
     case 0:  //Set HP to blink and play a Happy sound
-      Serial1.write(HPF_99);
-      Serial.write(SND_WAVE);
+      Serial1.write(HP_RAINBOW);
+      Serial.write(SND_DISCO);
       step = 1;
       break;
     case 1:  //Start the show
-      if (runSeq(panel_dance)) step = 2;
+      if (runSeq(panel_dance)) {
+        step = 2;
+        Serial1.write(HP_OFF);
+      }
       break;
     case 2:
       step = 0;
