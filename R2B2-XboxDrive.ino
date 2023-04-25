@@ -32,49 +32,50 @@ Spark Max (Ask me how I know this!!!).
 #define IN1_DOME_MOTOR 2      //Set the INPUT1 pin for the Dome motor
 #define IN2_DOME_MOTOR 5      //Set the INPUT2 pin for the Dome motor
 
-#define UA_ON "A10T1\r"   //Utility Arm on command
-#define UA_OFF "A10T2\r"  //Utility arm off command
-#define IA_ON "A11T1\r"   //Interface Arm on command
-#define IA_OFF "A11T2\r"  //Interface arm off command
-#define GA_ON "A12T1\r"   //Gripper Arm on command
-#define GA_OFF "A12T2\r"  //Gripper arm off command
-#define DP_ON "B24T1\r"   //Dataport on command
-#define DP_OFF "B24T2\r"  //Dataport off command
-#define ZP_ON "E51T8\r"   //Zapper on command
-#define ZP_OFF "E51T8\r"  //Zapper off command
-#define LS_ON "E52T1\r"   //Light Saber on command
-#define LS_OFF "E52T2\r"  //Light Saber off command
-#define PS_ON "E53T1\r"   //Periscope on command
-#define PS_OFF "E53T2\r"  //Periscope off command
-#define BM_ON "E54T1\r"   //Bad Motivator on command
-#define BM_OFF "E54T2\r"  //Bad Motivator off command
-#define LF_ON "E55T1\r"   //Life Form on command
-#define LF_OFF "E55T2\r"  //Life Form off command
-#define BEEP01 "J01\r"  //General Beep 1
-#define BEEP02 "J02\r"  //General Beep 2
-#define BEEP03 "J03\r"  //General Beep 3
-#define BEEP04 "J04\r"  //General Beep 4
-#define BEEP05 "J11\r"  //Happy Beep 1
-#define BEEP06 "J12\r"  //Happy Beep 2
-#define BEEP07 "J13\r"  //Happy Beep 3
-#define BEEP08 "J14\r"  //Happy Beep 4
-#define BEEP09 "J21\r"  //Sad Beep 1
-#define BEEP10 "J22\r"  //Sad Beep 2
-#define BEEP11 "J23\r"  //Sad Beep 3
-#define BEEP12 "J24\r"  //Sad Beep 4
-#define BEEP13 "J31\r"  //Chatty Beep 1
-#define BEEP14 "J32\r"  //Chatty Beep 2
-#define BEEP15 "J33\r"  //Chatty Beep 1
-#define BEEP16 "J34\r"  //Chatty Beep 2
-#define ROUTSCREAM "E50T31\r" //Scream Routine  
-#define ROUTWAVE "E50T32\r" //Wave Routine  
-#define ROUTWAVE1 "E50T33\r" //Moody Wave Routine  
-#define ROUTWAVE2 "E50T34\r" //Open Wave Routine  
-#define ROUTFAINT "E50T35\r" //Faint/Short Circuit Routine  
-#define ROUTCANTINA "E50T36\r" //Cantina Routine  
-#define ROUTLEIA "E50T37\r"   //Leia Routine  
-#define ROUTDISCO "E50T38\r"  //Disco Routine
+#define UA_ON "A10T1\r"         //Utility Arm on command
+#define UA_OFF "A10T2\r"        //Utility arm off command
+#define IA_ON "A11T1\r"         //Interface Arm on command
+#define IA_OFF "A11T2\r"        //Interface arm off command
+#define GA_ON "A12T1\r"         //Gripper Arm on command
+#define GA_OFF "A12T2\r"        //Gripper arm off command
+#define DP_ON "B24T1\r"         //Dataport on command
+#define DP_OFF "B24T2\r"        //Dataport off command
+#define ZP_ON "E51T8\r"         //Zapper on command
+#define ZP_OFF "E51T8\r"        //Zapper off command
+#define LS_ON "E52T1\r"         //Light Saber on command
+#define LS_OFF "E52T2\r"        //Light Saber off command
+#define PS_ON "E53T1\r"         //Periscope on command
+#define PS_OFF "E53T2\r"        //Periscope off command
+#define BM_ON "E54T1\r"         //Bad Motivator on command
+#define BM_OFF "E54T2\r"        //Bad Motivator off command
+#define LF_ON "E55T1\r"         //Life Form on command
+#define LF_OFF "E55T2\r"        //Life Form off command
+#define BEEP01 "J01\r"          //General Beep 1
+#define BEEP02 "J02\r"          //General Beep 2
+#define BEEP03 "J03\r"          //General Beep 3
+#define BEEP04 "J04\r"          //General Beep 4
+#define BEEP05 "J11\r"          //Happy Beep 1
+#define BEEP06 "J12\r"          //Happy Beep 2
+#define BEEP07 "J13\r"          //Happy Beep 3
+#define BEEP08 "J14\r"          //Happy Beep 4
+#define BEEP09 "J21\r"          //Sad Beep 1
+#define BEEP10 "J22\r"          //Sad Beep 2
+#define BEEP11 "J23\r"          //Sad Beep 3
+#define BEEP12 "J24\r"          //Sad Beep 4
+#define BEEP13 "J31\r"          //Chatty Beep 1
+#define BEEP14 "J32\r"          //Chatty Beep 2
+#define BEEP15 "J33\r"          //Chatty Beep 1
+#define BEEP16 "J34\r"          //Chatty Beep 2
+#define ROUTSCREAM "E50T31\r"   //Scream Routine
+#define ROUTWAVE "E50T32\r"     //Wave Routine
+#define ROUTWAVE1 "E50T33\r"    //Moody Wave Routine
+#define ROUTWAVE2 "E50T34\r"    //Open Wave Routine
+#define ROUTFAINT "E50T35\r"    //Faint/Short Circuit Routine
+#define ROUTCANTINA "E50T36\r"  //Cantina Routine
+#define ROUTLEIA "E50T37\r"     //Leia Routine
+#define ROUTDISCO "E50T38\r"    //Disco Routine
 
+#define HP_COLOR "D40S"
 
 /*************************************************************************
  * ******************************* STRUCTS *******************************
@@ -105,6 +106,11 @@ Command runCommand(Command* command);
 bool driveEnabled = false;
 byte comSet = 1;
 
+int HP_current_color = 13;
+int mp_current_color = 6;
+int LDPL_current_color = 6;
+int Coin_current_color = 6;
+
 USB Usb;              //Creates a USB object
 XBOXRECV Xbox(&Usb);  //Creates a XBOXRECV object called Xbox and attached to the USB object
 Servo LFoot;          //Create a servo object for left foot
@@ -128,7 +134,7 @@ Command sound7 = createCommand(BEEP13, BEEP14);
 Command sound8 = createCommand(BEEP15, BEEP16);
 Command holos = createCommand("D40T1\r", "D40T0\r");
 Command magicpanel = createCommand("D45T1\r", "D45T0\r");
-Command coinslots = createCommand("B21T6\r","B21T0\r");
+Command coinslots = createCommand("B21T6\r", "B21T0\r");
 bool mtrsEnable = 0;
 
 
@@ -254,15 +260,15 @@ void loop() {
         }
       }
       if (Xbox.getButtonClick(L3)) {
-        if(comSet>1)comSet--;
-        else comSet=4;
+        if (comSet > 1) comSet--;
+        else comSet = 4;
         Xbox.setLedOn((LEDEnum)comSet);
       }
-      if (Xbox.getButtonClick(R3)){
-        if(comSet<4)comSet++;
-        else comSet=1;
+      if (Xbox.getButtonClick(R3)) {
+        if (comSet < 4) comSet++;
+        else comSet = 1;
         Xbox.setLedOn((LEDEnum)comSet);
-      } 
+      }
       if (Xbox.getButtonClick(SYNC)) {
         //Serial.println(F("Sync"));
         Xbox.disconnect(CONTROLLER);
@@ -277,7 +283,7 @@ void loop() {
           if (Xbox.getButtonClick(RIGHT)) runCommand(&magicpanel);
           if (Xbox.getButtonClick(START)) runCommand(&zapper);
           if (Xbox.getButtonClick(BACK)) runCommand(&coinslots);
-          
+
           if (Xbox.getButtonClick(A)) runCommand(&lightSaber);
           if (Xbox.getButtonClick(B)) runCommand(&periscope);
           if (Xbox.getButtonClick(X)) runCommand(&motivator);
@@ -303,7 +309,17 @@ void loop() {
           if (Xbox.getButtonClick(X)) runCommand(&sound7);
           if (Xbox.getButtonClick(Y)) runCommand(&sound8);
           break;
-
+        case 4:
+          if (Xbox.getButtonClick(UP)) Serial.write("D40S20\r");
+            
+          if (Xbox.getButtonClick(DOWN)) runCommand(&sound2);
+          if (Xbox.getButtonClick(LEFT)) runCommand(&sound3);
+          if (Xbox.getButtonClick(RIGHT)) runCommand(&sound4);
+          if (Xbox.getButtonClick(A)) runCommand(&sound5);
+          if (Xbox.getButtonClick(B)) runCommand(&sound6);
+          if (Xbox.getButtonClick(X)) runCommand(&sound7);
+          if (Xbox.getButtonClick(Y)) runCommand(&sound8);
+          break;
       }
     }
   }
