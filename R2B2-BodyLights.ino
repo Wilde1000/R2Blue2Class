@@ -56,6 +56,7 @@ The command structure is as follows:
 #include <LedControl.h>  //Needed for MAX7219 driven leds
 #include <FastLED.h>     // Needed for Neopixels
 #include <pixeltypes.h>  //Helper Library for FastLED
+#include <Adafruit_NeoPixel.h>  //Needed for neopixels
 #include <Servo.h>       //Servo library for Data Panel
 
 /*************************************************************************
@@ -124,6 +125,9 @@ The command structure is as follows:
 /*************************************************************************
  * ********************** GLOBAL VARIABLES *******************************
  * ***********************************************************************/
+Adafruit_NeoPixel cslotsLGHT(CS_LEDS, CS_PIN, NEO_GRB + NEO_KHZ800);         //Back Holo Light
+Adafruit_NeoPixel ldplLGHT(LDPL_LEDS, LDPL_PIN, NEO_GRB + NEO_KHZ800);         //Front Holo Light
+
 CRGB lb[LB_LEDS];      // Create a CRGB object for Data Panel Light Bar
 CRGB ldpl[LDPL_LEDS];  // Create a CRGB object for Large Data Panel Logics
 CRGB cs[CS_LEDS];      // Create a CRGB object for the Coin Slots
@@ -141,10 +145,30 @@ char dev_cmd, dev_MPU;                                              // Create va
 int cs_State = 16;                                                  // Sets default Coin Slot State to off
 int cs_Speed = 425;                                                 // Sets default Coin Slot speed to Medium
 int cs_Tspeed = 10;                                                 // Sets default Coin Slot throb speed (0-99)
+int cs_color = 6;
+int mp_color = 6;
 int ldpl_State = 16;                                                // Sets default Large Data Port Logics State to off
 int ldpl_Speed = 200;                                               // Sets default Large Data Port Logics speed to Medium
 int ldpl_Tspeed = 10;                                               // Sets default Large Data Port Logics throb speed (0-99)
 int dpl_State = 0;                                                  // Set default Data Port Logics to off
+
+//  Color Sequences stored in Program Memory
+const uint16_t np_color[][3] PROGMEM = {
+  { 0, 0, 0 },       //Off - 0
+  { 255, 0, 0 },     //Red - 1
+  { 255, 0, 128 },   //Rose - 2
+  { 255, 0, 255 },   //Magenta - 3
+  { 128, 0, 255 },   //Violet - 4
+  { 0, 0, 255 },     //Blue - 5
+  { 0, 128, 255 },   //Azure - 6
+  { 0, 255, 255 },   //Cyan - 7
+  { 0, 255, 128 },   //Spring Green - 8
+  { 0, 255, 0 },     //Green - 9
+  { 128, 255, 0 },   //Chartreuse - 10
+  { 255, 255, 0 },   //Yellow - 11
+  { 255, 128, 0 },   //Orange - 12
+  { 255, 255, 255 }  //White - 13
+};
 
 
 Servo dp_door;  //Create servo object for Dataport Door
@@ -292,45 +316,52 @@ void checkSerial() {
 
 
 
+
 //Handles all interactions with the coin slot neopixels
 int coinslot(int num) {
-  //Shut off coin slots
+  int red = pgm_read_word(&(np_color[cs_color][0]));
+  int green = pgm_read_word(&(np_color[cs_color][1]));
+  int blue = pgm_read_word(&(np_color[cs_color][2]));
+  //0 - Shut off coin slots
   if (num == 0) {
-    for (int x = 0; x <= 17; x++) cs[x] = 0x000000;
-    FastLED.show();
+    for (int x = 0; x <CS_LEDS; x++) cslotsLGHT.setPixelColor(x,cslotsLGHT.Color(0,0,0));
+    cslotsLGHT.show();
     return 0;
   }
-  //
+  //1 - Runs Solid color
+  if(num == 1){
+    for (int x = 0; x <CS_LEDS; x++) cslotsLGHT.setPixelColor(x,cslotsLGHT.Color(red,green,blue));
+    cslotsLGHT.show();
+    return 0;
+  }
+  
   static unsigned long timeLast = 0;
   unsigned long elapsed = millis();
   if ((elapsed - timeLast) < cs_Speed) return num;
   timeLast = elapsed;
-  if (num < 11) {
-    cs_updown(num);
-    return num;
+  //timed routines
+  //2 - cs_updown
+  if (num == 2) {
+    cs_updown();
+    return 0;
   }
-  if (num < 21) {
-    cs_singleUpDown(num - 10);
-    return num - 10;
+  //3 - singleUpDown
+  if (num == 3) {
+    cs_singleUpDown();
+    return 0;
   }
-  if (num < 31) {
-    int hue = std_color(num - 20);
-    for (int x = 0; x <= 17; x++) cs[x] = CHSV(hue, 255, 255);
-    FastLED.show();
-    return num - 20;
-  }
-
-
-
+  cslotsLGHT.show();
   return 0;
 }
 
 
 //Animates a single coin slot moving up and down
-void cs_singleUpDown(int num) {
+void cs_singleUpDown() {
   static int turn = 0;  //tracks which coinslot is being addressed
   static int dir = 0;   // 0 is up 1 is down
-  int hue = std_color(num);
+  int red = pgm_read_word(&(np_color[cs_color][0]));
+  int green = pgm_read_word(&(np_color[cs_color][1]));
+  int blue = pgm_read_word(&(np_color[cs_color][2]));
   if (turn <= 0 && dir == 1) {
     dir = 0;
     turn = 0;
@@ -339,25 +370,28 @@ void cs_singleUpDown(int num) {
     dir = 1;
     turn = 15;
   }
-  for (int x = 0; x < 18; x++) cs[x] = CHSV(0, 0, 0);
-  cs[turn] = CHSV(hue, 255, 255);
-  cs[turn + 1] = CHSV(hue, 255, 255);
-  cs[turn + 2] = CHSV(hue, 255, 255);
+  //First set all pixels to off
+  for (int x = 0; x <CS_LEDS; x++) cslotsLGHT.setPixelColor(x,cslotsLGHT.Color(0,0,0));
+  cslotsLGHT.setPixelColor(turn, cslotsLGHT.Color(red, green, blue));  
+  cslotsLGHT.setPixelColor(turn+1, cslotsLGHT.Color(red, green, blue));
+  cslotsLGHT.setPixelColor(turn+2, cslotsLGHT.Color(red, green, blue));
   if (dir == 0) {
     turn += 3;
   } else {
     turn -= 3;
   }
-  FastLED.show();
-  return num;
+  cslotsLGHT.show();
+  return;
 }
 
 //  cs_updown displays the passed color one coin slot at a time starting with the top coin slot.
 //  Once all are filled, they are cleared from the bottom up.
-void cs_updown(int num) {
+void cs_updown() {
   static int turn = 0;  //tracks which coinslot is being addressed
   static int dir = 0;   // 0 is up 1 is down
-  int hue = std_color(num);
+  int red = pgm_read_word(&(np_color[cs_color][0]));
+  int green = pgm_read_word(&(np_color[cs_color][1]));
+  int blue = pgm_read_word(&(np_color[cs_color][2]));
   if (turn <= 0 && dir == 1) {
     dir = 0;
     turn = 0;
@@ -367,13 +401,13 @@ void cs_updown(int num) {
     turn = 15;
   }
   if (dir == 0) {
-    cs[turn] = CHSV(hue, 255, 255);
-    cs[turn + 1] = CHSV(hue, 255, 255);
-    cs[turn + 2] = CHSV(hue, 255, 255);
-  } else {
-    cs[turn] = CHSV(0, 0, 0);
-    cs[turn + 1] = CHSV(0, 0, 0);
-    cs[turn + 2] = CHSV(0, 0, 0);
+    cslotsLGHT.setPixelColor(turn, cslotsLGHT.Color(red, green, blue));
+    cslotsLGHT.setPixelColor(turn+1, cslotsLGHT.Color(red, green, blue));
+    cslotsLGHT.setPixelColor(turn+2, cslotsLGHT.Color(red, green, blue));
+    } else {
+    cslotsLGHT.setPixelColor(turn, cslotsLGHT.Color(0, 0, 0));
+    cslotsLGHT.setPixelColor(turn+1, cslotsLGHT.Color(0, 0, 0));
+    cslotsLGHT.setPixelColor(turn+2, cslotsLGHT.Color(0, 0, 0));
   }
 
   if (dir == 0) {
@@ -381,8 +415,8 @@ void cs_updown(int num) {
   } else {
     turn -= 3;
   }
-  FastLED.show();
-  return num;
+  cslotsLGHT.show();
+  return;
 }
 
 
@@ -530,12 +564,14 @@ void getVCC() {
 
 
 //Animates two lit neopixels across the LDPL
-void ldpl_double(int num) {
+void ldpl_double() {
   static unsigned long timeLast = 0;
   unsigned long elapsed = millis();
-  if ((elapsed - timeLast) < ldpl_Speed) return num;
+  if ((elapsed - timeLast) < ldpl_Speed) return;
   timeLast = elapsed;
-  int hue = std_color(num);
+  int red = pgm_read_word(&(np_color[mp_color][0]));
+  int green = pgm_read_word(&(np_color[mp_color][1]));
+  int blue = pgm_read_word(&(np_color[mp_color][2]));
   static int turn = 0;
   static int dir = 0;
   if (turn <= 0 && dir == 1) {
@@ -546,26 +582,28 @@ void ldpl_double(int num) {
     dir = 1;
     turn = 14;
   }
-  for (int x = 0; x < 15; x++) ldpl[x] = CHSV(0, 0, 0);
-  ldpl[turn] = CHSV(hue, 255, 255);
-  ldpl[turn - 1] = CHSV(hue, 255, 255);
+  for (int x = 0; x < LDPL_LEDS; x++) ldplLGHT.setPixelColor(x,ldplLGHT.Color(0,0,0));
+  ldplLGHT.setPixelColor(turn,ldplLGHT.Color(red, green, blue));
+  ldplLGHT.setPixelColor(turn-1,ldplLGHT.Color(red, green, blue));
   if (dir == 0) {
     turn++;
   } else {
     turn--;
   }
-  return num;
+  return;
 }
 
 
 
 //ldpl_single animates a single lit pixel across the LDPL
-void ldpl_single(int num) {
+void ldpl_single() {
   static unsigned long timeLast = 0;
   unsigned long elapsed = millis();
-  if ((elapsed - timeLast) < ldpl_Speed) return num;
+  if ((elapsed - timeLast) < ldpl_Speed) return;
   timeLast = elapsed;
-  int hue = std_color(num);
+  int red = pgm_read_word(&(np_color[mp_color][0]));
+  int green = pgm_read_word(&(np_color[mp_color][1]));
+  int blue = pgm_read_word(&(np_color[mp_color][2]));
   static int turn = 0;
   static int dir = 0;
   if (turn <= 0 && dir == 1) {
@@ -576,14 +614,14 @@ void ldpl_single(int num) {
     dir = 1;
     turn = 14;
   }
-  for (int x = 0; x < 15; x++) ldpl[x] = CHSV(0, 0, 0);
-  ldpl[turn] = CHSV(hue, 255, 255);
+  for (int x = 0; x < LDPL_LEDS; x++) ldplLGHT.setPixelColor(x,ldplLGHT.Color(0, 0, 0));
+  ldplLGHT.setPixelColor(turn, ldplLGHT.Color(red, green, blue));
   if (dir == 0) {
     turn++;
   } else {
     turn--;
   }
-  return num;
+  return;
 }
 
 
@@ -592,7 +630,7 @@ void ldpl_single(int num) {
 //The parseCommand takes the command from the buildCommand function and parses into its component parts - MPU, Address, Command and Option
 int parseCommand(char* input_str) {
   byte length = strlen(input_str);
-  if (length < 5) goto deadCmd;  //not enough characters
+  if (length < 5) return 1;  //not enough characters
   int mpu = input_str[0];      //MPU is the first character
   if (MPU != mpu) {              //if command is not for this MPU - send it on its way
     Serial.flush();
@@ -600,7 +638,7 @@ int parseCommand(char* input_str) {
       Serial.write(input_str[x]);
     }
     Serial.write(13);
-    return;
+    return 0;
   }
   dev_MPU = mpu;
   // Now the address which should be the next two characters
@@ -610,7 +648,7 @@ int parseCommand(char* input_str) {
   addrStr[1] = input_str[2];
   addrStr[2] = '\0';
   dev_addr = atoi(addrStr);
-  if (dev_addr < 20 || dev_addr > 29) goto deadCmd;
+  if (dev_addr < 20 || dev_addr > 29) return 1;
   dev_cmd = input_str[3];
   char optStr[4];
   optStr[0]=input_str[4];
@@ -639,12 +677,10 @@ int parseCommand(char* input_str) {
       doScommand(dev_addr, dev_opt);
       break;
     default:
-      goto deadCmd;  // unknown command
+      return 1;  // unknown command
       break;
   }
-  return;
-deadCmd:
-  return;
+  return 0;
 }
 
 
@@ -840,29 +876,33 @@ void updateCBILEDs() {
 
 //Handles all interactions with the class made Large Dataport Logics
 int updateLDPL(int num) {
-  //Shut off Large Data Port
+  int red = pgm_read_word(&(np_color[mp_color][0]));
+  int green = pgm_read_word(&(np_color[mp_color][1]));
+  int blue = pgm_read_word(&(np_color[mp_color][2]));
+
+  //0 - Shut off Large Data Port
   if (num == 0) {
-    for (int x = 0; x <= 14; x++) ldpl[x] = 0x000000;
-    FastLED.show();
+    for (int x = 0; x < LDPL_LEDS; x++) ldplLGHT.setPixelColor(x, ldplLGHT.Color(0,0,0));
+    ldplLGHT.show();
     return 0;
   }
-  //
-
-  if (num < 11) {
-    ldpl_single(num);
-    return num;
+  //1 - Solid Color
+  if (num == 1) {
+    for (int x = 0; x < LDPL_LEDS; x++) ldplLGHT.setPixelColor(x, ldplLGHT.Color(red, green, blue));
+    ldplLGHT.show();
+    return 0;
   }
-  if (num < 21) {
-    ldpl_double(num - 10);
-    return num - 10;
+  //2 - Single
+  if (num == 2) {
+    ldpl_single();
+    return 0;
   }
-  if (num < 31) {
-    int hue = std_color(num - 20);
-    for (int x = 0; x <= 17; x++) cs[x] = CHSV(hue, 255, 255);
-    FastLED.show();
-    return num - 20;
+//3 - Double
+  if (num == 3) {
+    ldpl_double();
+    return 0;
   }
-  return 0;
+  return 1;
 }
 
 
