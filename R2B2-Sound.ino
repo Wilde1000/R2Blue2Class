@@ -645,7 +645,7 @@ void setup() {
   Serial.begin(9600);     //Serial Connection with Body Lights Mega
   MP3Serial.begin(9600);  //Serial Connection with MP3 Trigger
   //Wait 3 seconds before playing startup sound
-  delay(2000);
+  delay(4000);
   mp3_init();
 }
 
