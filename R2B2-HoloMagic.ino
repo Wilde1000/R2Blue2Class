@@ -120,7 +120,7 @@ char rfData[MAX_RF_CMD][16];  //Contains the all the data from a scanned card
 int blockNum = 2;          //Contains the current block number
 int curr_holo_color = 13;  //Contains current color code for the holoprojectors
 int curr_tholo_color = 5;  //Contains current color code for the top holoprojector
-int current_mp_color = 6;  //Contains current color code for the Magic Panel
+int current_mp_color = 5;  //Contains current color code for the Magic Panel
 int dev_addr;              //Device address received from Serial interface
 int dev_opt;               //Device option received from the Serial interface
 int holo_speed;            //Holds the current holo timeout speed.
@@ -267,9 +267,17 @@ int doScommand(int addr, int opt) {
   switch (addr) {
     case 40:  //Holoprojectors
       if (opt < 14) curr_holo_color = opt;
+      if (opt == 20) {
+        if (curr_holo_color < 13) curr_holo_color++;
+        else curr_holo_color = 1;
+      }
       break;
     case 45:
       if (opt < 14) current_mp_color = opt;
+      if (opt == 20) {
+        if (current_mp_color < 13) current_mp_color++;
+        else current_mp_color = 1;
+      }
       break;
   }
 }
@@ -370,7 +378,16 @@ void Holos(int opt) {
         holo_state = 0;
         break;
       case 9:
-        rainbowHolos(50);
+        rainbowHolos(5);
+        break;
+      case 10:
+        HPBlink(30);
+        break;
+      case 11:
+        HPFlicker(30);
+        break;
+      case 12:
+        HPThrob();
         break;
     }
   }
@@ -436,6 +453,42 @@ int HPBlink(int seconds) {
 }
 
 
+int HPThrob() {
+  int static step = 255;
+  int static dir = 1;
+  long static unsigned timer = 0;
+  int speed = 15;
+  int interval = 50;
+  int depth = 35;
+  current_time = millis();
+  int num = curr_holo_color;
+  int red = pgm_read_word(&(np_color[num][0]));
+  int green = pgm_read_word(&(np_color[num][1]));
+  int blue = pgm_read_word(&(np_color[num][2]));
+  if (current_time - timer > interval) {
+    timer = current_time;
+    if (dir) {
+      if (step > depth - speed) step -= speed;
+      else {
+        dir = 0;
+        step += speed;
+      }
+    } else {
+      if (step < 250) step += speed;
+      else {
+        dir = 1;
+        step -= speed;
+      }
+    }
+    bHolo.setPixelColor(0, bHolo.Color(red * step / 255, green * step / 255, blue * step / 255));
+    tHolo.setPixelColor(0, tHolo.Color(red * step / 255, green * step / 255, blue * step / 255));
+    fHolo.setPixelColor(0, fHolo.Color(red * step / 255, green * step / 255, blue * step / 255));
+    bHolo.show();
+    fHolo.show();
+    tHolo.show();
+  }
+}
+
 int HPFlicker(int secs) {
   byte flicker[10] = { 180, 30, 89, 23, 255, 200, 90, 150, 60, 230 };  //Flicker values to be repeated
   int num = curr_holo_color;
@@ -462,7 +515,6 @@ int HPFlicker(int secs) {
     if (step < 9) step++;
     else step = 0;
     //interval = random(35,65);
-    
   }
   if (cTimer - rTimer > secs * 1000) {
     rTimer = cTimer;
@@ -475,7 +527,7 @@ int HPFlicker(int secs) {
     hpFlickSet = 0;
     return 1;
   }
-  return 0;  
+  return 0;
 }
 
 int HPFlicker1(int seconds) {
@@ -505,7 +557,6 @@ int HPFlicker1(int seconds) {
       if (step < 9) step++;
       else step = 0;
       //interval = random(35,65);
-      
     }
   } else {
     rTimer = cTimer;
@@ -546,6 +597,16 @@ void MagicPanel(int opt) {
     case 5:
       rainbow(10);
       break;
+    case 6:
+      MPBlink(30);
+      break;
+    case 7:
+      MPFlicker(30);
+      break;
+
+    case 8:
+      MPThrob();
+      break;
   }
   if (opt >= 100 && opt < 200) {
     sec = opt - 100;
@@ -557,22 +618,17 @@ void MagicPanel(int opt) {
   return;
 }
 
-int MPBlink(int seconds) {
+int MPBlink(int secs) {
   int static step = 1;
-  long static rTimer, bTimer, cTimer;
+  long unsigned cTimer = millis();
+  long unsigned static rTimer = cTimer;
+  long unsigned static bTimer = 0;
   int num = current_mp_color;
-  int interval = 250;
+  int blinkInt = 250;
   int red = pgm_read_word(&(np_color[num][0]));
   int green = pgm_read_word(&(np_color[num][1]));
   int blue = pgm_read_word(&(np_color[num][2]));
-  cTimer = millis();
-  if (!mpBlinkSet) {
-    mpBlinkSet = 1;
-    rTimer = cTimer;
-    bTimer = 0;
-  }
-
-  if (cTimer - bTimer > interval) {
+  if (cTimer - bTimer > blinkInt) {
     bTimer = cTimer;
     if (step) {
       for (int x = 0; x < MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, mPanel.Color(red, green, blue));
@@ -584,9 +640,8 @@ int MPBlink(int seconds) {
       step = 1;
     }
   }
-  if (cTimer - rTimer > seconds * 1000) {
+  if (cTimer - rTimer > secs * 1000) {
     rTimer = cTimer;
-    mpBlinkSet = 0;
     for (int x = 0; x < MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, mPanel.Color(0, 0, 0));
     mPanel.show();
     return 1;
@@ -597,7 +652,9 @@ int MPBlink(int seconds) {
 
 int MPFlicker(int seconds) {
   byte static timeSet = 0;  //Switch to set the timers
-  long static rTimer, fTimer, cTimer;
+  long unsigned cTimer = millis();
+  long unsigned static rTimer = cTimer;
+  long unsigned static fTimer = 0;
   byte flicker[10] = { 180, 30, 89, 23, 255, 200, 90, 150, 60, 230 };
   int num = current_mp_color;
   int red = pgm_read_word(&(np_color[num][0]));
@@ -605,13 +662,6 @@ int MPFlicker(int seconds) {
   int blue = pgm_read_word(&(np_color[num][2]));
   int static step = 0;
   int static interval = 50;
-  cTimer = millis();
-  if (!timeSet) {
-    timeSet = 1;
-    rTimer = cTimer;
-    fTimer = 0;
-  }
-
   if (cTimer - rTimer < seconds * 1000) {
     if (cTimer - fTimer > interval) {
       fTimer = cTimer;
@@ -619,7 +669,7 @@ int MPFlicker(int seconds) {
       mPanel.show();
       if (step < 9) step++;
       else step = 0;
-      interval = random(35,65);
+      interval = random(35, 65);
     }
   } else {
     rTimer = cTimer;
@@ -631,14 +681,46 @@ int MPFlicker(int seconds) {
   return 0;
 }
 
+int MPThrob() {
+  int static step = 255;
+  int static dir = 1;
+  long static unsigned timer = 0;
+  int speed = 15;
+  int interval = 50;
+  int depth = 35;
+  current_time = millis();
+  int num = current_mp_color;
+  int red = pgm_read_word(&(np_color[num][0]));
+  int green = pgm_read_word(&(np_color[num][1]));
+  int blue = pgm_read_word(&(np_color[num][2]));
+  if (current_time - timer > interval) {
+    timer = current_time;
+    if (dir) {
+      if (step > depth - speed) step -= speed;
+      else {
+        dir = 0;
+        step += speed;
+      }
+    } else {
+      if (step < 250) step += speed;
+      else {
+        dir = 1;
+        step -= speed;
+      }
+    }
+    for (int x = 0; x < MAGIC_PANEL_LED; x++) mPanel.setPixelColor(x, mPanel.Color(red * step / 255, green * step / 255, blue * step / 255));
+    mPanel.show();
+  }
+  return 0;
+}
 
 
 //The parseCommand takes the command from the buildCommand function and parses into its component parts - MPU, Address, Command and Option
 int parseCommand(char* input_str) {
   byte length = strlen(input_str);
   if (length < 2) return 1;  //not enough characters
-  int mpu = input_str[0];        //MPU is the first character
-  if (MPU != mpu) {              //if command is not for this MPU - send it on its way
+  int mpu = input_str[0];    //MPU is the first character
+  if (MPU != mpu) {          //if command is not for this MPU - send it on its way
     Serial.flush();
     for (int x = 0; x < length; x++) Serial.write(input_str[x]);
     Serial.write(13);
@@ -711,7 +793,7 @@ void rainbowHolos(int wait) {
     // Above line is equivalent to:
     // mPanel.rainbow(firstPixelHue, 1, 255, 255, true);
     fHolo.show();  // Update strip with new contents
-    tHolo.show(); 
+    tHolo.show();
     bHolo.show();
     firstPixelHue += 256;
     if (firstPixelHue >= 5 * 65536) firstPixelHue = 0;
