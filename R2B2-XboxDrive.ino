@@ -128,7 +128,7 @@ Command sound7 = createCommand(BEEP13, BEEP14);
 Command sound8 = createCommand(BEEP15, BEEP16);
 Command holos = createCommand("D40T1\r", "D40T0\r");
 Command magicpanel = createCommand("D45T1\r", "D45T0\r");
-Command coinslots = createCommand("B21T5\r","B21T0\r");
+Command coinslots = createCommand("B21T6\r","B21T0\r");
 bool mtrsEnable = 0;
 
 
@@ -267,6 +267,8 @@ void loop() {
         //Serial.println(F("Sync"));
         Xbox.disconnect(CONTROLLER);
       }
+      if (Xbox.getButtonClick(L1)) runCommand(&gripper);
+      if (Xbox.getButtonClick(R1)) runCommand(&interface);
       switch (comSet) {
         case 1:  //activates servo and lights
           if (Xbox.getButtonClick(UP)) runCommand(&utility);
@@ -275,8 +277,7 @@ void loop() {
           if (Xbox.getButtonClick(RIGHT)) runCommand(&magicpanel);
           if (Xbox.getButtonClick(START)) runCommand(&zapper);
           if (Xbox.getButtonClick(BACK)) runCommand(&coinslots);
-          if (Xbox.getButtonClick(L1)) runCommand(&gripper);
-          if (Xbox.getButtonClick(R1)) runCommand(&interface);
+          
           if (Xbox.getButtonClick(A)) runCommand(&lightSaber);
           if (Xbox.getButtonClick(B)) runCommand(&periscope);
           if (Xbox.getButtonClick(X)) runCommand(&motivator);
