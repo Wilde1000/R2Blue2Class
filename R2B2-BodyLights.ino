@@ -53,11 +53,11 @@ The command structure is as follows:
 /*************************************************************************
  * ********************** INCLUDED LIBRARIES *****************************
  * ***********************************************************************/
-#include <LedControl.h>  //Needed for MAX7219 driven leds
-#include <FastLED.h>     // Needed for Neopixels
-#include <pixeltypes.h>  //Helper Library for FastLED
+#include <LedControl.h>         //Needed for MAX7219 driven leds
+#include <FastLED.h>            // Needed for Neopixels
+#include <pixeltypes.h>         //Helper Library for FastLED
 #include <Adafruit_NeoPixel.h>  //Needed for neopixels
-#include <Servo.h>       //Servo library for Data Panel
+#include <Servo.h>              //Servo library for Data Panel
 
 /*************************************************************************
  * ********************** MACRO DEFINITIONS ******************************
@@ -94,7 +94,7 @@ The command structure is as follows:
 #define MAX_COMMAND_LENGTH 64  // Max size for a serial command
 #define DP_DOOR 45             //Set the pin for the Dataport Door
 #define DP_DOOR_MAX 1600       //Set the door open position
-#define DP_DOOR_MIN 900       //Set the door close position
+#define DP_DOOR_MIN 900        //Set the door close position
 
 //Set this to which Analog Pin you use for the voltage in.
 #define analoginput A0  //
@@ -125,8 +125,8 @@ The command structure is as follows:
 /*************************************************************************
  * ********************** GLOBAL VARIABLES *******************************
  * ***********************************************************************/
-Adafruit_NeoPixel cslotsLGHT(CS_LEDS, CS_PIN, NEO_GRB + NEO_KHZ800);         //Back Holo Light
-Adafruit_NeoPixel ldplLGHT(LDPL_LEDS, LDPL_PIN, NEO_GRB + NEO_KHZ800);         //Front Holo Light
+Adafruit_NeoPixel cslotsLGHT(CS_LEDS, CS_PIN, NEO_GRB + NEO_KHZ800);    //Back Holo Light
+Adafruit_NeoPixel ldplLGHT(LDPL_LEDS, LDPL_PIN, NEO_GRB + NEO_KHZ800);  //Front Holo Light
 
 CRGB lb[LB_LEDS];      // Create a CRGB object for Data Panel Light Bar
 CRGB ldpl[LDPL_LEDS];  // Create a CRGB object for Large Data Panel Logics
@@ -142,15 +142,15 @@ LedControl dc = LedControl(DPL_DATA, DPL_CLOCK, DPL_LOAD, NUMDEV);  // Dataport
 int displayEffect = 100;                                            // 100=no change, 4=whistle/heart sequence
 int dev_addr, dev_opt;                                              // Create variables for device address and device option
 char dev_cmd, dev_MPU;                                              // Create variable for the device command
-int cs_State = 16;                                                  // Sets default Coin Slot State to off
+int cs_State = 3;                                                   // Sets default Coin Slot State to off
 int cs_Speed = 425;                                                 // Sets default Coin Slot speed to Medium
 int cs_Tspeed = 10;                                                 // Sets default Coin Slot throb speed (0-99)
 int cs_color = 6;
-int mp_color = 6;
-int ldpl_State = 16;                                                // Sets default Large Data Port Logics State to off
-int ldpl_Speed = 200;                                               // Sets default Large Data Port Logics speed to Medium
-int ldpl_Tspeed = 10;                                               // Sets default Large Data Port Logics throb speed (0-99)
-int dpl_State = 0;                                                  // Set default Data Port Logics to off
+int ldpl_color = 6;
+int ldpl_State = 3;    // Sets default Large Data Port Logics State to off
+int ldpl_Speed = 200;  // Sets default Large Data Port Logics speed to Medium
+int ldpl_Tspeed = 10;  // Sets default Large Data Port Logics throb speed (0-99)
+int dpl_State = 0;     // Set default Data Port Logics to off
 
 //  Color Sequences stored in Program Memory
 const uint16_t np_color[][3] PROGMEM = {
@@ -324,17 +324,17 @@ int coinslot(int num) {
   int blue = pgm_read_word(&(np_color[cs_color][2]));
   //0 - Shut off coin slots
   if (num == 0) {
-    for (int x = 0; x <CS_LEDS; x++) cslotsLGHT.setPixelColor(x,cslotsLGHT.Color(0,0,0));
+    for (int x = 0; x < CS_LEDS; x++) cslotsLGHT.setPixelColor(x, cslotsLGHT.Color(0, 0, 0));
     cslotsLGHT.show();
     return 0;
   }
   //1 - Runs Solid color
-  if(num == 1){
-    for (int x = 0; x <CS_LEDS; x++) cslotsLGHT.setPixelColor(x,cslotsLGHT.Color(red,green,blue));
+  if (num == 1) {
+    for (int x = 0; x < CS_LEDS; x++) cslotsLGHT.setPixelColor(x, cslotsLGHT.Color(red, green, blue));
     cslotsLGHT.show();
     return 0;
   }
-  
+
   static unsigned long timeLast = 0;
   unsigned long elapsed = millis();
   if ((elapsed - timeLast) < cs_Speed) return num;
@@ -371,10 +371,10 @@ void cs_singleUpDown() {
     turn = 15;
   }
   //First set all pixels to off
-  for (int x = 0; x <CS_LEDS; x++) cslotsLGHT.setPixelColor(x,cslotsLGHT.Color(0,0,0));
-  cslotsLGHT.setPixelColor(turn, cslotsLGHT.Color(red, green, blue));  
-  cslotsLGHT.setPixelColor(turn+1, cslotsLGHT.Color(red, green, blue));
-  cslotsLGHT.setPixelColor(turn+2, cslotsLGHT.Color(red, green, blue));
+  for (int x = 0; x < CS_LEDS; x++) cslotsLGHT.setPixelColor(x, cslotsLGHT.Color(0, 0, 0));
+  cslotsLGHT.setPixelColor(turn, cslotsLGHT.Color(red, green, blue));
+  cslotsLGHT.setPixelColor(turn + 1, cslotsLGHT.Color(red, green, blue));
+  cslotsLGHT.setPixelColor(turn + 2, cslotsLGHT.Color(red, green, blue));
   if (dir == 0) {
     turn += 3;
   } else {
@@ -402,12 +402,12 @@ void cs_updown() {
   }
   if (dir == 0) {
     cslotsLGHT.setPixelColor(turn, cslotsLGHT.Color(red, green, blue));
-    cslotsLGHT.setPixelColor(turn+1, cslotsLGHT.Color(red, green, blue));
-    cslotsLGHT.setPixelColor(turn+2, cslotsLGHT.Color(red, green, blue));
-    } else {
+    cslotsLGHT.setPixelColor(turn + 1, cslotsLGHT.Color(red, green, blue));
+    cslotsLGHT.setPixelColor(turn + 2, cslotsLGHT.Color(red, green, blue));
+  } else {
     cslotsLGHT.setPixelColor(turn, cslotsLGHT.Color(0, 0, 0));
-    cslotsLGHT.setPixelColor(turn+1, cslotsLGHT.Color(0, 0, 0));
-    cslotsLGHT.setPixelColor(turn+2, cslotsLGHT.Color(0, 0, 0));
+    cslotsLGHT.setPixelColor(turn + 1, cslotsLGHT.Color(0, 0, 0));
+    cslotsLGHT.setPixelColor(turn + 2, cslotsLGHT.Color(0, 0, 0));
   }
 
   if (dir == 0) {
@@ -443,8 +443,18 @@ int doTcommand(int addr, int option) {
 //The doScommand handles all T commands sent from the parseCommand function
 int doScommand(int addr, int option) {
   //Serial.println("S command");
-  switch (addr) {
+   switch (addr) {
     case 21:  // Address of Coin Slots is 21
+      if (option == 20) {
+        if (cs_color < 13) cs_color++;
+        else cs_color = 1;
+        break;
+      }
+      if (option == 30) {
+        if (cs_State < 3) cs_State++;
+        else cs_State = 1;
+        break;
+      }
       if (option < 100) {
         cs_Speed = cal_Speed(option);  // Calculate the Speed and set it
       } else {
@@ -452,7 +462,17 @@ int doScommand(int addr, int option) {
       }
       break;
     case 22:  // Address of Dataport is 22
-      //dp_Speed=option;                          // Set the Dataport state to the option
+      if (option == 20) {
+        if (ldpl_color < 13) ldpl_color++;
+        else ldpl_color = 1;
+        break;
+      }
+      if (option == 30) {
+        if (ldpl_State < 3) ldpl_State++;
+        else ldpl_State = 1;
+        break;
+      }
+      
       break;
     case 23:  // Address of Charging port is 33
       //cp_Speed=option;                           // set the Charging port to the option
@@ -470,7 +490,7 @@ void dpl(int option) {
   delay(50);
   switch (option) {
     case 0:
-      dp_door.detach();    
+      dp_door.detach();
       return;
     case 1:
       if (!door_open) {
@@ -500,7 +520,6 @@ void dpl(int option) {
       dpl_State = 0;
       break;
   }
-  
 }
 
 
@@ -569,9 +588,9 @@ void ldpl_double() {
   unsigned long elapsed = millis();
   if ((elapsed - timeLast) < ldpl_Speed) return;
   timeLast = elapsed;
-  int red = pgm_read_word(&(np_color[mp_color][0]));
-  int green = pgm_read_word(&(np_color[mp_color][1]));
-  int blue = pgm_read_word(&(np_color[mp_color][2]));
+  int red = pgm_read_word(&(np_color[ldpl_color][0]));
+  int green = pgm_read_word(&(np_color[ldpl_color][1]));
+  int blue = pgm_read_word(&(np_color[ldpl_color][2]));
   static int turn = 0;
   static int dir = 0;
   if (turn <= 0 && dir == 1) {
@@ -582,9 +601,10 @@ void ldpl_double() {
     dir = 1;
     turn = 14;
   }
-  for (int x = 0; x < LDPL_LEDS; x++) ldplLGHT.setPixelColor(x,ldplLGHT.Color(0,0,0));
-  ldplLGHT.setPixelColor(turn,ldplLGHT.Color(red, green, blue));
-  ldplLGHT.setPixelColor(turn-1,ldplLGHT.Color(red, green, blue));
+  for (int x = 0; x < LDPL_LEDS; x++) ldplLGHT.setPixelColor(x, ldplLGHT.Color(0, 0, 0));
+  ldplLGHT.setPixelColor(turn, ldplLGHT.Color(red, green, blue));
+  ldplLGHT.setPixelColor(turn - 1, ldplLGHT.Color(red, green, blue));
+  ldplLGHT.show();
   if (dir == 0) {
     turn++;
   } else {
@@ -601,9 +621,9 @@ void ldpl_single() {
   unsigned long elapsed = millis();
   if ((elapsed - timeLast) < ldpl_Speed) return;
   timeLast = elapsed;
-  int red = pgm_read_word(&(np_color[mp_color][0]));
-  int green = pgm_read_word(&(np_color[mp_color][1]));
-  int blue = pgm_read_word(&(np_color[mp_color][2]));
+  int red = pgm_read_word(&(np_color[ldpl_color][0]));
+  int green = pgm_read_word(&(np_color[ldpl_color][1]));
+  int blue = pgm_read_word(&(np_color[ldpl_color][2]));
   static int turn = 0;
   static int dir = 0;
   if (turn <= 0 && dir == 1) {
@@ -614,8 +634,9 @@ void ldpl_single() {
     dir = 1;
     turn = 14;
   }
-  for (int x = 0; x < LDPL_LEDS; x++) ldplLGHT.setPixelColor(x,ldplLGHT.Color(0, 0, 0));
+  for (int x = 0; x < LDPL_LEDS; x++) ldplLGHT.setPixelColor(x, ldplLGHT.Color(0, 0, 0));
   ldplLGHT.setPixelColor(turn, ldplLGHT.Color(red, green, blue));
+  ldplLGHT.show();
   if (dir == 0) {
     turn++;
   } else {
@@ -631,8 +652,8 @@ void ldpl_single() {
 int parseCommand(char* input_str) {
   byte length = strlen(input_str);
   if (length < 5) return 1;  //not enough characters
-  int mpu = input_str[0];      //MPU is the first character
-  if (MPU != mpu) {              //if command is not for this MPU - send it on its way
+  int mpu = input_str[0];    //MPU is the first character
+  if (MPU != mpu) {          //if command is not for this MPU - send it on its way
     Serial.flush();
     for (int x = 0; x < length; x++) {
       Serial.write(input_str[x]);
@@ -642,7 +663,7 @@ int parseCommand(char* input_str) {
   }
   dev_MPU = mpu;
   // Now the address which should be the next two characters
-  
+
   char addrStr[3];  //set up a char array to hold them (plus the EOS (end of String) character)
   addrStr[0] = input_str[1];
   addrStr[1] = input_str[2];
@@ -651,21 +672,21 @@ int parseCommand(char* input_str) {
   if (dev_addr < 20 || dev_addr > 29) return 1;
   dev_cmd = input_str[3];
   char optStr[4];
-  optStr[0]=input_str[4];
-  if(input_str[5] == 13){
-    optStr[1]='\0';
-  }else {
-    optStr[1]=input_str[5];
-    if(input_str[6] == 13){
-      optStr[2]='\0';
-  
-    }else{
-      optStr[3]=input_str[6];
-      optStr[4]='\0';
+  optStr[0] = input_str[4];
+  if (input_str[5] == 13) {
+    optStr[1] = '\0';
+  } else {
+    optStr[1] = input_str[5];
+    if (input_str[6] == 13) {
+      optStr[2] = '\0';
+
+    } else {
+      optStr[3] = input_str[6];
+      optStr[4] = '\0';
     }
   }
-  
-  
+
+
   dev_opt = atoi(optStr);  // that's the numerical argument after the command character
   // switch on command character
   switch (dev_cmd)  // 2nd or third char, should be the command char
@@ -876,13 +897,13 @@ void updateCBILEDs() {
 
 //Handles all interactions with the class made Large Dataport Logics
 int updateLDPL(int num) {
-  int red = pgm_read_word(&(np_color[mp_color][0]));
-  int green = pgm_read_word(&(np_color[mp_color][1]));
-  int blue = pgm_read_word(&(np_color[mp_color][2]));
+  int red = pgm_read_word(&(np_color[ldpl_color][0]));
+  int green = pgm_read_word(&(np_color[ldpl_color][1]));
+  int blue = pgm_read_word(&(np_color[ldpl_color][2]));
 
   //0 - Shut off Large Data Port
   if (num == 0) {
-    for (int x = 0; x < LDPL_LEDS; x++) ldplLGHT.setPixelColor(x, ldplLGHT.Color(0,0,0));
+    for (int x = 0; x < LDPL_LEDS; x++) ldplLGHT.setPixelColor(x, ldplLGHT.Color(0, 0, 0));
     ldplLGHT.show();
     return 0;
   }
@@ -897,7 +918,7 @@ int updateLDPL(int num) {
     ldpl_single();
     return 0;
   }
-//3 - Double
+  //3 - Double
   if (num == 3) {
     ldpl_double();
     return 0;
@@ -989,7 +1010,7 @@ void setup() {
   //pinMode(DPLDoorPin, INPUT_PULLUP);  //Pin on the Arduino Mini Breakout Board connected to left door switch HIGH=Door closed (NC when door closed) - S.Sloan
   pinMode(analoginput, INPUT);
   dp_door.attach(DP_DOOR);
-    
+
   dp_door.writeMicroseconds(DP_DOOR_MIN);
   dp_door.detach();
 }
