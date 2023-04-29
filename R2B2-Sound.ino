@@ -132,15 +132,15 @@ SoftwareSerial MP3Serial(2, 3);
 #define USER_MUSIC_SOUNDS_NUMBER 5
 #define MP3_MAX_BANKS 9             // nine banks
 #define MP3_MAX_SOUNDS_PER_BANK 25  // no more than 25 sound in each
-#define MP3_BANK_CUTOFF 4           // cutoff for banks that play "next" sound on $x
+#define MP3_BANK_CUTOFF 5           // cutoff for banks that play "next" sound on $x
 
 // for the random sounds, needs to know max sounds of first 5 banks
 // only important for sounds below cutoff
-#define MP3_BANK1_SOUNDS 19  // gen sounds, numbered 001 to 025
-#define MP3_BANK2_SOUNDS 18  // chat sounds, numbered 026 to 050
-#define MP3_BANK3_SOUNDS 7   // happy sounds, numbered 051 to 075
-#define MP3_BANK4_SOUNDS 4   // sad sounds, numbered 076 to 100
-#define MP3_BANK5_SOUNDS 3   // whistle sounds, numbered 101 to 125
+#define MP3_BANK1_SOUNDS 25  // gen sounds, numbered 001 to 025
+#define MP3_BANK2_SOUNDS 25  // chat sounds, numbered 026 to 050
+#define MP3_BANK3_SOUNDS 25  // happy sounds, numbered 051 to 075
+#define MP3_BANK4_SOUNDS 21  // sad sounds, numbered 076 to 100
+#define MP3_BANK5_SOUNDS 4   // whistle sounds, numbered 101 to 125
 // unless you change bank cutoff, these are ignored, so I set them to max
 #define MP3_BANK6_SOUNDS MP3_MAX_SOUNDS_PER_BANK  // scream sounds, numbered 126 to 150
 #define MP3_BANK7_SOUNDS MP3_MAX_SOUNDS_PER_BANK  // Leia sounds, numbered 151 to 175
@@ -155,7 +155,7 @@ SoftwareSerial MP3Serial(2, 3);
 #define MP3_SCREAM 126
 #define MP3_DISCO 181
 #define MP3_MANAMA 179
-#define MP3_CANTINA 180
+#define MP3_CANTINA 176
 #define SOUND_START_CHAR 'J'  //Lead character for sound commands
 #define MP3_VOLUME_MID 50     // guessing mid volume 32 is right in-between...
 #define MP3_VOLUME_MIN 100    // doc says anything below 64 is inaudible, not true, 100 is. 82 is another good value
@@ -167,7 +167,7 @@ SoftwareSerial MP3Serial(2, 3);
 #define MP3_VOLUME_CMD 'v'             // command to play sound file on the MP3 trigger
 #define MP3_STOP_CMD 'O'               // command to stop/play  - not used
 #define MP3_MIN_RANDOM_PAUSE 10000     // min wait on random sounds
-#define MP3_MAX_RANDOM_PAUSE 20000     // max wait on random sounds
+#define MP3_MAX_RANDOM_PAUSE 30000     // max wait on random sounds
 #define MP3_MAX_PAUSE_ON_RESUME 30000  // default wait to resume random. Works for short sound. Set mp3_random_timer manually for long ones.
 #define CMD_MAX_LENGTH 64              //Defines max command Length - same as serial buffer
 #define MPU 'H'                        //Defines the MPU code for the program
@@ -395,8 +395,8 @@ void mp3_parse_command(char* commandstr) {
       mp3_volumeoff();
       break;
     case 'R':  // R - random from 4 first banks
-      //mp3_start_random();  // keep firing random sounds
-      mp3_random();  // this is just a one shot
+      mp3_start_random();  // keep firing random sounds
+      //mp3_random();  // this is just a one shot
       break;
     case 'S':  // S - Scream (bank 6 sound 1)
       mp3_stop_random();
@@ -422,8 +422,8 @@ void mp3_parse_command(char* commandstr) {
       mp3_volumemin();
       break;
     case 'r':              // R - random from 4 first banks
-      mp3_start_random();  // keep firing random sounds
-      //mp3_random();		// this is just a one shot
+      //mp3_start_random();  // keep firing random sounds
+      mp3_random();		// this is just a one shot
       break;
     case 's':  // s - stop sounds
       mp3_stop_random();
