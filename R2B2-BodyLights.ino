@@ -145,8 +145,8 @@ char dev_cmd, dev_MPU;                                              // Create va
 int cs_State = 3;                                                   // Sets default Coin Slot State to off
 int cs_Speed = 425;                                                 // Sets default Coin Slot speed to Medium
 int cs_Tspeed = 10;                                                 // Sets default Coin Slot throb speed (0-99)
-int cs_color = 6;
-int ldpl_color = 6;
+int cs_color = 5;
+int ldpl_color = 5;
 int ldpl_State = 3;    // Sets default Large Data Port Logics State to off
 int ldpl_Speed = 200;  // Sets default Large Data Port Logics speed to Medium
 int ldpl_Tspeed = 10;  // Sets default Large Data Port Logics throb speed (0-99)
@@ -445,6 +445,10 @@ int doScommand(int addr, int option) {
   //Serial.println("S command");
    switch (addr) {
     case 21:  // Address of Coin Slots is 21
+      if(option>0 && option <= 13){
+        cs_color=option;
+        break;
+      }
       if (option == 20) {
         if (cs_color < 13) cs_color++;
         else cs_color = 1;
@@ -455,13 +459,11 @@ int doScommand(int addr, int option) {
         else cs_State = 1;
         break;
       }
-      if (option < 100) {
-        cs_Speed = cal_Speed(option);  // Calculate the Speed and set it
-      } else {
-        if (option < 200) cs_Tspeed = cal_Speed(option);
-      }
-      break;
     case 22:  // Address of Dataport is 22
+      if(option>0 && option <= 13){
+        ldpl_color=option;
+        break;
+      }
       if (option == 20) {
         if (ldpl_color < 13) ldpl_color++;
         else ldpl_color = 1;
