@@ -139,8 +139,8 @@ SoftwareSerial MP3Serial(2, 3);
 #define MP3_BANK1_SOUNDS 25  // gen sounds, numbered 001 to 025
 #define MP3_BANK2_SOUNDS 25  // chat sounds, numbered 026 to 050
 #define MP3_BANK3_SOUNDS 25  // happy sounds, numbered 051 to 075
-#define MP3_BANK4_SOUNDS 21  // sad sounds, numbered 076 to 100
-#define MP3_BANK5_SOUNDS 4   // whistle sounds, numbered 101 to 125
+#define MP3_BANK4_SOUNDS 25  // sad sounds, numbered 076 to 100
+#define MP3_BANK5_SOUNDS 25   // whistle sounds, numbered 101 to 125
 // unless you change bank cutoff, these are ignored, so I set them to max
 #define MP3_BANK6_SOUNDS MP3_MAX_SOUNDS_PER_BANK  // scream sounds, numbered 126 to 150
 #define MP3_BANK7_SOUNDS MP3_MAX_SOUNDS_PER_BANK  // Leia sounds, numbered 151 to 175
