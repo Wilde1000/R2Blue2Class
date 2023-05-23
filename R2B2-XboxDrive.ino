@@ -27,7 +27,7 @@ Spark Max (Ask me how I know this!!!).
 #define TRIGGER_DEAD_ZONE 50  //Set the Trigger dead zone
 #define LEFT_PWM 3            //Set the left motor controller to pin 3 - do not use 5 & 6
 #define RIGHT_PWM 9           //Set the right motor controller to pin 9  (3 & 9 are 490 Hz, 5 & 6 are 980 Hz)
-#define CMD_MAX_LENGTH 12     //Set the max command length for this program
+#define CMD_MAX_LENGTH 10     //Set the max command length for this program
 #define DOME_ENABLE 4         //Set the Enable pin for the Dome motor
 #define IN1_DOME_MOTOR 2      //Set the INPUT1 pin for the Dome motor
 #define IN2_DOME_MOTOR 5      //Set the INPUT2 pin for the Dome motor
@@ -54,18 +54,18 @@ Spark Max (Ask me how I know this!!!).
 #define BEEP02 "J02\r"          //General Beep 2
 #define BEEP03 "J03\r"          //General Beep 3
 #define BEEP04 "J04\r"          //General Beep 4
-#define BEEP05 "J11\r"          //Happy Beep 1
-#define BEEP06 "J12\r"          //Happy Beep 2
-#define BEEP07 "J13\r"          //Happy Beep 3
-#define BEEP08 "J14\r"          //Happy Beep 4
-#define BEEP09 "J21\r"          //Sad Beep 1
-#define BEEP10 "J22\r"          //Sad Beep 2
-#define BEEP11 "J23\r"          //Sad Beep 3
-#define BEEP12 "J24\r"          //Sad Beep 4
-#define BEEP13 "J31\r"          //Chatty Beep 1
-#define BEEP14 "J32\r"          //Chatty Beep 2
-#define BEEP15 "J33\r"          //Chatty Beep 1
-#define BEEP16 "J34\r"          //Chatty Beep 2
+#define BEEP05 "J05\r"          //Happy Beep 1
+#define BEEP06 "J06\r"          //Happy Beep 2
+#define BEEP07 "J07\r"          //Happy Beep 3
+#define BEEP08 "J08\r"          //Happy Beep 4
+#define BEEP09 "J09\r"          //Sad Beep 1
+#define BEEP10 "J010\r"          //Sad Beep 2
+#define BEEP11 "J011\r"          //Sad Beep 3
+#define BEEP12 "J012\r"          //Sad Beep 4
+#define BEEP13 "J013\r"          //Chatty Beep 1
+#define BEEP14 "J014\r"          //Chatty Beep 2
+#define BEEP15 "J015\r"          //Chatty Beep 1
+#define BEEP16 "J016\r"          //Chatty Beep 2
 #define ROUTSCREAM "E50T31\r"   //Scream Routine
 #define ROUTWAVE "E50T32\r"     //Wave Routine
 #define ROUTWAVE1 "E50T33\r"    //Moody Wave Routine
@@ -74,6 +74,28 @@ Spark Max (Ask me how I know this!!!).
 #define ROUTCANTINA "E50T36\r"  //Cantina Routine
 #define ROUTLEIA "E50T37\r"     //Leia Routine
 #define ROUTDISCO "E50T38\r"    //Disco Routine
+#define PIE1_O "E50T11\r"         //Zapper Pie Open
+#define PIE1_C "E50T21\r"         //Zapper Pie Close
+#define PIE2_O "E50T12\r"         //Light Saber Pie Open
+#define PIE2_C "E50T22\r"         //Light Saber Pie Close
+#define PIE3_O "E50T13\r"         //Bad Motivator Pie Open
+#define PIE3_C "E50T23\r"         //Bad Motivator Pie Close
+#define PIE4_O "E50T14\r"         //Life Form Pie Open
+#define PIE4_C "E50T24\r"         //Life Form Pie Close
+#define DP1_O  "E50T15\r"         //Dome Panel 1 Open
+#define DP1_C  "E50T25\r"         //Dome Panel 1 Close
+#define DP2_O  "E50T16\r"         //Dome Panel 2 Open
+#define DP2_C  "E50T26\r"         //Dome Panel 2 Close
+#define DP3_O  "E50T17\r"         //Dome Panel 3 Open
+#define DP3_C  "E50T27\r"         //Dome Panel 3 Close
+#define DP4_O  "E50T18\r"         //Dome Panel 4 Open
+#define DP4_C  "E50T28\r"         //Dome Panel 4 Close
+#define DP5_O  "E50T19\r"         //Dome Panel 5 Open
+#define DP5_C  "E50T29\r"         //Dome Panel 5 Close
+#define DP6_O  "E50T20\r"         //Dome Panel 6 Open
+#define DP6_C  "E50T30\r"         //Dome Panel 6 Close
+
+
 
 #define HP_COLOR "D40S"
 
@@ -135,6 +157,16 @@ Command sound8 = createCommand(BEEP15, BEEP16);
 Command holos = createCommand("D40T1\r", "D40T0\r");
 Command magicpanel = createCommand("D45T1\r", "D45T0\r");
 Command coinslots = createCommand("B21T6\r", "B21T0\r");
+Command domePie1 = createCommand(PIE1_O, PIE1_C);
+Command domePie2 = createCommand(PIE2_O, PIE2_C);
+Command domePie3 = createCommand(PIE3_O, PIE3_C);
+Command domePie4 = createCommand(PIE4_O, PIE4_C);
+Command panel1 = createCommand(DP1_O, DP1_C);
+Command panel2 = createCommand(DP2_O, DP2_C);
+Command panel3 = createCommand(DP3_O, DP3_C);
+Command panel4 = createCommand(DP4_O, DP4_C);
+Command panel5 = createCommand(DP5_O, DP5_C);
+Command panel6 = createCommand(DP6_O, DP6_C);
 bool mtrsEnable = 0;
 
 
@@ -310,15 +342,18 @@ void loop() {
           if (Xbox.getButtonClick(Y)) runCommand(&sound8);
           break;
         case 4:
-          if (Xbox.getButtonClick(UP)) Serial.write("D40S20\r");
+          if (Xbox.getButtonClick(UP)) runCommand(&domePie1);
             
-          if (Xbox.getButtonClick(DOWN)) runCommand(&sound2);
-          if (Xbox.getButtonClick(LEFT)) runCommand(&sound3);
-          if (Xbox.getButtonClick(RIGHT)) runCommand(&sound4);
-          if (Xbox.getButtonClick(A)) runCommand(&sound5);
-          if (Xbox.getButtonClick(B)) runCommand(&sound6);
-          if (Xbox.getButtonClick(X)) runCommand(&sound7);
-          if (Xbox.getButtonClick(Y)) runCommand(&sound8);
+          if (Xbox.getButtonClick(DOWN)) runCommand(&domePie2);
+          if (Xbox.getButtonClick(LEFT)) runCommand(&domePie3);
+          if (Xbox.getButtonClick(RIGHT)) runCommand(&domePie4);
+          if (Xbox.getButtonClick(A)) runCommand(&panel1);
+          if (Xbox.getButtonClick(B)) runCommand(&panel2);
+          if (Xbox.getButtonClick(X)) runCommand(&panel3);
+          if (Xbox.getButtonClick(Y)) runCommand(&panel4);
+          if (Xbox.getButtonClick(START)) runCommand(&panel5);
+          if (Xbox.getButtonClick(BACK)) runCommand(&panel6);
+          
           break;
       }
     }
