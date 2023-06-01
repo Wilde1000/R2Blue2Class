@@ -10,23 +10,23 @@ const byte kids_Can[][16] PROGMEM = {
 {"G1MKIDS#         "},  //Add 12 (max) characters to Top FLD (enter between the 'M' and '#')
 {"G2M  CAN DO#     "},  //Add 12 (max) characters to Bottom FLD (enter between the 'M' and '#')
 {"G3M  ANYTHING#   "},  //Add 12 (max) characters to Rear FLD (enter between the 'M' and '#')
-{"D40S1#           "},  //Set Color of Holoprojectors to Red
-{"D45S1#           "},  //Set Color of Magic Panel to Red
-{"B21S1#           "},  //Change Coin Slots to Red
-{"B22S1#           "},  //Change LDPL to Red
-{"A10T1#           "},  //Open Body Implement
-{"E54T1#           "},  //Open Dome Implement
+{"D40S9#           "},  //Set Color of Holoprojectors 
+{"D45S9#           "},  //Set Color of Magic Panel 
+{"B21S1#           "},  //Set Color of Coin Slots 
+{"B22S1#           "},  //Set Color of LDPL 
+{"A12T1#           "},  //Open Body Implement
+{"E52T1#           "},  //Open Dome Implement
 {"D45T1#           "},  //Turn on Magic Panel
 {"D40T1#           "},  //Turn on Holoprojectors
-{"J025#             "},  //Play Sound at Bank 0, track 25 
+{"J025#            "},  //Play Sound at Bank 0, track 25 
 {"W15#             "},  //Wait 15 secs
-{"E54T2#           "},  //Lower Motivator
-{"G0T1#            "},  //Return FLD to Normal
-{"B21T16#          "},  //Change coin slots to Blue Single
-{"B22T16#          "},  //Change LDPL to Blue Two Across
-{"B24T2#           "},  //Close the Dataport Door
-{"D40T0#           "},  //Shut off Holoprojectors
+{"A12T2#           "},  //Store Body Implement
+{"E52T2#           "},  //Store Dome Implement
 {"D45T0#           "},  //Shut off Magic Panel
+{"D40T0#           "},  //Shut off Holoprojectors
+{"G0T1#            "},  //Return FLD to Normal
+{"B21S5#           "},  //Change coin slots to Blue Single
+{"B22S5#           "},  //Change LDPL to Blue Two Across
 {"D45S5#           "},  //Reset Magic Panel back to Blue
 {"D40S5#           "},  //Reset Holoprojector back to Blue
 {"W03#             "},  //Wait 3 Seconds
