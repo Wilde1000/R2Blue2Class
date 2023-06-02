@@ -125,8 +125,8 @@ The command structure is as follows:
 /*************************************************************************
  * ********************** GLOBAL VARIABLES *******************************
  * ***********************************************************************/
-Adafruit_NeoPixel cslotsLGHT(CS_LEDS, CS_PIN, NEO_GRB + NEO_KHZ800);    //Back Holo Light
-Adafruit_NeoPixel ldplLGHT(LDPL_LEDS, LDPL_PIN, NEO_GRB + NEO_KHZ800);  //Front Holo Light
+Adafruit_NeoPixel cslotsLGHT(CS_LEDS, CS_PIN, NEO_GRB + NEO_KHZ800);    //Coin Slots
+Adafruit_NeoPixel ldplLGHT(LDPL_LEDS, LDPL_PIN, NEO_GRB + NEO_KHZ800);  //LDPL
 
 CRGB lb[LB_LEDS];      // Create a CRGB object for Data Panel Light Bar
 CRGB ldpl[LDPL_LEDS];  // Create a CRGB object for Large Data Panel Logics
@@ -139,15 +139,15 @@ char cmdStr0[MAX_COMMAND_LENGTH];
 // Instantiate LedControl driver
 LedControl cc = LedControl(CBI_DATA, CBI_CLOCK, CBI_LOAD, NUMDEV);  // CBI
 LedControl dc = LedControl(DPL_DATA, DPL_CLOCK, DPL_LOAD, NUMDEV);  // Dataport
-int displayEffect = 100;                                            // 100=no change, 4=whistle/heart sequence
-int dev_addr, dev_opt;                                              // Create variables for device address and device option
-char dev_cmd, dev_MPU;                                              // Create variable for the device command
-int cs_State = 3;                                                   // Sets default Coin Slot State to off
-int cs_Speed = 425;                                                 // Sets default Coin Slot speed to Medium
-int cs_Tspeed = 10;                                                 // Sets default Coin Slot throb speed (0-99)
-int cs_color = 5;
-int ldpl_color = 5;
-int ldpl_State = 3;    // Sets default Large Data Port Logics State to off
+int displayEffect = 100;  // 100=no change, 4=whistle/heart sequence
+int dev_addr, dev_opt;  // Create variables for device address and device option
+char dev_cmd, dev_MPU;  // Create variable for the device command
+int cs_State = 3;      // Sets default Coin Slot State to off
+int cs_Speed = 425;    // Sets default Coin Slot speed to Medium
+int cs_Tspeed = 10;    // Sets default Coin Slot throb speed (0-99)
+int cs_color = 5;      // Sets default Coin Slot color to Blue
+int ldpl_color = 5;    // Sets default Large Data Port Logics color to Blue
+int ldpl_State = 3;    // Sets default Large Data Port Logics State to two Across
 int ldpl_Speed = 200;  // Sets default Large Data Port Logics speed to Medium
 int ldpl_Tspeed = 10;  // Sets default Large Data Port Logics throb speed (0-99)
 int dpl_State = 0;     // Set default Data Port Logics to off
@@ -443,10 +443,10 @@ int doTcommand(int addr, int option) {
 //The doScommand handles all T commands sent from the parseCommand function
 int doScommand(int addr, int option) {
   //Serial.println("S command");
-   switch (addr) {
+  switch (addr) {
     case 21:  // Address of Coin Slots is 21
-      if(option>0 && option <= 13){
-        cs_color=option;
+      if (option > 0 && option <= 13) {
+        cs_color = option;
         break;
       }
       if (option == 20) {
@@ -460,8 +460,8 @@ int doScommand(int addr, int option) {
         break;
       }
     case 22:  // Address of Dataport is 22
-      if(option>0 && option <= 13){
-        ldpl_color=option;
+      if (option > 0 && option <= 13) {
+        ldpl_color = option;
         break;
       }
       if (option == 20) {
@@ -474,7 +474,7 @@ int doScommand(int addr, int option) {
         else ldpl_State = 1;
         break;
       }
-      
+
       break;
     case 23:  // Address of Charging port is 33
       //cp_Speed=option;                           // set the Charging port to the option
@@ -488,38 +488,46 @@ int doScommand(int addr, int option) {
 //if the option is 1 - Door is opened and lights are on, if 2 door is closed and lights go off.
 void dpl(int option) {
   static bool door_open = false;
-  dp_door.attach(DP_DOOR);
-  delay(50);
+  static long unsigned lastTime = 0;
+  int waitTime = 50;
   switch (option) {
     case 0:
       dp_door.detach();
       return;
     case 1:
       if (!door_open) {
-        dp_door.writeMicroseconds(DP_DOOR_MAX);
-        door_open = true;
+        dp_door.attach(DP_DOOR);
+        if (millis() - lastTime > waitTime) {
+          lastTime = millis();
+          dp_door.writeMicroseconds(DP_DOOR_MAX);
+          door_open = true;
+        }
       }
       updateTopBlocks();
       bargraphDisplay(0);
       updatebottomLEDs();
       updateRedLEDs();
       updateLightBar();
-      dp_door.detach();
       break;
     case 2:
       if (door_open) {
-        dp_door.writeMicroseconds(DP_DOOR_MIN);
-        door_open = false;
+        dp_door.attach(DP_DOOR);
+        if (millis() - lastTime > waitTime) {
+          lastTime = millis();
+          dp_door.writeMicroseconds(DP_DOOR_MIN);
+          door_open = false;
+          dc.setRow(DATAPORT, 1, 0);  // top yellow blocks
+          dc.setRow(DATAPORT, 2, 0);  // top yellow blocks
+          dc.setRow(DATAPORT, 3, 0);  // top yellow blocks
+          dc.setRow(DATAPORT, 4, 0);  // top yellow blocks
+          dc.setRow(DATAPORT, 5, 0);  // top green blocks
+          dc.setRow(DATAPORT, 0, 0);  // blue LEDs
+          for (int x = 0; x < 16; x++) lb[x] = CRGB::Black;
+          FastLED.show();
+          dpl_State = 0;
+        }
       }
-      dc.setRow(DATAPORT, 1, 0);  // top yellow blocks
-      dc.setRow(DATAPORT, 2, 0);  // top yellow blocks
-      dc.setRow(DATAPORT, 3, 0);  // top yellow blocks
-      dc.setRow(DATAPORT, 4, 0);  // top yellow blocks
-      dc.setRow(DATAPORT, 5, 0);  // top green blocks
-      dc.setRow(DATAPORT, 0, 0);  // blue LEDs
-      for (int x = 0; x < 16; x++) lb[x] = CRGB::Black;
-      FastLED.show();
-      dpl_State = 0;
+
       break;
   }
 }
@@ -786,7 +794,7 @@ void singleTest() {
   return;
 }
 
-
+/*
 //returns a Hue value to be used in HSV calculations
 int std_color(int num) {
   int curr_Hue;  // a double integer to hold routine color value up to 256 cubed (256 for red, 256 for green, 256 for blue)
@@ -825,7 +833,7 @@ int std_color(int num) {
   }
   return curr_Hue;
 }
-
+*/
 
 
 // helper for updating bargraph values, to imitate bargraph movement
