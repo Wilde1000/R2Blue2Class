@@ -69,24 +69,24 @@ The command structure is as follows:
 #define UA_TOP_MAX 200  //Utility Arm Top Servo (open position)
 #define UA_TOP_MIN 500  //Utility Arm Top Servo (close position)
 #define UA_BOT 1        //Utility Arm Bottom Servo PCA9685 pin
-#define UA_BOT_MAX 200  //Utility Arm Bottom Servo (open position)
+#define UA_BOT_MAX 100  //Utility Arm Bottom Servo (open position)
 #define UA_BOT_MIN 450  //Utility Arm Bottom Servo (close position)
 // Interface Arm
 #define IA_DOR 2        //Interface Arm Door Servo PCA9685 pin
-#define IA_DOR_MAX 275  //Interface Arm Door Servo (open position)
+#define IA_DOR_MAX 290  //Interface Arm Door Servo (open position)
 #define IA_DOR_MIN 375  //Interface Arm Door Servo (close position)
 #define IA_LFT 3        //Interface Arm Lift Servo PCA9685 pin
-#define IA_LFT_MAX 475  //Interface Arm Lift Servo (up position)
+#define IA_LFT_MAX 500  //Interface Arm Lift Servo (up position)
 #define IA_LFT_MIN 150  //Interface Arm Lift Servo (down position)
 #define IA_EXT 6        //Interface Arm Extension Servo PCA9685 pin
 #define IA_EXT_MAX 375  //Interface Arm Extension (out position)
 #define IA_EXT_MIN 200  //Interface Arm Extension (in position)
 //Gripper Arm
 #define GA_DOR 4        //Gripper Arm Door Servo PCA9685 pin
-#define GA_DOR_MAX 300  //Gripper Arm Door Servo (open position)
+#define GA_DOR_MAX 275  //Gripper Arm Door Servo (open position)
 #define GA_DOR_MIN 200  //Gripper Arm Door Servo (close position)
 #define GA_LFT 5        //Gripper Arm Lift Servo PCA9685 pin
-#define GA_LFT_MAX 150  //Gripper Arm Lift Servo (up position)
+#define GA_LFT_MAX 100  //Gripper Arm Lift Servo (up position)
 #define GA_LFT_MIN 450  //Gripper Arm Lift Servo (down position)
 #define GA_EXT 7        //Gripper Arm Extension Servo PCA9685 pin
 #define GA_EXT_MAX 200  //Gripper Arm Extension Servo (open gripper)
@@ -267,6 +267,182 @@ void doScommand(int address, int argument) {
   }
 }
 
+int waitaHSecG() {
+  static int start = 0;
+  static long unsigned last = 0;
+  if (start == 0) {
+    last = millis();
+    start = 1;
+  }
+  if (millis() - last > 500) {
+    start = 0;
+    return 1;
+  }
+  return 0;
+}
+
+
+int waitaHSecI() {
+  static int start = 0;
+  static long unsigned last = 0;
+  if (start == 0) {
+    last = millis();
+    start = 1;
+  }
+  if (millis() - last > 500) {
+    start = 0;
+    return 1;
+  }
+  return 0;
+}
+
+int waitaSecG() {
+  static int start = 0;
+  static long unsigned last = 0;
+  if (start == 0) {
+    last = millis();
+    start = 1;
+  }
+  if (millis() - last > 1000) {
+    start = 0;
+    return 1;
+  }
+  return 0;
+}
+
+int waitaSecI() {
+  static int start = 0;
+  static long unsigned last = 0;
+  if (start == 0) {
+    last = millis();
+    start = 1;
+  }
+  if (millis() - last > 1000) {
+    start = 0;
+    return 1;
+  }
+  return 0;
+}
+
+
+int raiseGripper() {
+  static int step = 0;
+  static int count = 0;
+  switch (step) {
+    case 0:
+      servoControl.setPWM(GA_DOR, 0, GA_DOR_MAX);
+      if (waitaHSecG()) step = 1;
+      break;
+    case 1:
+      servoControl.setPWM(GA_LFT, 0, GA_LFT_MAX);
+      if (waitaSecG()) step = 2;
+      break;
+    case 2:
+      servoControl.setPWM(GA_EXT, 0, GA_EXT_MAX);
+      if (waitaHSecG()) step = 3;
+      break;
+    case 3:
+      servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
+      if (waitaHSecG()) step = 4;
+      break;
+    case 4:
+      count++;
+      if (count > 2) {
+        step = 0;
+        count = 0;
+        return 1;
+      }
+      step = 2;
+      break;
+  }
+  return 0;
+}
+
+int lowerGripper() {
+  static int step = 0;
+  static int count = 0;
+  switch (step) {
+    case 0:
+      servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
+      if (waitaHSecG()) step = 1;
+      break;
+    case 1:
+      servoControl.setPWM(GA_LFT, 0, GA_LFT_MIN);
+      if (waitaHSecG()) step = 2;
+      break;
+    case 2:
+      servoControl.setPWM(GA_DOR, 0, GA_DOR_MIN);
+      if (waitaHSecG()) {
+        step = 0;
+        return 1;
+      }
+
+      break;
+  }
+  return 0;
+}
+
+int raiseInterface() {
+  static int step = 0;
+  static int count = 0;
+  switch (step) {
+    case 0:
+      servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
+      if (waitaHSecI()) step = 1;
+      break;
+    case 1:
+      servoControl.setPWM(IA_LFT, 0, IA_LFT_MAX);
+      if (waitaSecI()) step = 2;
+      break;
+    case 2:
+      servoControl.setPWM(IA_EXT, 0, IA_EXT_MAX);
+      if (waitaHSecI()) step = 3;
+      break;
+    case 3:
+      servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
+      if (waitaHSecI()) step = 4;
+      break;
+    case 4:
+      count++;
+      if (count > 2) {
+        step = 0;
+        count = 0;
+        return 1;
+      }
+      step = 2;
+      break;
+  }
+  return 0;
+}
+
+int lowerInterface() {
+  static int step = 0;
+  static int count = 0;
+  switch (step) {
+    case 0:
+      servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
+      if (waitaHSecI()) step = 1;
+      break;
+    case 1:
+      servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
+      if (waitaHSecI()) step = 2;
+      break;
+    case 2:
+      servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
+      if (waitaHSecI()) {
+        step = 0;
+        return 1;
+      }
+
+      break;
+  }
+  return 0;
+}
+
+
+
+
+
 //The gripper function handles all actions for the gripper arm
 void gripper(int option) {
   static int step = 0;
@@ -277,63 +453,10 @@ void gripper(int option) {
     case 0:
       return;
     case 1:
-      switch (step) {
-        case 0:
-          servoControl.setPWM(GA_DOR, 0, GA_DOR_MAX);
-          step++;
-          break;
-        case 1:
-          if (current_time - ext_time > ext_int) {
-            ext_time = current_time;
-            servoControl.setPWM(GA_LFT, 0, GA_LFT_MAX);
-            step++;
-          }
-          break;
-        case 2:
-          if (current_time - ext_time > ext_int) {
-            ext_time = current_time;
-            servoControl.setPWM(GA_EXT, 0, GA_EXT_MAX);
-            step = 3;
-          }
-          break;
-        case 3:
-          if (current_time - ext_time > ext_int) {
-            ext_time = current_time;
-            servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
-            step = 2;
-            count++;
-            if (count == 3) {
-              step = 0;
-              count = 0;
-              ga_State = 0;
-            }
-          }
-
-          break;
-      }
+      if (raiseGripper()) ga_State = 0;
       break;
     case 2:
-      switch (step) {
-        case 0:
-          servoControl.setPWM(GA_EXT, 0, GA_EXT_MIN);
-          step = 1;
-          break;
-        case 1:
-          if (current_time - ext_time > ext_int) {
-            ext_time = current_time;
-            servoControl.setPWM(GA_LFT, 0, GA_LFT_MIN);
-            step = 2;
-          }
-          break;
-        case 2:
-          if (current_time - ext_time > ext_int) {
-            ext_time = current_time;
-            servoControl.setPWM(GA_DOR, 0, GA_DOR_MIN);
-            step = 0;
-            ga_State = 0;
-          }
-          break;
-      }
+      if (lowerGripper()) ga_State = 0;;
       break;
   }
 }
@@ -343,82 +466,20 @@ void gripper(int option) {
 void interfaceArm(int option) {
   static int step = 0;
   static int count = 0;
-  current_time = millis();
-
   switch (option) {
+
+    current_time = millis();
     case 0:
       return;
     case 1:
-      liftInterface();
+      if (raiseInterface()) ia_State = 0;
       break;
     case 2:
-      switch (step) {
-        case 0:
-          servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
-          step = 1;
-          break;
-        case 1:
-          if (current_time - ext_time > ext_int) {
-            ext_time = current_time;
-            servoControl.setPWM(IA_LFT, 0, IA_LFT_MIN);
-            step = 2;
-          }
-          break;
-        case 2:
-          if (current_time - ext_time > ext_int) {
-            ext_time = current_time;
-            servoControl.setPWM(IA_DOR, 0, IA_DOR_MIN);
-            step = 0;
-            ia_State = 0;
-          }
-          break;
-      }
+      if (lowerInterface()) ia_State = 0;;
       break;
   }
 }
 
-
-//The liftInterface function raises the interface arm.
-void liftInterface() {
-  static int step = 0;
-  static int count = 0;
-  //Serial.println(step);
-  switch (step) {
-    case 0:
-      servoControl.setPWM(IA_DOR, 0, IA_DOR_MAX);
-      step = 1;  // Lift thingy
-      break;
-    case 1:
-      if (current_time - ext_time > ext_int) {
-        ext_time = current_time;
-        servoControl.setPWM(IA_LFT, 0, IA_LFT_MAX);
-        step = 2;  // Extend thingy
-      }
-      break;
-    case 2:
-      if (current_time - ext_time > ext_int) {
-        ext_time = current_time;
-        servoControl.setPWM(IA_EXT, 0, IA_EXT_MAX);
-        step = 3;  // Unextend thingy
-      }
-      break;
-    case 3:
-      if (current_time - ext_time > ext_int) {
-        ext_time = current_time;
-        servoControl.setPWM(IA_EXT, 0, IA_EXT_MIN);
-        step = 2;  // Extend thingy again
-        count++;
-
-        // Stop
-        if (count == 3) {
-          step = 0;
-          count = 0;
-          ia_State = 0;
-        }
-      }
-      break;
-  }
-}
 
 
 
@@ -571,14 +632,13 @@ void setup() {
   pinMode(OE_PIN, OUTPUT);
   digitalWrite(OE_PIN, LOW);
   safeReset();
-  
 }
 
 /*************************************************************************
  ***************************  LOOP FUNCTION  *****************************
  *************************************************************************/
 void loop() {
-  
+
   // put your main code here, to run repeatedly:
   if (checkSerial()) parseCommand(cmdStr0);
   if (checkSerial3()) parseCommand(cmdStr3);
