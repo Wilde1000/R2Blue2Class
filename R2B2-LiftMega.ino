@@ -130,7 +130,7 @@ The command structure is as follows:
 #define DP1_MIN 270  //done
 #define DP1_MAX 425  //done
 #define DP2 7
-#define DP2_MIN 300
+#define DP2_MIN 250
 #define DP2_MAX 400
 #define DP3 8
 #define DP3_MIN 275  //done
@@ -1037,8 +1037,8 @@ void PLift(int option) {
       break;
     case 2:  //lower Periscope
       if (P_Lower() == 1) {
-        periscope_state = 0;
         pLights(0);
+        periscope_state = 0;
       }
       break;
     case 3:  // Alternate rotation
@@ -1183,8 +1183,8 @@ void ZapLift(int option) {
 //ZapLights operates the Zap light on the zapper. Pass a 0 to shut off and a positive number to run
 byte ZapLights(int num) {
   if (num) {
-    Serial.write(SND_SPARK);
-    delay(100);
+  //Serial.write(SND_SPARK);
+    //delay(100);
     switch (z_state) {
       case 0:
         current_time = millis();
