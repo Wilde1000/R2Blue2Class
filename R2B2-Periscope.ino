@@ -233,23 +233,24 @@ int doTcommand(int addr, int opt) {
   Serial.print("T command ");
   Serial.println(opt);
   switch (addr) {
-    case 56:
-      displayInterval = 1;
-      displayState = opt;
-      break;
-    case 57:
-      eyesState = opt;
-      break;
-    case 58:
-      mainState = opt;
-      break;
-    case 59:
-      statusState = opt;
-      break;
     case 60:
       allState = opt;
       break;
-  }
+    
+    case 66:
+      displayInterval = 1;
+      displayState = opt;
+      break;
+    case 67:
+      eyesState = opt;
+      break;
+    case 68:
+      mainState = opt;
+      break;
+    case 69:
+      statusState = opt;
+      break;
+      }
 }
 
 void runDisplay(int option) {
@@ -632,3 +633,5 @@ void setColor(int pixel, float r, float g, float b) {
     pixels.Color((int)r * COLOR_MAX, (int)g * COLOR_MAX, (int)b * COLOR_MAX));
 }
 #undef COLOR_MAX
+
+
