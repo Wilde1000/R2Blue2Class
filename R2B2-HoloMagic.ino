@@ -128,6 +128,7 @@ int holo_state = 0;        //Contains current state for the holoprojectors
 int mPanel_state = 0;      //Contains the current state for the Magic Panel
 int sequencer_state = 0;   //Contains the current state for the sequencer
 int rf_wait = 5;           //Contains the Sequencer current wait state
+int positions[5] = { 1000, 1250, 1500, 1750, 2000 };
 int hpFlickSet = 0;
 int hpFlick1Set = 0;
 int hpBlinkSet = 0;
@@ -306,20 +307,123 @@ uint32_t getColor(int num) {
   return mPanel.Color(red, green, blue);
 }
 
+int moveTopHolo() {
+  static long unsigned ttime = 0;
+  static int tint = random(2000, 8000);
+  static int step = 0;
+  switch (step) {
+    case 0:
+      if (millis() - ttime > tint) {
+        ttime = millis();
+        step = 1;
+      }
+break;      
+    case 1:
+      th1.attach(TOP_HOLO1);
+      th2.attach(TOP_HOLO2);
+      th1.writeMicroseconds(positions[random(0, 4)]);
+      th2.writeMicroseconds(positions[random(0, 4)]);
+      step = 2;
+      break;
+    case 2:
+      if (millis() - ttime > 75) {
+        ttime = millis();
+        th1.detach();
+        th2.detach();
+        step = 0;
+        return 1;
+      }
+      break;
+  }
+  return 0;
+}
+
+int moveFrontHolo() {
+  static long unsigned ftime = 0;
+  static int fint = random(2000, 8000);
+  Serial.println(fint);  
+  static int step = 0;
+  switch (step) {
+    case 0:
+      if (millis() - ftime > fint) {
+        ftime = millis();
+        fint = random(2000, 8000);        
+        step = 1;
+        
+      }
+      break;
+    case 1:
+      fh1.attach(FRT_HOLO1);
+      fh2.attach(FRT_HOLO2);
+      fh1.writeMicroseconds(positions[random(0, 4)]);
+      fh2.writeMicroseconds(positions[random(0, 4)]);
+     
+      step = 2;
+      break;
+    case 2:
+      fh1.detach();
+      fh2.detach();
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+
+int moveBackHolo() {
+  static long unsigned btime = 0;
+  static int bint = random(2000, 8000);
+  static int step = 0;
+  switch (step) {
+    case 0:
+      if (millis() - btime > bint) {
+        btime = millis();
+        bint = random(2000, 8000);        
+        step = 1;
+        
+      }
+      break;
+    case 1:
+      bh1.attach(BCK_HOLO1);
+      bh2.attach(BCK_HOLO2);
+      bh1.writeMicroseconds(positions[random(0, 4)]);
+      bh2.writeMicroseconds(positions[random(0, 4)]);
+     
+      step = 2;
+      break;
+    case 2:
+      bh1.detach();
+      bh2.detach();
+      step = 0;
+      return 1;
+      break;
+  }
+  return 0;
+}
+
+
 //helper function for the Holos function
 void holoRandom() {
   setHoloColor(curr_holo_color, 0);
+  static long unsigned btime = 0;
+  static int bint = random(2000, 8000);
   current_time = millis();
-  if (current_time - holo_timer > holo_speed) {
-    holo_timer = current_time;
-    bh1.write(random(45, 135));
-    bh2.write(random(45, 135));
-    fh1.write(random(45, 135));
-    fh2.write(random(45, 135));
-    th1.write(random(45, 135));
-    th2.write(random(45, 135));
-  }
+
+  moveTopHolo();
+  moveFrontHolo();
+moveBackHolo();  
+
+  //bh1.attach(BCK_HOLO1);
+  //bh2.attach(BCK_HOLO2);
+  //fh1.attach(FRT_HOLO1);
+  //fh2.attach(FRT_HOLO2);
+
+  //bh1.write(random(45, 135));
+  //bh2.write(random(45, 135));
+  //fh1.write(random(45, 135));
+  //fh2.write(random(45, 135));
 }
+
 
 
 //The Holos function controls the three Holoprojectors on R2
@@ -333,8 +437,8 @@ void Holos(int opt) {
         break;
       case 1:  //Turn on holos with current color
         setHoloColor(curr_holo_color, 0);
-        // holo_speed = 2000;
-        //holoRandom();
+        holo_speed = 2000;
+        holoRandom();
 
         break;
       case 2:  //Standard random motion
@@ -966,10 +1070,17 @@ void setup() {
   tHolo.setBrightness(250);
   //th1.attach(TOP_HOLO1);
   //th2.attach(TOP_HOLO2);
-  //fh1.attach(FRT_HOLO1);
-  //fh2.attach(FRT_HOLO2);
   //bh1.attach(BCK_HOLO1);
   //bh2.attach(BCK_HOLO2);
+  //fh1.attach(FRT_HOLO1);
+  //fh2.attach(FRT_HOLO2);
+  //th1.writeMicroseconds(1000);
+  //th2.writeMicroseconds(2000);
+  //fh1.writeMicroseconds(1000);
+  //fh2.writeMicroseconds(2000);
+
+  //bh1.writeMicroseconds(1000);
+  //bh2.writeMicroseconds(1500);
 }
 
 /*************************************************************************
