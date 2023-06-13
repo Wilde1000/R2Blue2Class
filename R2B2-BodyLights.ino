@@ -63,7 +63,7 @@ The command structure is as follows:
  * ********************** MACRO DEFINITIONS ******************************
  * ***********************************************************************/
 #define MPU 'B'       //  Body Lights Mega is MPU B
-#define CBIDoorPin 2  //  Used for the CBI door open/close - Switch should be wired for Normally Closed
+#define CBIDoorPin 3  //  Used for the CBI door open/close - Switch should be wired for Normally Closed
 //#define DPLDoorPin 3          //  Used for DPL door open/close - Switch should be wired for Normally close
 #define DPL_LOAD 4             //  DPL load pin for the MAX7219 chip.
 #define DPL_CLOCK 5            //  DPL clock pin for the MAX7219 chip
@@ -90,7 +90,7 @@ The command structure is as follows:
 #define CBI 0                  // device 0 is first in chain
 #define NUMDEV 1               // One for the dataport, one for the battery indicator/CBI
 #define DATAPORTINTENSITY 15   // 15 is max
-#define CBIINTENSITY 15        // 15 is max
+#define CBIINTENSITY 8        // 15 is max
 #define MAX_COMMAND_LENGTH 64  // Max size for a serial command
 #define DP_DOOR 45             //Set the pin for the Dataport Door
 #define DP_DOOR_MAX 1600       //Set the door open position
@@ -139,18 +139,18 @@ char cmdStr0[MAX_COMMAND_LENGTH];
 // Instantiate LedControl driver
 LedControl cc = LedControl(CBI_DATA, CBI_CLOCK, CBI_LOAD, NUMDEV);  // CBI
 LedControl dc = LedControl(DPL_DATA, DPL_CLOCK, DPL_LOAD, NUMDEV);  // Dataport
-int displayEffect = 100;  // 100=no change, 4=whistle/heart sequence
-int dev_addr, dev_opt;  // Create variables for device address and device option
-char dev_cmd, dev_MPU;  // Create variable for the device command
-int cs_State = 3;      // Sets default Coin Slot State to off
-int cs_Speed = 425;    // Sets default Coin Slot speed to Medium
-int cs_Tspeed = 10;    // Sets default Coin Slot throb speed (0-99)
-int cs_color = 5;      // Sets default Coin Slot color to Blue
-int ldpl_color = 5;    // Sets default Large Data Port Logics color to Blue
-int ldpl_State = 3;    // Sets default Large Data Port Logics State to two Across
-int ldpl_Speed = 200;  // Sets default Large Data Port Logics speed to Medium
-int ldpl_Tspeed = 10;  // Sets default Large Data Port Logics throb speed (0-99)
-int dpl_State = 0;     // Set default Data Port Logics to off
+int displayEffect = 100;                                            // 100=no change, 4=whistle/heart sequence
+int dev_addr, dev_opt;                                              // Create variables for device address and device option
+char dev_cmd, dev_MPU;                                              // Create variable for the device command
+int cs_State = 3;                                                   // Sets default Coin Slot State to off
+int cs_Speed = 425;                                                 // Sets default Coin Slot speed to Medium
+int cs_Tspeed = 10;                                                 // Sets default Coin Slot throb speed (0-99)
+int cs_color = 5;                                                   // Sets default Coin Slot color to Blue
+int ldpl_color = 5;                                                 // Sets default Large Data Port Logics color to Blue
+int ldpl_State = 3;                                                 // Sets default Large Data Port Logics State to two Across
+int ldpl_Speed = 200;                                               // Sets default Large Data Port Logics speed to Medium
+int ldpl_Tspeed = 10;                                               // Sets default Large Data Port Logics throb speed (0-99)
+int dpl_State = 0;                                                  // Set default Data Port Logics to off
 
 //  Color Sequences stored in Program Memory
 const uint16_t np_color[][3] PROGMEM = {
@@ -294,7 +294,7 @@ int cal_Speed(int num) {
 // The cbi function runs the Charging Bay Indicator Lights
 void cbi() {
   updateCBILEDs();
-  getVCC();
+  //getVCC();
 }
 
 
@@ -580,10 +580,12 @@ void getVCC() {
   value = analogRead(analoginput);  // this must be between 0.0 and 5.0 - otherwise you'll let the blue smoke out of your arduino
   vout = (value * 5.0) / 1024.0;    //voltage coming out of the voltage divider
   vin = vout / (R2 / (R1 + R2));    //voltage to display
-
-  cc.setLed(CBI, 6, 5, (vin >= greenVCC));
-  cc.setLed(CBI, 5, 5, (vin >= yellowVCC));
-  cc.setLed(CBI, 4, 5, (vin >= redVCC));
+  cc.setLed(CBI, 6, 5, 0);
+  cc.setLed(CBI, 5, 5, 0);
+  cc.setLed(CBI, 4, 5, 0);
+  //cc.setLed(CBI, 6, 5, (vin >= greenVCC));
+  //cc.setLed(CBI, 5, 5, (vin >= yellowVCC));
+  //cc.setLed(CBI, 4, 5, (vin >= redVCC));
   //Serial.print("Volt Out = ");                                  // DEBUG CODE
   //Serial.print(vout, 1);   //Print float "vin" with 1 decimal   // DEBUG CODE
   //Serial.print("\tVolts Calc = ");                             // DEBUG CODE
@@ -1015,14 +1017,15 @@ void setup() {
   cc.shutdown(CBI, false);                       // take Charging Bay Indicator out of shutdown
   cc.clearDisplay(CBI);                          // clear CBI LEDs
   cc.setIntensity(CBI, CBIINTENSITY);            // set intensity of CBI LEDs
-  singleTest();                                  //Tests all Maxim connected leds in turn
-  delay(2000);
-  //pinMode(DPLDoorPin, INPUT_PULLUP);  //Pin on the Arduino Mini Breakout Board connected to left door switch HIGH=Door closed (NC when door closed) - S.Sloan
+  //singleTest();                                  //Tests all Maxim connected leds in turn
+  //delay(2000);
+  pinMode(CBIDoorPin, INPUT);  //Pin on the Arduino Mini Breakout Board connected to left door switch HIGH=Door closed (NC when door closed) - S.Sloan
   pinMode(analoginput, INPUT);
   dp_door.attach(DP_DOOR);
 
   dp_door.writeMicroseconds(DP_DOOR_MIN);
-  dp_door.detach();
+  //delay(50);
+  //dp_door.detach();
 }
 /*************************************************************************
  * ************************** LOOP FUNCTION ******************************
@@ -1033,5 +1036,12 @@ void loop() {
   coinslot(cs_State);
   updateLDPL(ldpl_State);
   dpl(dpl_State);
-  cbi();
+  
+  if (digitalRead(CBIDoorPin)==HIGH) cbi();
+  else {
+    cc.clearDisplay(CBI);
+    cc.setLed(CBI, 6, 5, 0);
+    cc.setLed(CBI, 5, 5, 0);
+    cc.setLed(CBI, 4, 5, 0);
+  }
 }
