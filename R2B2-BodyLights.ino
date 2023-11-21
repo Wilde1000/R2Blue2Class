@@ -492,11 +492,11 @@ void dpl(int option) {
   int waitTime = 50;
   switch (option) {
     case 0:
-      dp_door.detach();
+      //dp_door.detach();
       return;
     case 1:
       if (!door_open) {
-        dp_door.attach(DP_DOOR);
+        //dp_door.attach(DP_DOOR);
         if (millis() - lastTime > waitTime) {
           lastTime = millis();
           dp_door.writeMicroseconds(DP_DOOR_MAX);
@@ -511,7 +511,7 @@ void dpl(int option) {
       break;
     case 2:
       if (door_open) {
-        dp_door.attach(DP_DOOR);
+        //dp_door.attach(DP_DOOR);
         if (millis() - lastTime > waitTime) {
           lastTime = millis();
           dp_door.writeMicroseconds(DP_DOOR_MIN);
