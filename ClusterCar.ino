@@ -8,13 +8,12 @@
 #define in4 A5            //Arduino pin attached to B1 on red motor controller board (Motor 2)
 
 long duration;            //Variable to hold the time (in microseconds) the sensor needed to receive the echo
-long buTimer = millis();  //Timer to hold the back up timer
-long turnTimer = millis();  //Timer to hold the turning timer
-long buInt = 50;          //Interval for backing up
-long turnInt = 50;        //Interval for turning
-int sDistance = 6;        //Variable to hold the safe distance - if less than this - evasive action 
-int mSpeed = 200;         //Variable to hold the default speed of the motors
-
+long buInt = 1000;          //Interval for backing up
+long turnInt = 500;        //Interval for turning
+long stopInt =1500;
+int sDistance = 9;        //Variable to hold the safe distance - if less than this - evasive action 
+int m2Speed = 200;         //Variable to hold the default speed of the motors
+int m1Speed = 200;
 void lights(int status){
   digitalWrite(white, HIGH);
   if(status){
@@ -24,25 +23,27 @@ void lights(int status){
   }
   return;
 }
-void drive(int mode){
-  if(!mode){
+void drive(int inches){
+  if(inches>sDistance){
     forward();
-    return;
-  }
+  }else{
   halt();         //Stop the car
+  delay(stopInt);
   back();         //Back the car up
   delay(buInt);   //Wait for the backup
   halt();         //Stop the car
+  delay(stopInt);
   turn();         //Turn the car
   delay(turnInt); //Wait for the car to turn
-  halt();         //Stop the car
+  
+  }
   return;
 }
 
 void forward(){
-  analogWrite(in1, mSpeed);
+  analogWrite(in1, m1Speed);
   digitalWrite(in2, LOW);
-  analogWrite(in3, mSpeed);
+  analogWrite(in3, m2Speed);
   digitalWrite(in4, LOW);
   lights(0);
   return;
@@ -58,18 +59,18 @@ void halt(){
 }
 
 void back(){
-  analogWrite(in2, mSpeed);
+  analogWrite(in2, m1Speed);
   digitalWrite(in1, LOW);
-  analogWrite(in4, mSpeed);
+  analogWrite(in4, m2Speed);
   digitalWrite(in3, LOW);
   lights(1);
   return;
 }
 
 void turn(){
-  analogWrite(in1, mSpeed);
+  analogWrite(in1, m1Speed);
   digitalWrite(in2, LOW);
-  analogWrite(in4, mSpeed);
+  analogWrite(in4, m2Speed);
   digitalWrite(in3, LOW);
   lights(0);
 }
@@ -88,9 +89,7 @@ int sensor(){
   // whose duration is the time (in microseconds) from the sending of the ping
   // to the reception of its echo off of an object.
   duration = pulseIn(echo, HIGH);
-  int inches = duration / 74 / 2;
-  if(inches<sDistance) return 1;
-  else return 0;
+  return duration / 74 / 2;
 
 }
 
@@ -106,10 +105,12 @@ void setup() {
   pinMode(in2, OUTPUT);
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
-  
+  Serial.begin(9600);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  drive(sensor());
+ drive(sensor());
+ delay(50);
+  //Serial.println(sensor());
 }
