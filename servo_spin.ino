@@ -1,5 +1,11 @@
-const int stepPin = 2;
-const int dirPin = 3;
+const int stepPin1 = 2;
+const int dirPin1 = 3;
+const int stepPin2 = 4;
+const int dirPin2 = 5;
+const int button = 6;
+const int lservo1 = 7;
+const int lservo2 = 8;
+
 const int stepsPerRev=200;
 int numofSteps = 3100;
 int pulseWidthMicros = 100; 	// microseconds
@@ -32,13 +38,17 @@ void Pololu_A4988_Example()
 } 
 void setup() {
  	Serial.begin(9600);
- 	pinMode(stepPin, OUTPUT);
- 	pinMode(dirPin, OUTPUT);
+ 	pinMode(stepPin1, OUTPUT);
+  pinMode(stepPin2, OUTPUT);
+ 	pinMode(dirPin1, OUTPUT);
+  pinMode(dirPin2, OUTPUT);
+  pinMode(button, INPUT_PULLUP);
  	Serial.println(F("A4988 Initialized"));
 
-  Pololu_A4988_Example();
+  
 
 }
+
 void loop() {
  
 }
