@@ -135,6 +135,9 @@ float vout = 0.0;      // for voltage out measured analog input
 int value = 0;         // used to hold the analog value coming out of the voltage divider
 float vin = 0.0;       // voltage calulcated... since the divider allows for 15 volts
 char cmdStr0[MAX_COMMAND_LENGTH];
+char cmdStr1[MAX_COMMAND_LENGTH];
+char cmdStr2[MAX_COMMAND_LENGTH];
+char cmdStr3[MAX_COMMAND_LENGTH];
 // Currently, our droid uses two unconnected MAX7219 driven light systems - the DPL and the CBI
 // Instantiate LedControl driver
 LedControl cc = LedControl(CBI_DATA, CBI_CLOCK, CBI_LOAD, NUMDEV);  // CBI
@@ -309,6 +312,54 @@ void checkSerial() {
     cmd_Complete = buildCommand(ch, cmdStr0);
     if (cmd_Complete) {
       parseCommand(cmdStr0);
+      //Serial.println();
+    }
+  }
+}
+
+//The checkSerial function is the first thread of seven threads in this program.  It checks the Serial0 buffer for incoming serial
+//data and then sends it to be processed.
+void checkSerial1() {
+  char ch;
+  byte cmd_Complete;
+  if (Serial1.available()) {
+    ch = Serial1.read();
+    //Serial.print(ch);
+    cmd_Complete = buildCommand(ch, cmdStr1);
+    if (cmd_Complete) {
+      parseCommand(cmdStr1);
+      //Serial.println();
+    }
+  }
+}
+
+//The checkSerial function is the first thread of seven threads in this program.  It checks the Serial0 buffer for incoming serial
+//data and then sends it to be processed.
+void checkSerial2() {
+  char ch;
+  byte cmd_Complete;
+  if (Serial2.available()) {
+    ch = Serial2.read();
+    //Serial.print(ch);
+    cmd_Complete = buildCommand(ch, cmdStr2);
+    if (cmd_Complete) {
+      parseCommand(cmdStr2);
+      //Serial.println();
+    }
+  }
+}
+
+//The checkSerial function is the first thread of seven threads in this program.  It checks the Serial0 buffer for incoming serial
+//data and then sends it to be processed.
+void checkSerial3() {
+  char ch;
+  byte cmd_Complete;
+  if (Serial3.available()) {
+    ch = Serial3.read();
+    //Serial.print(ch);
+    cmd_Complete = buildCommand(ch, cmdStr3);
+    if (cmd_Complete) {
+      parseCommand(cmdStr3);
       //Serial.println();
     }
   }
@@ -663,7 +714,7 @@ void ldpl_single() {
 //The parseCommand takes the command from the buildCommand function and parses into its component parts - MPU, Address, Command and Option
 int parseCommand(char* input_str) {
   byte length = strlen(input_str);
-  if (length < 5) return 1;  //not enough characters
+  if (length < 2) return 1;  //not enough characters
   int mpu = input_str[0];    //MPU is the first character
   if (MPU != mpu) {          //if command is not for this MPU - send it on its way
     Serial.flush();
@@ -1006,7 +1057,7 @@ void setup() {
   Serial.begin(9600);  //Serial connection to Body Master
   //Serial1.begin(9600);           //Connected to Dome 25-pin Serial 2 - Not currently used
   //Serial2.begin(9600);           //Connected to CBI Nano - Not currently used
-  //Serial3.begin(9600);           //Connected to EXP Nano - Not currently used
+  Serial3.begin(9600);           //Connected to EXP Nano 
   FastLED.addLeds<WS2811, LB_PIN, GRB>(lb, LB_LEDS);        //Adds Data Panel Light Bar LEDs to FastLED array
   FastLED.addLeds<WS2811, CS_PIN, GRB>(cs, CS_LEDS);        //Adds Coin Slot LEDs to FastLED array
   FastLED.addLeds<WS2811, LDPL_PIN, GRB>(ldpl, LDPL_LEDS);  //Adds Large Data Panel LEDs to FastLED array
@@ -1033,6 +1084,9 @@ void setup() {
 
 void loop() {
   checkSerial();
+  //checkSerial1();
+  //checkSerial2();
+  checkSerial3();
   coinslot(cs_State);
   updateLDPL(ldpl_State);
   dpl(dpl_State);
