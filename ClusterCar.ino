@@ -1,11 +1,11 @@
-#define red 12            //Arduino pin attached to the red tail lights
-#define white 11          //Arduino pin attached to the white head lights
+#define red 6           //Arduino pin attached to the red tail lights
+#define white 7          //Arduino pin attached to the white head lights
 #define trig 5            //Arduino pin attached to the TRIG pin on the Ultrasonic Sensor
-#define echo 6            //Arduino pin attached to the ECHO pin on the Ultrasonic Sensor
-#define in1 A2            //Arduino pin attached to A1 on red motor controller board (Motor 1)
-#define in2 A3            //Arduino pin attached to A2 on red motor controller board (Motor 1)
-#define in3 A4            //Arduino pin attached to B1 on red motor controller board (Motor 2)
-#define in4 A5            //Arduino pin attached to B1 on red motor controller board (Motor 2)
+#define echo 4            //Arduino pin attached to the ECHO pin on the Ultrasonic Sensor
+#define in1 A1            //Arduino pin attached to A1 on red motor controller board (Motor 1)
+#define in2 A2            //Arduino pin attached to A2 on red motor controller board (Motor 1)
+#define in3 A3            //Arduino pin attached to B1 on red motor controller board (Motor 2)
+#define in4 A4            //Arduino pin attached to B1 on red motor controller board (Motor 2)
 
 long duration;            //Variable to hold the time (in microseconds) the sensor needed to receive the echo
 long buInt = 1000;          //Interval for backing up
@@ -14,6 +14,7 @@ long stopInt =1500;
 int sDistance = 9;        //Variable to hold the safe distance - if less than this - evasive action 
 int m2Speed = 200;         //Variable to hold the default speed of the motors
 int m1Speed = 200;
+
 void lights(int status){
   digitalWrite(white, HIGH);
   if(status){
