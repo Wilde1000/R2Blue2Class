@@ -607,33 +607,33 @@ int buildCommand1(char ch, char* output_str) {
 
 //The checkSerial function is the first thread of seven threads in this program.  It checks the Serial0 buffer for incoming serial
 //data and then sends it to be processed.
-void checkSerial() {
-  char ch;
-  byte cmd_Complete;
+byte checkSerial() {
   if (Serial.available()) {
-    ch = Serial.read();
-    //Serial.print(ch);
-    cmd_Complete = buildCommand(ch, cmdStr);
-    if (cmd_Complete) {
-      parseCommand(cmdStr);
-      //Serial.println();
+    char ch;                                       //create a character to hold the current byte from Serial stream
+    byte command_complete;                         //Establish a flag value to indicate a complete command
+    ch = Serial1.read();                           //Read a byte from the Serial Stream
+    command_complete = buildCommand(ch, cmdStr);  //Build the command string
+    if (command_complete) {                        //if complete return 1 to start the processing
+      return 1;
     }
   }
+  return 0;
 }
 
 
-void checkSerial1() {
-  char ch;
-  byte cmd_Complete;
+//The checkSerial1() function takes the serial data from Serial1 and sends it to the
+//buildCommand function for further processing.
+byte checkSerial1() {
   if (Serial1.available()) {
-    ch = Serial1.read();
-    //Serial.print(ch);
-    cmd_Complete = buildCommand1(ch, cmdStr1);
-    if (cmd_Complete) {
-      parseCommand(cmdStr1);
-      //Serial.println();
+    char ch;                                       //create a character to hold the current byte from Serial stream
+    byte command_complete;                         //Establish a flag value to indicate a complete command
+    ch = Serial1.read();                           //Read a byte from the Serial Stream
+    command_complete = buildCommand(ch, cmdStr1);  //Build the command string
+    if (command_complete) {                        //if complete return 1 to start the processing
+      return 1;
     }
   }
+  return 0;
 }
 
 
@@ -1971,8 +1971,8 @@ void setup() {
 
 
 void loop() {
-  checkSerial();   //Check Serial 0 for commands
-  checkSerial1();  //Check Serial 1 for commands
+  if (checkSerial()) parseCommand(cmdStr);
+  if (checkSerial1()) parseCommand(cmdStr1);
   if (!seq_state) {
     ZapLift(zapper_state);      // Run actions on the Zapper if any
     LSLift(light_saber_state);  //Run actions on the Light Saber if any
