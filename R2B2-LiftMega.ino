@@ -611,7 +611,7 @@ byte checkSerial() {
   if (Serial.available()) {
     char ch;                                       //create a character to hold the current byte from Serial stream
     byte command_complete;                         //Establish a flag value to indicate a complete command
-    ch = Serial1.read();                           //Read a byte from the Serial Stream
+    ch = Serial.read();                           //Read a byte from the Serial Stream
     command_complete = buildCommand(ch, cmdStr);  //Build the command string
     if (command_complete) {                        //if complete return 1 to start the processing
       return 1;
