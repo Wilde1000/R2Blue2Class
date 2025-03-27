@@ -1,8 +1,21 @@
 #include <SPI.h>
 #include <MFRC522.h>
 
-#define SS_PIN 10
-#define RST_PIN 6
+/*Wiring for MFRC522 Scanner
+
+MFRC522    Uno/Nano    Mega
+SDA        10            53
+SCK        13            52
+MOSI       11            51
+MISO       12            50
+IRQ        --            --
+GND        GND          GND
+RST        6              5
+3.3        3.3            3.3
+*/
+
+#define SS_PIN 53  //SDA pin
+#define RST_PIN 5  //RST pin
 
 const byte panel_open_close_wave_card[][16] PROGMEM = {
 {"G3T100#          "},
