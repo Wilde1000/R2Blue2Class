@@ -303,7 +303,7 @@ void cbi() {
 
 //The checkSerial function is the first thread of seven threads in this program.  It checks the Serial0 buffer for incoming serial
 //data and then sends it to be processed.
-void checkSerial() {
+byte checkSerial() {
   char ch;
   byte cmd_Complete;
   if (Serial.available()) {
@@ -311,15 +311,16 @@ void checkSerial() {
     //Serial.print(ch);
     cmd_Complete = buildCommand(ch, cmdStr0);
     if (cmd_Complete) {
-      parseCommand(cmdStr0);
+      return 1;
       //Serial.println();
     }
   }
+  return 0;
 }
 
 //The checkSerial function is the first thread of seven threads in this program.  It checks the Serial0 buffer for incoming serial
 //data and then sends it to be processed.
-void checkSerial1() {
+byte checkSerial1() {
   char ch;
   byte cmd_Complete;
   if (Serial1.available()) {
@@ -327,10 +328,10 @@ void checkSerial1() {
     //Serial.print(ch);
     cmd_Complete = buildCommand(ch, cmdStr1);
     if (cmd_Complete) {
-      parseCommand(cmdStr1);
-      //Serial.println();
+      return 1;
     }
   }
+  return 0;
 }
 
 //The checkSerial function is the first thread of seven threads in this program.  It checks the Serial0 buffer for incoming serial
@@ -343,15 +344,15 @@ void checkSerial2() {
     //Serial.print(ch);
     cmd_Complete = buildCommand(ch, cmdStr2);
     if (cmd_Complete) {
-      parseCommand(cmdStr2);
-      //Serial.println();
+      return 1;
     }
   }
+  return 0;
 }
 
 //The checkSerial function is the first thread of seven threads in this program.  It checks the Serial0 buffer for incoming serial
 //data and then sends it to be processed.
-void checkSerial3() {
+byte checkSerial3() {
   char ch;
   byte cmd_Complete;
   if (Serial3.available()) {
@@ -1083,10 +1084,10 @@ void setup() {
  * ***********************************************************************/
 
 void loop() {
-  checkSerial();
-  //checkSerial1();
-  //checkSerial2();
-  checkSerial3();
+  if(checkSerial())parseCommand(cmdStr0);
+  //if(checkSerial1())parseCommand(cmdStr1);
+  //if(checkSerial2())parseCommand(cmdStr2);
+  if(checkSerial3())parseCommand(cmdStr3);
   coinslot(cs_State);
   updateLDPL(ldpl_State);
   dpl(dpl_State);
