@@ -72,6 +72,7 @@ The command structure is as follows:
  *************************************************************************/
 #define SERVO_FREQ 50
 //#define OSCIL_FREQ 27000000
+//#define LMT_TEST
 #define MPU 'E'
 #define CMD_MAX_LENGTH 63
 #define HPF_03 "D40T203\r"   //HP Flicker for 3 seconds
@@ -784,6 +785,19 @@ int LF_Alt_Raise() {
   return 0;
 }
 
+
+void limitTest(){
+  if(!digitalRead(Z_TOP)) Serial.println("Zapper Top Hit");
+  if(!digitalRead(Z_BOT)) Serial.println("Zapper Bottom Hit");
+  if(!digitalRead(LS_TOP)) Serial.println("Light Saber Top Hit");
+  if(!digitalRead(LS_BOT)) Serial.println("Light Saber Bottom Hit");
+  if(!digitalRead(P_TOP)) Serial.println("Periscope Top Hit");
+  if(!digitalRead(P_BOT)) Serial.println("Periscope Bottom Hit");
+  if(!digitalRead(BM_TOP)) Serial.println("Motivator Top Hit");
+  if(!digitalRead(BM_BOT)) Serial.println("Motivator Bottom Hit");
+  if(!digitalRead(LS_TOP)) Serial.println("Life Form Top Hit");
+  if(!digitalRead(LS_BOT)) Serial.println("Life Form Bottom Hit");
+}
 
 //The LS_Raise function raises the Light Saber and returns a 0 while raising and a 1 when raised
 byte LS_Raise() {
@@ -1971,6 +1985,9 @@ void setup() {
 
 
 void loop() {
+  #ifdef LMT_TEST
+    limitTest();
+  #endif
   if (checkSerial()) parseCommand(cmdStr);
   if (checkSerial1()) parseCommand(cmdStr1);
   if (!seq_state) {
