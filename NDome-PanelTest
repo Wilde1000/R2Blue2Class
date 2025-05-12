@@ -1,0 +1,57 @@
+#include <Servo.h>
+//#define test_Open 2250
+//#define test_Close 1150
+
+#define z_close 810
+#define z_open 2000
+
+#define ls_close 915
+#define ls_open 1900
+
+#define bm_close 975
+#define bm_open 2150
+
+
+#define lf_close 1075
+#define lf_open 2250
+
+
+#define dp1_close 950
+#define dp1_open 2050
+#define dp2_close 960
+#define dp2_open 2000
+#define dp3_close 1025
+#define dp3_open 2000
+#define dp4_close 1250
+#define dp4_open 2300
+
+#define dp5_close 900
+#define dp5_open 2200
+#define dp6_close 1300
+#define dp6_open 2150
+#define dp7_close 1225
+#define dp7_open 2050
+byte openFlag=0;
+byte panelTest=0;
+int test_Open = z_open;
+int test_Close = z_close;
+
+Servo panel;
+
+
+void setup() {
+  // put your setup code here, to run once:
+  panel.attach(9);
+  if(openFlag) panel.writeMicroseconds(test_Open);
+  else panel.writeMicroseconds(test_Close);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  if(panelTest){
+      panel.writeMicroseconds(test_Open);
+      delay(1000);
+      panel.writeMicroseconds(test_Close);
+      delay(1000);
+  }
+}
