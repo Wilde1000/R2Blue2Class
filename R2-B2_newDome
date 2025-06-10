@@ -5,6 +5,7 @@
  * on Serial2.
  *
  */
+//#include <Adafruit_PWMServoDriver.h>
 
 // Support for RSeries Logic Engine FLD and/or RLD lights (requires FastLED library)
 // Define USE_RSERIES_FLD to enable support for RSeries FLD
@@ -21,8 +22,8 @@
 
 // Define USE_I2C_ADDRESS to enable slave mode. This will disable servo support
 // #define USE_I2C_ADDRESS 0x0a
-#define USE_DEBUG // Define to enable debug diagnostic
-#define USE_WIFI  // Define to enable Wifi support
+//#define USE_DEBUG // Define to enable debug diagnostic
+//#define USE_WIFI  // Define to enable Wifi support
 #define USE_SPIFFS
 #ifdef USE_WIFI
 #define USE_DROID_REMOTE // Define for droid remote support
@@ -40,8 +41,8 @@
 #define REMOTE_ENABLED true // default disabled
 #define WIFI_ENABLED true   // default enabled
 // Set these to your desired WiFi credentials.
-#define WIFI_AP_NAME "AstroPixels"
-#define WIFI_AP_PASSPHRASE "Astromech"
+#define WIFI_AP_NAME "R2-Blue2"
+#define WIFI_AP_PASSPHRASE "BlueCrew6153"
 #define WIFI_ACCESS_POINT true /* true if access point: false if joining existing wifi */
 #endif
 
@@ -263,6 +264,7 @@ HoloLights topHolo(PIN_TOP_HOLO, HoloLights::kRGB, 3);
 
 #define HOLO_HSERVO 0x1000
 #define HOLO_VSERVO 0x2000
+#define holoBright 255
 
 #define DOME_PANELS_MASK (SMALL_PANEL | MEDIUM_PANEL | BIG_PANEL)
 #define PIE_PANELS_MASK (PIE_PANEL)
@@ -286,27 +288,26 @@ HoloLights topHolo(PIN_TOP_HOLO, HoloLights::kRGB, 3);
 const ServoSettings servoSettings[] PROGMEM = {
 #ifndef USE_I2C_ADDRESS
     // First PCA9685 controller
-    {1, 800, 2200, PANEL_GROUP_4 | SMALL_PANEL},  /* 0: door 4 */
-    {2, 800, 2200, PANEL_GROUP_3 | SMALL_PANEL},  /* 1: door 3 */
-    {3, 800, 2200, PANEL_GROUP_2 | SMALL_PANEL},  /* 2: door 2 */
-    {4, 800, 2200, PANEL_GROUP_1 | SMALL_PANEL},  /* 3: door 1 */
-    {5, 800, 2200, PANEL_GROUP_5 | MEDIUM_PANEL}, /* 4: door 5 */
-    {6, 800, 2200, PANEL_GROUP_6 | BIG_PANEL},    /* 5: door 9 */
-    {7, 800, 2200, MINI_PANEL},                   /* 6: mini door 2 */
-    {8, 800, 2200, MINI_PANEL},                   /* 7: mini front psi door */
-    {9, 800, 2200, PANEL_GROUP_10 | PIE_PANEL},   /* 8: pie panel 1 */
-    {10, 800, 2200, PANEL_GROUP_9 | PIE_PANEL},   /* 9: pie panel 2 */
-    {11, 800, 2200, PANEL_GROUP_8 | PIE_PANEL},   /* 10: pie panel 3 */
-    {12, 800, 2200, PANEL_GROUP_7 | PIE_PANEL},   /* 11: pie panel 4 */
-    {13, 800, 2200, TOP_PIE_PANEL},               /* 12: dome top panel */
-
+    {1, 1000, 2000, PANEL_GROUP_1 | SMALL_PANEL},  /* 0: door 1 */
+    {2, 1000, 2000, PANEL_GROUP_2 | SMALL_PANEL},  /* 1: door 2 */
+    {3, 1000, 2000, PANEL_GROUP_3 | SMALL_PANEL},  /* 2: door 3 */
+    {4, 1100, 2100, PANEL_GROUP_4 | SMALL_PANEL},  /* 3: door 4 */
+    {5, 1400, 2400, PANEL_GROUP_5 | MEDIUM_PANEL}, /* 4: door 5 */
+    {6, 800, 2200, PANEL_GROUP_6 | BIG_PANEL},    /* 6: door 6 */
+    {7, 1000, 2000, MINI_PANEL | SMALL_PANEL},  /* 7: door 7 */                 /* 6: mini door 2 */
+    {8, 1050, 2050, MINI_PANEL | SMALL_PANEL},  /* 8: mini front psi door */
+    {9, 1325, 2350, PANEL_GROUP_7 | PIE_PANEL},   /* 8: pie panel 1 */
+    {10, 700, 1800, PANEL_GROUP_8 | PIE_PANEL},   /* 9: pie panel 2 */
+    {11, 1000, 2150, PANEL_GROUP_9 | PIE_PANEL},   /* 10: pie panel 3 */
+    {12, 900, 2050, PANEL_GROUP_10 | PIE_PANEL},   /* 11: pie panel 4 */
+    {13, 1000, 2000, HOLO_HSERVO}, /* 13: horizontal front holo */
+    {14, 1000, 2000, HOLO_VSERVO}, /* 14: vertical front holo */
+    {15, 1000, 2000, HOLO_HSERVO}, /* 15: horizontal top holo */
+    {16, 1000, 2000, HOLO_VSERVO}, /* 16: vertical top holo */
     // Second PCA9685 controller
-    {16, 800, 2200, HOLO_HSERVO}, /* 13: horizontal front holo */
-    {17, 800, 2200, HOLO_VSERVO}, /* 14: vertical front holo */
-    {18, 800, 2200, HOLO_HSERVO}, /* 15: horizontal top holo */
-    {19, 800, 2200, HOLO_VSERVO}, /* 16: vertical top holo */
-    {20, 800, 2200, HOLO_VSERVO}, /* 17: vertical rear holo */
-    {21, 800, 2200, HOLO_HSERVO}, /* 18: horizontal rear holo */
+    
+    {17, 1000, 2000, HOLO_VSERVO}, /* 17: vertical rear holo */
+    {18, 1000, 2000, HOLO_HSERVO}, /* 18: horizontal rear holo */
 #endif
 };
 
@@ -593,7 +594,12 @@ void scan_i2c()
 void setup()
 {
     REELTWO_READY();
-
+    frontHolo.begin();
+    rearHolo.begin();
+    topHolo.begin();
+    frontHolo.setBrightness(holoBright);
+    rearHolo.setBrightness(holoBright);
+    topHolo.setBrightness(holoBright);
     if (!preferences.begin("astro", false))
     {
         DEBUG_PRINTLN("Failed to init prefs");
@@ -648,7 +654,7 @@ void setup()
         sMarcSound.setVolume(preferences.getInt(PREFERENCE_MARCSOUND_VOLUME, MARC_SOUND_VOLUME) / 1000.0);
     }
 
-    RLD.selectScrollTextLeft("... BLUE CREW ROBOTICS #6153 ....", LogicEngineRenderer::kBlue, 0, 15);
+    RLD.selectScrollTextLeft("... BLUE CREW ROBOTICS 6153 ....", LogicEngineRenderer::kBlue, 0, 15);
     FLD.selectScrollTextLeft("... R2-BLUE2 ...", LogicEngineRenderer::kRed, 0, 15);
 
     // Assign servos to holo projectors
@@ -869,6 +875,8 @@ void setup()
     sMarcSound.setRandomMax(preferences.getInt(PREFERENCE_MARCSOUND_RANDOM_MAX, MARC_SOUND_RANDOM_MAX));
     if (preferences.getInt(PREFERENCE_MARCSOUND_RANDOM, MARC_SOUND_RANDOM))
         sMarcSound.startRandomInSeconds(13);
+    scan_i2c();
+    
 }
 
 ////////////////
