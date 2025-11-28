@@ -1,0 +1,91 @@
+﻿===========================================
+SPARK MAX Configuration - R2 Drive System
+===========================================
+
+Motor Type:
+    Brushless (NEO 550)
+
+Idle Mode:
+    Coast            ; Recommended for indoor/flat floors
+    (Brake optional if you need hill-hold on ramps)
+
+Voltage Compensation:
+    Enabled
+    Nominal Voltage: 12.0 V
+
+Inversion:
+    One SPARK MAX must be inverted so both feet move forward together.
+    (Either invert in software or set "Invert" = True on one controller.)
+
+-------------------------------------------
+Current Limits (Protects Gears + Motor)
+-------------------------------------------
+
+Smart Current Limit:
+    25–30 A
+
+Secondary (Hard) Current Limit:
+    35–40 A
+
+(These levels prevent printed gear damage and reduce stall load while
+still allowing strong pushing force.)
+
+-------------------------------------------
+Ramp Rates (Smooth Acceleration)
+-------------------------------------------
+
+Open-Loop Ramp:
+    0.4 to 0.5 seconds
+
+Closed-Loop Ramp (if used):
+    0.3 to 0.5 seconds
+
+(Prevents jerk starts and reduces stress on drivetrain.)
+
+-------------------------------------------
+Input Mode
+-------------------------------------------
+
+Input: PWM (Servo-style signal)
+    1000 μs = Full Reverse
+    1500 μs = Neutral/Stop
+    2000 μs = Full Forward
+
+Deadband:
+    Use default SPARK MAX deadband (or set ~0.02 if adjusting)
+    
+-------------------------------------------
+Optional Features
+-------------------------------------------
+
+Voltage Compensation:
+    Enabled at 12.0 V (for consistent behavior as battery voltage drops)
+
+Idle Behavior:
+    Coast = Smooth, natural stop
+    Brake = Holds position; use only when needed
+
+Encoder:
+    Hall-sensor encoder (built-in to NEO 550) always available
+    (Useful for velocity/position control if moving to CAN later)
+
+-------------------------------------------
+Notes
+-------------------------------------------
+
+• These settings assume:
+      - NEO 550 motor
+      - 25:1 UltraPlanetary gearbox
+      - Printed gear train providing 3.375:1 reduction
+      - Total reduction ≈ 84.375:1
+      - 4.5" drive wheel
+
+• Top speed is ~2.6 ft/s (1.75 mph), ideal for a safe event droid.
+
+• Ramp rates and current limits are critical for protecting printed gears.
+
+• Settings should be written to flash on each SPARK MAX after configuration.
+
+===========================================
+END OF FILE
+===========================================
