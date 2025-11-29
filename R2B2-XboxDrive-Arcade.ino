@@ -168,20 +168,27 @@ Command panel4 = createCommand(DP4_O, DP4_C);
 Command panel5 = createCommand(DP5_O, DP5_C);
 Command panel6 = createCommand(DP6_O, DP6_C);
 bool mtrsEnable = 0;
-// Drive behavior tuning for SPARK MAX PWM control
-const int NEUTRAL_PULSE = 1500;   // microseconds for stop
-const int PULSE_RANGE   = 250;    // +/- range from neutral (1250–1750)
-const int RAMP_STEP     = 5;      // max change per loop in microseconds
 
-bool slowMode = false;           // slow/precision mode flag
-const float SLOW_SCALE = 0.5f;   // 50% speed in slow mode
+// Drive behavior tuning
+const int NEUTRAL_PULSE   = 1500;
+const int PULSE_RANGE     = 250;   // +/- range from neutral (1250–1750 µs)
+const int RAMP_STEP       = 5;     // max µs step per loop for software ramp
 
+bool  slowMode    = false;
+const float SLOW_SCALE = 0.5f;     // 50%% speed in slow mode
+
+// Drive mode selection
+enum DriveMode {
+  DRIVE_ARCADE = 0,
+  DRIVE_TANK   = 1
+};
+DriveMode driveMode = DRIVE_ARCADE;
+
+// Current and target servo pulses for ramping
 int currentLeftPulse  = NEUTRAL_PULSE;
 int currentRightPulse = NEUTRAL_PULSE;
 int targetLeftPulse   = NEUTRAL_PULSE;
 int targetRightPulse  = NEUTRAL_PULSE;
-
-
 
 
 
@@ -208,10 +215,14 @@ Command runCommand(Command* command) {
 }
 
 
+/*************************************************************************
+ ***************************** SETUP FUNCTION ****************************
+ *************************************************************************/
 
-// === Helper functions for drive behavior ===
+/************************************************
+ * *************** DRIVE HELPER FUNCTIONS ********
+ * ***********************************************/
 
-// Map raw Xbox hat value (-32768..32767) to -1.0..+1.0 with dead zone
 float hatToNorm(int value) {
   if (value > DEAD_ZONE) {
     return (float)(value - DEAD_ZONE) / (32767.0f - (float)DEAD_ZONE);
@@ -222,7 +233,10 @@ float hatToNorm(int value) {
   }
 }
 
-// Convert -1.0..+1.0 command into microsecond pulse
+float fAbs(float x) {
+  return (x < 0.0f) ? -x : x;
+}
+
 int normToPulse(float cmd) {
   if (cmd > 1.0f)  cmd = 1.0f;
   if (cmd < -1.0f) cmd = -1.0f;
@@ -230,7 +244,6 @@ int normToPulse(float cmd) {
   return (int)pulse;
 }
 
-// Apply slow mode scaling around neutral
 int scalePulse(int pulse, bool slow) {
   if (!slow) return pulse;
   float offset = (float)pulse - (float)NEUTRAL_PULSE;
@@ -238,16 +251,24 @@ int scalePulse(int pulse, bool slow) {
   return (int)((float)NEUTRAL_PULSE + offset);
 }
 
-// Software ramp: move 'current' toward 'target' by at most RAMP_STEP µs
 void stepToward(int &current, int target) {
   if (current < target - RAMP_STEP)      current += RAMP_STEP;
   else if (current > target + RAMP_STEP) current -= RAMP_STEP;
   else                                   current  = target;
 }
 
-/*************************************************************************
- ***************************** SETUP FUNCTION ****************************
- *************************************************************************/
+bool sticksInDeadZone() {
+  int lx = Xbox.getAnalogHat(LeftHatX);
+  int ly = Xbox.getAnalogHat(LeftHatY);
+  int rx = Xbox.getAnalogHat(RightHatX);
+  int ry = Xbox.getAnalogHat(RightHatY);
+
+  return (abs(lx) < DEAD_ZONE &&
+          abs(ly) < DEAD_ZONE &&
+          abs(rx) < DEAD_ZONE &&
+          abs(ry) < DEAD_ZONE);
+}
+
 void setup() {
   Serial.begin(9600);  //Connection with MPU A - Body Master
 
@@ -278,32 +299,39 @@ void loop() {
   Usb.Task();
   if (Xbox.XboxReceiverConnected) {
     if (Xbox.Xbox360Connected[CONTROLLER]) {
-
-      // Arcade drive with software ramp (Left stick Y = throttle, Right stick X = turn)
+      // Drive control: arcade or tank mode with software ramp
       if (mtrsEnable) {
-        int rawThrottle = Xbox.getAnalogHat(LeftHatY);
-        int rawTurn     = Xbox.getAnalogHat(RightHatX);
+        int rawLeftY  = Xbox.getAnalogHat(LeftHatY);
+        int rawRightY = Xbox.getAnalogHat(RightHatY);
+        int rawRightX = Xbox.getAnalogHat(RightHatX);
 
-        float throttle = hatToNorm(rawThrottle);
-        float turn     = hatToNorm(rawTurn);
+        float leftCmd  = 0.0f;
+        float rightCmd = 0.0f;
 
-        float leftCmd  = throttle + turn;
-        float rightCmd = throttle - turn;
+        if (driveMode == DRIVE_ARCADE) {
+          // Arcade: Left stick Y = throttle, Right stick X = turn
+          float throttle = hatToNorm(rawLeftY);
+          float turn     = hatToNorm(rawRightX);
 
-        float maxMag = leftCmd >= 0 ? leftCmd : -leftCmd;
-        float absRight = rightCmd >= 0 ? rightCmd : -rightCmd;
-        if (absRight > maxMag) {
-          maxMag = absRight;
-        }
-        if (maxMag > 1.0f) {
-          leftCmd  /= maxMag;
-          rightCmd /= maxMag;
+          leftCmd  = throttle + turn;
+          rightCmd = throttle - turn;
+
+          float maxMag = fAbs(leftCmd);
+          if (fAbs(rightCmd) > maxMag) maxMag = fAbs(rightCmd);
+          if (maxMag > 1.0f) {
+            leftCmd  /= maxMag;
+            rightCmd /= maxMag;
+          }
+        } else {
+          // Tank: Left stick Y = left wheel, Right stick Y = right wheel
+          leftCmd  = hatToNorm(rawLeftY);
+          rightCmd = hatToNorm(rawRightY);
         }
 
         int leftPulse  = normToPulse(leftCmd);
         int rightPulse = normToPulse(rightCmd);
 
-        leftPulse  = scalePulse(leftPulse, slowMode);
+        leftPulse  = scalePulse(leftPulse,  slowMode);
         rightPulse = scalePulse(rightPulse, slowMode);
 
         targetLeftPulse  = leftPulse;
@@ -315,7 +343,7 @@ void loop() {
         LFoot.writeMicroseconds(currentLeftPulse);
         RFoot.writeMicroseconds(currentRightPulse);
       } else {
-        // Keep drive outputs neutral when motors are disabled
+        // Motors disabled: keep drive outputs neutral
         currentLeftPulse  = NEUTRAL_PULSE;
         currentRightPulse = NEUTRAL_PULSE;
         targetLeftPulse   = NEUTRAL_PULSE;
@@ -323,6 +351,7 @@ void loop() {
       }
 
       //Check the Left and Right triggers
+//Check the Left and Right triggers
       if (Xbox.getButtonPress(L2) > TRIGGER_DEAD_ZONE) {
 
         analogWrite(DOME_ENABLE, Xbox.getButtonPress(L2));
@@ -334,54 +363,45 @@ void loop() {
         digitalWrite(IN1_DOME_MOTOR, HIGH);
         digitalWrite(IN2_DOME_MOTOR, LOW);
       }
-
       if (Xbox.getButtonClick(XBOX)) {
         mtrsEnable = !mtrsEnable;
         if (mtrsEnable) {
           Xbox.setLedMode(ROTATING);
           LFoot.attach(LEFT_PWM);
+          LFoot.writeMicroseconds(1500);
           RFoot.attach(RIGHT_PWM);
-
-          slowMode = false;
-
-          currentLeftPulse  = NEUTRAL_PULSE;
-          currentRightPulse = NEUTRAL_PULSE;
-          targetLeftPulse   = NEUTRAL_PULSE;
-          targetRightPulse  = NEUTRAL_PULSE;
-
-          LFoot.writeMicroseconds(NEUTRAL_PULSE);
-          RFoot.writeMicroseconds(NEUTRAL_PULSE);
+          RFoot.writeMicroseconds(1500);
         } else {
           Xbox.setLedOff();
           Xbox.setLedOn((LEDEnum)comSet);
-
-          LFoot.writeMicroseconds(NEUTRAL_PULSE);
-          RFoot.writeMicroseconds(NEUTRAL_PULSE);
-
           LFoot.detach();
           RFoot.detach();
-
-          slowMode = false;
-
-          currentLeftPulse  = NEUTRAL_PULSE;
-          currentRightPulse = NEUTRAL_PULSE;
-          targetLeftPulse   = NEUTRAL_PULSE;
-          targetRightPulse  = NEUTRAL_PULSE;
         }
       }
       if (Xbox.getButtonClick(L3)) {
         if (mtrsEnable) {
-          // Toggle slow/precision mode while drive is enabled
+          // Slow mode toggle only when drive enabled
           slowMode = !slowMode;
         } else {
-          // Cycle command sets when drive is disabled
+          // When drive disabled, L3 cycles command sets backward
           if (comSet > 1) comSet--;
           else comSet = 4;
           Xbox.setLedOn((LEDEnum)comSet);
         }
       }
       if (Xbox.getButtonClick(R3)) {
-        if (!mtrsEnable) {
+        if (mtrsEnable) {
+          // Toggle drive mode (arcade <-> tank) only if sticks are centered
+          if (sticksInDeadZone()) {
+            if (driveMode == DRIVE_ARCADE) driveMode = DRIVE_TANK;
+            else driveMode = DRIVE_ARCADE;
+
+            // Reset ramp targets to neutral when switching modes
+            targetLeftPulse  = NEUTRAL_PULSE;
+            targetRightPulse = NEUTRAL_PULSE;
+          }
+        } else {
+          // When drive disabled, R3 cycles command sets forward
           if (comSet < 4) comSet++;
           else comSet = 1;
           Xbox.setLedOn((LEDEnum)comSet);
